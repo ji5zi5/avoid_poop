@@ -1,0 +1,62 @@
+import {z} from 'zod';
+
+export const ROOM_CODE_LENGTH = 6;
+export const ROOM_MAX_PLAYERS = 8;
+
+export const roomCodeValueSchema = z
+  .string()
+  .trim()
+  .length(ROOM_CODE_LENGTH, `Room code must be ${ROOM_CODE_LENGTH} characters.`)
+  .regex(/^[a-zA-Z0-9]+$/, 'Room code must contain only letters and numbers.');
+
+export const roomStatusSchema = z.enum(['waiting', 'in_progress']);
+
+export const roomOptionsSchema = z.object({
+  bodyBlock: z.boolean(),
+  debuffTier: z.union([z.literal(2), z.literal(3)])
+});
+
+export const roomOptionsPatchSchema = roomOptionsSchema.partial();
+
+export const createRoomPayloadSchema = z.object({
+  options: roomOptionsPatchSchema.optional()
+});
+
+export const joinRoomPayloadSchema = z.object({
+  roomCode: roomCodeValueSchema
+});
+
+export const quickJoinPayloadSchema = z.object({
+  options: roomOptionsPatchSchema.optional()
+});
+
+export const roomCodeParamsSchema = z.object({
+  roomCode: roomCodeValueSchema
+});
+
+export const lobbyPlayerSchema = z.object({
+  userId: z.number().int().positive(),
+  username: z.string().min(1),
+  isHost: z.boolean(),
+  ready: z.boolean()
+});
+
+export const roomSummarySchema = z.object({
+  roomCode: z.string().length(ROOM_CODE_LENGTH).regex(/^[A-Z0-9]+$/),
+  hostUserId: z.number().int().positive(),
+  status: roomStatusSchema,
+  maxPlayers: z.literal(ROOM_MAX_PLAYERS),
+  playerCount: z.number().int().min(0).max(ROOM_MAX_PLAYERS),
+  players: z.array(lobbyPlayerSchema).max(ROOM_MAX_PLAYERS),
+  options: roomOptionsSchema
+});
+
+export const defaultRoomOptions = roomOptionsSchema.parse({
+  bodyBlock: false,
+  debuffTier: 2
+});
+
+export type RoomOptions = z.infer<typeof roomOptionsSchema>;
+export type RoomOptionsPatch = z.infer<typeof roomOptionsPatchSchema>;
+export type LobbyPlayer = z.infer<typeof lobbyPlayerSchema>;
+export type RoomSummary = z.infer<typeof roomSummarySchema>;

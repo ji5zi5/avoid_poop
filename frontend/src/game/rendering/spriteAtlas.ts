@@ -1,0 +1,17 @@
+export const palette = {
+  sky: "#f9ebe0",
+  cloud: "#efe0d2",
+  field: "#c7b39c",
+  line: "rgba(96, 73, 44, 0.12)",
+  poop: "#60492c",
+  poopHighlight: "#8e714b",
+  boss: "#463f1a",
+  invincibility: "#bfa4ff",
+  speed: "#8f6d46",
+  heal: "#ce7a63",
+  slow: "#76684f",
+  clear: "#d79f58",
+  player: "#ce7a63",
+  playerOutline: "#463f1a",
+  playerMarker: "#f9ebe0",
+};

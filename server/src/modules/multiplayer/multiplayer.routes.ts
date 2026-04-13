@@ -1,0 +1,93 @@
+import {FastifyPluginAsync, FastifyReply} from 'fastify';
+import {ZodError} from 'zod';
+
+import {requireUser} from '../../middleware/authGuard.js';
+import {MatchmakingService} from './matchmaking.service.js';
+import {
+  createRoomPayloadSchema,
+  joinRoomPayloadSchema,
+  quickJoinPayloadSchema,
+  roomCodeParamsSchema
+} from './multiplayer.schemas.js';
+import {
+  RoomAccessError,
+  RoomClosedError,
+  RoomFullError,
+  RoomNotFoundError,
+  RoomService
+} from './room.service.js';
+
+type MultiplayerRoutesOptions = {
+  roomService: RoomService;
+  matchmakingService: MatchmakingService;
+};
+
+export const multiplayerRoutes: FastifyPluginAsync<MultiplayerRoutesOptions> = async (
+  app,
+  {roomService, matchmakingService}
+) => {
+  app.post('/rooms', {preHandler: requireUser}, async (request, reply) => {
+    const parsed = createRoomPayloadSchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({error: getValidationErrorMessage(parsed.error)});
+    }
+
+    const room = roomService.createRoom(request.user!, parsed.data.options);
+    return reply.status(201).send(room);
+  });
+
+  app.post('/join', {preHandler: requireUser}, async (request, reply) => {
+    const parsed = joinRoomPayloadSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({error: getValidationErrorMessage(parsed.error)});
+    }
+
+    try {
+      return reply.send(roomService.joinRoom(request.user!, parsed.data.roomCode));
+    } catch (error) {
+      return sendRoomError(reply, error);
+    }
+  });
+
+  app.post('/quick-join', {preHandler: requireUser}, async (request, reply) => {
+    const parsed = quickJoinPayloadSchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({error: getValidationErrorMessage(parsed.error)});
+    }
+
+    return reply.send(matchmakingService.quickJoin(request.user!, parsed.data.options));
+  });
+
+  app.get('/rooms/:roomCode', {preHandler: requireUser}, async (request, reply) => {
+    const parsed = roomCodeParamsSchema.safeParse(request.params);
+    if (!parsed.success) {
+      return reply.status(400).send({error: getValidationErrorMessage(parsed.error)});
+    }
+
+    try {
+      return reply.send(roomService.getRoomForUser(request.user!.id, parsed.data.roomCode));
+    } catch (error) {
+      return sendRoomError(reply, error);
+    }
+  });
+};
+
+function getValidationErrorMessage(error: ZodError) {
+  return error.issues[0]?.message ?? 'Invalid payload.';
+}
+
+function sendRoomError(reply: FastifyReply, error: unknown) {
+  if (error instanceof RoomNotFoundError) {
+    return reply.status(404).send({error: error.message});
+  }
+
+  if (error instanceof RoomAccessError) {
+    return reply.status(403).send({error: error.message});
+  }
+
+  if (error instanceof RoomClosedError || error instanceof RoomFullError) {
+    return reply.status(409).send({error: error.message});
+  }
+
+  throw error;
+}
