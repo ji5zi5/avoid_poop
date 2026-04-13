@@ -45,9 +45,18 @@ export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, on
             <span className="menu-hero-drop menu-hero-drop--2" />
             <span className="menu-hero-drop menu-hero-drop--3" />
             <span className="menu-hero-drop menu-hero-drop--4" />
-            <div className="menu-hero-player">
-              <span className="menu-hero-player__eye" />
-              <span className="menu-hero-player__eye" />
+            <div className="menu-hero-character">
+              <div className="menu-hero-character__head">
+                <span className="menu-hero-character__eye" />
+                <span className="menu-hero-character__eye" />
+                <span className="menu-hero-character__blush menu-hero-character__blush--left" />
+                <span className="menu-hero-character__blush menu-hero-character__blush--right" />
+              </div>
+              <div className="menu-hero-character__body" />
+              <div className="menu-hero-character__feet">
+                <span />
+                <span />
+              </div>
             </div>
             <div className="menu-hero-floor" />
           </div>
