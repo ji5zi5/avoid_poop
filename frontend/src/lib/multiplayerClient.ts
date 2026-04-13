@@ -25,6 +25,18 @@ export type RoomSummary = {
   options: RoomOptions;
 };
 
+export type CreateRoomPayload = {
+  options?: Partial<RoomOptions>;
+};
+
+export type JoinRoomPayload = {
+  roomCode: string;
+};
+
+export type QuickJoinPayload = {
+  options?: Partial<RoomOptions>;
+};
+
 export type MultiplayerActiveDebuff = {
   expiresAt: number;
   type: MultiplayerDebuffType;
@@ -103,7 +115,7 @@ type MultiplayerClientOptions = {
   url?: string;
   onClose?: () => void;
   onError?: (event: Event) => void;
-  onEvent: (event: ServerSocketEvent) => void;
+  onEvent?: (event: ServerSocketEvent) => void;
 };
 
 export function createMultiplayerClient({
@@ -114,9 +126,19 @@ export function createMultiplayerClient({
   onEvent,
 }: MultiplayerClientOptions) {
   let socket: WebSocket | null = null;
+  let activeReconnectToken = reconnectToken;
+  const listeners = new Set<(event: ServerSocketEvent) => void>();
+
+  if (onEvent) {
+    listeners.add(onEvent);
+  }
 
   function connect() {
-    socket = new WebSocket(buildSocketUrl(url, reconnectToken));
+    if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+      return socket;
+    }
+
+    socket = new WebSocket(buildSocketUrl(url, activeReconnectToken));
     socket.addEventListener("message", handleMessage);
     socket.addEventListener("close", handleClose);
     socket.addEventListener("error", handleError);
@@ -125,7 +147,10 @@ export function createMultiplayerClient({
 
   function handleMessage(message: MessageEvent<string>) {
     const parsed = JSON.parse(message.data) as ServerSocketEvent;
-    onEvent(parsed);
+    if (parsed.type === "connected") {
+      activeReconnectToken = parsed.reconnectToken;
+    }
+    listeners.forEach((listener) => listener(parsed));
   }
 
   function handleClose() {
@@ -135,6 +160,13 @@ export function createMultiplayerClient({
 
   function handleError(event: Event) {
     onError?.(event);
+  }
+
+  function send(event: ClientSocketEvent) {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    socket.send(JSON.stringify(event));
   }
 
   function cleanup() {
@@ -158,11 +190,21 @@ export function createMultiplayerClient({
       cleanup();
       activeSocket.close();
     },
-    send(event: ClientSocketEvent) {
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
-        return;
-      }
-      socket.send(JSON.stringify(event));
+    send,
+    subscribe(listener: (event: ServerSocketEvent) => void) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    subscribeRoom(roomCode: string) {
+      send({ type: "subscribe_room", roomCode });
+    },
+    ping() {
+      send({ type: "ping" });
+    },
+    setReconnectToken(nextReconnectToken: string | null) {
+      activeReconnectToken = nextReconnectToken;
     },
   };
 }
