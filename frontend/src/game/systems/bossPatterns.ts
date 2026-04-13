@@ -30,15 +30,15 @@ function clampRoundPressure(state: GameState) {
 }
 
 function giantSpeed(state: GameState, bonus = 0) {
-  return (state.mode === "hard" ? 312 : 262) + Math.min(138, clampRoundPressure(state) * (state.mode === "hard" ? 10 : 8)) + bonus;
+  return (state.mode === "hard" ? 278 : 262) + Math.min(112, clampRoundPressure(state) * (state.mode === "hard" ? 8 : 8)) + bonus;
 }
 
 function laneSpeed(state: GameState, bonus = 0) {
-  return (state.mode === "hard" ? 248 : 214) + Math.min(112, clampRoundPressure(state) * (state.mode === "hard" ? 8 : 6)) + bonus;
+  return (state.mode === "hard" ? 224 : 214) + Math.min(88, clampRoundPressure(state) * (state.mode === "hard" ? 6 : 6)) + bonus;
 }
 
 function mediumSpeed(state: GameState, bonus = 0) {
-  return (state.mode === "hard" ? 232 : 198) + Math.min(96, clampRoundPressure(state) * (state.mode === "hard" ? 7 : 5)) + bonus;
+  return (state.mode === "hard" ? 210 : 198) + Math.min(78, clampRoundPressure(state) * (state.mode === "hard" ? 5 : 5)) + bonus;
 }
 
 function pickSide(state: GameState) {
@@ -51,15 +51,15 @@ function oppositeSide(side: "left" | "right") {
 
 function telegraphSeconds(state: GameState, definition: BossPatternDefinition) {
   const base = state.mode === "hard" ? definition.telegraphHardMs : definition.telegraphNormalMs;
-  const reduction = clampRoundPressure(state) * (state.mode === "hard" ? 16 : 12);
-  const floor = state.mode === "hard" ? 180 : 260;
+  const reduction = clampRoundPressure(state) * (state.mode === "hard" ? 10 : 8);
+  const floor = state.mode === "hard" ? 280 : 320;
   return Math.max(floor, base - reduction) / 1000;
 }
 
 function cooldownSeconds(state: GameState) {
-  const base = state.mode === "hard" ? 0.18 : 0.26;
-  const reduction = clampRoundPressure(state) * (state.mode === "hard" ? 0.01 : 0.008);
-  return Math.max(state.mode === "hard" ? 0.08 : 0.12, base - reduction);
+  const base = state.mode === "hard" ? 0.24 : 0.3;
+  const reduction = clampRoundPressure(state) * (state.mode === "hard" ? 0.006 : 0.006);
+  return Math.max(state.mode === "hard" ? 0.14 : 0.16, base - reduction);
 }
 
 function scaledInterval(state: GameState, hardBase: number, normalBase: number, hardFloor: number, normalFloor: number) {
@@ -77,9 +77,9 @@ function nextSeed(state: GameState) {
 function desiredQueueLength(state: GameState) {
   if (state.mode === "hard") {
     if (state.round >= 10) {
-      return 8;
+      return 6;
     }
-    return state.round >= 6 ? 7 : 5;
+    return state.round >= 6 ? 5 : 4;
   }
   if (state.round >= 12) {
     return 5;
@@ -89,7 +89,7 @@ function desiredQueueLength(state: GameState) {
 
 function getLaneCount(state: GameState) {
   if (state.mode === "hard") {
-    return Math.min(6, 4 + Math.floor(clampRoundPressure(state) / 4));
+    return Math.min(5, 4 + Math.floor(clampRoundPressure(state) / 5));
   }
   return Math.min(5, 4 + Math.floor(clampRoundPressure(state) / 6));
 }
@@ -142,7 +142,7 @@ function spawnSafeThirdSetup(state: GameState, safeZone: "left" | "center" | "ri
     return;
   }
 
-  const coverage = Math.floor(state.width * 0.66);
+  const coverage = Math.floor(state.width * 0.6);
   const x = safeZone === "left" ? state.width - coverage : 0;
   spawnGiantHazard(state, x, coverage, speed, height);
 }
@@ -230,7 +230,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       const firstSide = pickSide(state);
       return tickPattern(state, delta, state.mode === "hard" ? 0.34 : 0.42, 4, (shot) => {
         const side = shot % 2 === 0 ? firstSide : oppositeSide(firstSide);
-        spawnHalfHazard(state, side, giantSpeed(state, 54), 0.46, 74);
+        spawnHalfHazard(state, side, giantSpeed(state, 12), 0.42, 70);
       });
     },
   },
@@ -243,7 +243,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
     telegraphNormalMs: 760,
     run(state, delta) {
       return tickPattern(state, delta, scaledInterval(state, 0.58, 0.68, 0.32, 0.44), 2 + (state.round >= 10 ? 1 : 0), () => {
-        spawnEdgeHazards(state, 0.34, giantSpeed(state, 10), 70);
+        spawnEdgeHazards(state, 0.3, giantSpeed(state, -8), 68);
       });
     },
   },
@@ -256,7 +256,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
     telegraphNormalMs: 780,
     run(state, delta) {
       return tickPattern(state, delta, scaledInterval(state, 0.5, 0.62, 0.28, 0.38), (state.mode === "hard" ? 2 : 1) + (state.round >= 12 ? 1 : 0), () => {
-        spawnCenterHazard(state, 0.54, giantSpeed(state, 18), 72);
+        spawnCenterHazard(state, 0.46, giantSpeed(state, -12), 70);
       });
     },
   },
@@ -269,7 +269,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
     telegraphNormalMs: 780,
     run(state, delta) {
       return tickPattern(state, delta, scaledInterval(state, 0.52, 0.64, 0.28, 0.4), (state.mode === "hard" ? 2 : 1) + (state.round >= 12 ? 1 : 0), () => {
-        spawnEdgeHazards(state, 0.27, giantSpeed(state, 8), 72);
+        spawnEdgeHazards(state, 0.24, giantSpeed(state, -10), 70);
       });
     },
   },
@@ -284,7 +284,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       const firstSide = pickSide(state);
       return tickPattern(state, delta, scaledInterval(state, 0.32, 0.38, 0.18, 0.24), 3 + (state.round >= 9 ? 1 : 0), (shot) => {
         const side = shot < 2 ? firstSide : oppositeSide(firstSide);
-        spawnHalfHazard(state, side, giantSpeed(state, 64), 0.48, 76);
+        spawnHalfHazard(state, side, giantSpeed(state, 18), 0.42, 72);
       });
     },
   },
@@ -302,10 +302,10 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       return tickPattern(state, delta, scaledInterval(state, 0.34, 0.44, 0.2, 0.28), shots, (shot) => {
         const step = order[shot];
         if (step === "center") {
-          spawnCenterHazard(state, shot === shots - 1 ? 0.36 : 0.4, giantSpeed(state, 20), 74);
+          spawnCenterHazard(state, shot === shots - 1 ? 0.32 : 0.36, giantSpeed(state, -6), 70);
           return;
         }
-        spawnHalfHazard(state, step, giantSpeed(state, 28), 0.42, 74);
+        spawnHalfHazard(state, step, giantSpeed(state, 6), 0.38, 70);
       });
     },
   },
@@ -321,7 +321,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       const shots = state.round >= 11 ? firstSide.length + 1 : firstSide.length;
       return tickPattern(state, delta, scaledInterval(state, 0.3, 0.4, 0.18, 0.24), shots, (shot) => {
         const zone = firstSide[shot % firstSide.length];
-        spawnSafeThirdSetup(state, zone, giantSpeed(state, 34), zone === "center" ? 82 : 88);
+        spawnSafeThirdSetup(state, zone, giantSpeed(state, -6), zone === "center" ? 78 : 84);
       });
     },
   },
@@ -335,14 +335,14 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
     run(state, delta) {
       return tickPattern(state, delta, scaledInterval(state, 0.4, 0.5, 0.22, 0.3), 3 + (state.round >= 12 ? 1 : 0), (shot) => {
         if (shot % 3 === 0) {
-          spawnTwinPillars(state, 0.16, 0.64, 0.18, giantSpeed(state, -28), 118);
+          spawnTwinPillars(state, 0.18, 0.62, 0.15, giantSpeed(state, -46), 106);
           return;
         }
         if (shot % 3 === 1) {
-          spawnCenterHazard(state, 0.32, giantSpeed(state, 20), 84);
+          spawnCenterHazard(state, 0.28, giantSpeed(state, -8), 76);
           return;
         }
-        spawnTwinPillars(state, 0.06, 0.76, 0.14, giantSpeed(state, 14), 102);
+        spawnTwinPillars(state, 0.1, 0.72, 0.12, giantSpeed(state, -18), 92);
       });
     },
   },
@@ -357,7 +357,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       const laneCount = getLaneCount(state);
       return tickPattern(state, delta, scaledInterval(state, 0.33, 0.42, 0.18, 0.24), (state.mode === "hard" ? 5 : 4) + (state.round >= 10 ? 1 : 0), (shot) => {
         const safeLane = shot % laneCount;
-        spawnLaneBarrage(state, safeLane, laneCount, laneSpeed(state, 26));
+        spawnLaneBarrage(state, safeLane, laneCount, laneSpeed(state, 6));
       });
     },
   },
@@ -374,7 +374,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
         ? [0, laneCount - 1, 1, Math.max(0, laneCount - 2), Math.min(2, laneCount - 1)]
         : [0, laneCount - 1, 1, Math.max(0, laneCount - 2)];
       return tickPattern(state, delta, scaledInterval(state, 0.31, 0.4, 0.18, 0.24), order.length, (shot) => {
-        spawnLaneBarrage(state, order[shot], laneCount, laneSpeed(state, 30));
+        spawnLaneBarrage(state, order[shot], laneCount, laneSpeed(state, 10));
       });
     },
   },
@@ -389,7 +389,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       const laneCount = getLaneCount(state);
       const order = buildSweepOrder(laneCount, pickSide(state));
       return tickPattern(state, delta, scaledInterval(state, 0.29, 0.38, 0.18, 0.24), order.length, (shot) => {
-        spawnLaneBarrage(state, order[shot], laneCount, laneSpeed(state, 34));
+        spawnLaneBarrage(state, order[shot], laneCount, laneSpeed(state, 8));
       });
     },
   },
@@ -404,7 +404,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       const laneCount = getLaneCount(state);
       const order = buildCenterBreakOrder(laneCount).slice(0, state.mode === "hard" ? laneCount : Math.min(laneCount, 5));
       return tickPattern(state, delta, scaledInterval(state, 0.3, 0.4, 0.18, 0.24), order.length, (shot) => {
-        spawnLaneBarrage(state, order[shot], laneCount, laneSpeed(state, 28), shot === 0 ? 24 : 28);
+        spawnLaneBarrage(state, order[shot], laneCount, laneSpeed(state, 4), shot === 0 ? 24 : 28);
       });
     },
   },
@@ -419,7 +419,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       const firstSide = pickSide(state);
       return tickPattern(state, delta, scaledInterval(state, 0.28, 0.36, 0.16, 0.22), (state.mode === "hard" ? 5 : 4) + (state.round >= 10 ? 1 : 0), (shot) => {
         const side = shot % 2 === 0 ? firstSide : oppositeSide(firstSide);
-        spawnHalfHazard(state, side, giantSpeed(state, 68), 0.44, 68);
+        spawnHalfHazard(state, side, giantSpeed(state, 14), 0.4, 66);
       });
     },
   },
@@ -435,12 +435,12 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       const firstSide = pickSide(state);
       return tickPattern(state, delta, scaledInterval(state, 0.44, 0.5, 0.24, 0.3), 3 + (state.round >= 11 ? 1 : 0), (shot) => {
         const safeLane = (shot + 1) % laneCount;
-        spawnLaneBarrage(state, safeLane, laneCount, laneSpeed(state, 18), 24);
+        spawnLaneBarrage(state, safeLane, laneCount, laneSpeed(state, 2), 24);
         if (shot === 1) {
-          spawnHalfHazard(state, firstSide, giantSpeed(state, 18), 0.4, 62);
+          spawnHalfHazard(state, firstSide, giantSpeed(state, -6), 0.36, 58);
         }
         if (shot === 2) {
-          spawnHalfHazard(state, oppositeSide(firstSide), giantSpeed(state, 18), 0.4, 62);
+          spawnHalfHazard(state, oppositeSide(firstSide), giantSpeed(state, -6), 0.36, 58);
         }
       });
     },
@@ -455,7 +455,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
     run(state, delta) {
       const baitSide = pickSide(state);
       return tickPattern(state, delta, scaledInterval(state, 0.52, 0.62, 0.3, 0.4), 1 + (state.round >= 12 ? 1 : 0), () => {
-        spawnHalfHazard(state, baitSide, giantSpeed(state, 40), 0.46, 72);
+        spawnHalfHazard(state, baitSide, giantSpeed(state, 8), 0.4, 68);
       });
     },
   },
@@ -473,18 +473,18 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       const secondSafeLane = firstSafeSide === "left" ? laneCount - 1 : 0;
       return tickPattern(state, delta, scaledInterval(state, 0.34, 0.44, 0.2, 0.28), 3 + (state.round >= 12 ? 1 : 0), (shot) => {
         if (shot === 0) {
-          spawnSafeThirdSetup(state, firstSafeSide, giantSpeed(state, 26), 88);
+          spawnSafeThirdSetup(state, firstSafeSide, giantSpeed(state, -10), 82);
           return;
         }
         if (shot === 1) {
-          spawnLaneBarrage(state, secondSafeLane, laneCount, laneSpeed(state, 38), 24);
+          spawnLaneBarrage(state, secondSafeLane, laneCount, laneSpeed(state, 8), 24);
           return;
         }
         if (shot === 2) {
-          spawnSafeThirdSetup(state, secondSafeLane === 0 ? "left" : "right", giantSpeed(state, 42), 82);
+          spawnSafeThirdSetup(state, secondSafeLane === 0 ? "left" : "right", giantSpeed(state, 4), 78);
           return;
         }
-        spawnCenterHazard(state, 0.36, giantSpeed(state, 24), 78);
+        spawnCenterHazard(state, 0.32, giantSpeed(state, -4), 72);
       });
     },
   },
@@ -500,14 +500,14 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       const safeLane = pickSide(state) === "left" ? 0 : laneCount - 1;
       return tickPattern(state, delta, scaledInterval(state, 0.62, 0.74, 0.4, 0.5), 3 + (state.round >= 12 ? 1 : 0), (shot) => {
         if (shot === 0) {
-          spawnCenterHazard(state, 0.5, giantSpeed(state, -112), 112);
+          spawnCenterHazard(state, 0.42, giantSpeed(state, -138), 96);
           return;
         }
         if (shot % 2 === 1) {
-          spawnFollowupPair(state, mediumSpeed(state, 54));
+          spawnFollowupPair(state, mediumSpeed(state, 26));
           return;
         }
-        spawnLaneBarrage(state, safeLane, laneCount, laneSpeed(state, 18), 24);
+        spawnLaneBarrage(state, safeLane, laneCount, laneSpeed(state, 2), 24);
       });
     },
   },
@@ -522,14 +522,14 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       const firstSide = pickSide(state);
       return tickPattern(state, delta, scaledInterval(state, 0.46, 0.58, 0.28, 0.38), 3 + (state.round >= 12 ? 1 : 0), (shot) => {
         if (shot === 0) {
-          spawnHalfHazard(state, firstSide, giantSpeed(state, -68), 0.43, 110);
+          spawnHalfHazard(state, firstSide, giantSpeed(state, -96), 0.36, 94);
           return;
         }
         if (shot === 1) {
-          spawnFollowupPair(state, mediumSpeed(state, 62));
+          spawnFollowupPair(state, mediumSpeed(state, 24));
           return;
         }
-        spawnHalfHazard(state, oppositeSide(firstSide), giantSpeed(state, 56), 0.38, 74);
+        spawnHalfHazard(state, oppositeSide(firstSide), giantSpeed(state, 6), 0.32, 68);
       });
     },
   },
@@ -543,7 +543,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
     run(state, delta) {
       const warnedSide = pickSide(state);
       return tickPattern(state, delta, scaledInterval(state, 0.5, 0.62, 0.28, 0.4), 1 + (state.round >= 12 ? 1 : 0), () => {
-        spawnHalfHazard(state, oppositeSide(warnedSide), giantSpeed(state, 42), 0.46, 72);
+        spawnHalfHazard(state, oppositeSide(warnedSide), giantSpeed(state, 10), 0.4, 68);
       });
     },
   },
@@ -559,14 +559,14 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       const centerLane = Math.floor((laneCount - 1) / 2);
       return tickPattern(state, delta, scaledInterval(state, 0.46, 0.58, 0.26, 0.36), 2 + (state.round >= 12 ? 1 : 0), (shot) => {
         if (shot === 0) {
-          spawnLaneBarrage(state, centerLane, laneCount, laneSpeed(state, 18), 24);
+          spawnLaneBarrage(state, centerLane, laneCount, laneSpeed(state, 0), 24);
           return;
         }
         if (shot === 1) {
-          spawnCenterHazard(state, 0.4, giantSpeed(state, 34), 86);
+          spawnCenterHazard(state, 0.34, giantSpeed(state, -2), 78);
           return;
         }
-        spawnFollowupPair(state, mediumSpeed(state, 50));
+        spawnFollowupPair(state, mediumSpeed(state, 20));
       });
     },
   },
@@ -581,18 +581,18 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       const firstSide = pickSide(state);
       return tickPattern(state, delta, scaledInterval(state, 0.38, 0.5, 0.22, 0.3), 3 + (state.round >= 12 ? 1 : 0), (shot) => {
         if (shot === 0) {
-          spawnGiantHazard(state, firstSide === "left" ? Math.floor(state.width * 0.08) : Math.floor(state.width * 0.62), Math.floor(state.width * 0.24), giantSpeed(state, -12), 106);
+          spawnGiantHazard(state, firstSide === "left" ? Math.floor(state.width * 0.1) : Math.floor(state.width * 0.64), Math.floor(state.width * 0.18), giantSpeed(state, -38), 92);
           return;
         }
         if (shot === 1) {
-          spawnGiantHazard(state, firstSide === "left" ? Math.floor(state.width * 0.62) : Math.floor(state.width * 0.08), Math.floor(state.width * 0.24), giantSpeed(state, 22), 106);
+          spawnGiantHazard(state, firstSide === "left" ? Math.floor(state.width * 0.64) : Math.floor(state.width * 0.1), Math.floor(state.width * 0.18), giantSpeed(state, -8), 92);
           return;
         }
         if (shot === 2) {
-          spawnCenterHazard(state, 0.28, giantSpeed(state, 36), 82);
+          spawnCenterHazard(state, 0.24, giantSpeed(state, 0), 74);
           return;
         }
-        spawnFollowupPair(state, mediumSpeed(state, 58));
+        spawnFollowupPair(state, mediumSpeed(state, 24));
       });
     },
   },
@@ -605,7 +605,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
     telegraphNormalMs: 1020,
     run(state, delta) {
       return tickPattern(state, delta, scaledInterval(state, 0.5, 0.62, 0.28, 0.4), 1 + (state.round >= 12 ? 1 : 0), () => {
-        spawnCenterHazard(state, 0.5, giantSpeed(state, 92), 78);
+        spawnCenterHazard(state, 0.4, giantSpeed(state, 24), 74);
       });
     },
   },
@@ -619,10 +619,10 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
     run(state, delta) {
       return tickPattern(state, delta, scaledInterval(state, 0.48, 0.6, 0.26, 0.36), 2 + (state.round >= 11 ? 1 : 0), (shot) => {
         if (shot === 0) {
-          spawnEdgeHazards(state, 0.28, giantSpeed(state, 6), 68);
+          spawnEdgeHazards(state, 0.24, giantSpeed(state, -10), 64);
           return;
         }
-        spawnFollowupPair(state, mediumSpeed(state, 42));
+        spawnFollowupPair(state, mediumSpeed(state, 18));
       });
     },
   },
@@ -705,7 +705,7 @@ export function buildBossPatternQueue(state: GameState) {
     ensureQueueIncludes(state, queue, ["three_gate_shuffle", "pillar_press", "funnel_switch", "shoulder_crush"]);
   }
 
-  if (state.mode === "hard" && state.round >= 8) {
+  if (state.mode === "hard" && state.round >= 10) {
     ensureQueueIncludes(state, queue, ["residue_zone", "residue_switch"]);
   }
 

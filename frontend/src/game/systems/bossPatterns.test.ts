@@ -48,6 +48,7 @@ describe("boss patterns", () => {
     late.round = 12;
 
     expect(buildBossPatternQueue(late).length).toBeGreaterThan(buildBossPatternQueue(early).length);
+    expect(buildBossPatternQueue(late).length).toBeLessThanOrEqual(6);
   });
 
   it("avoids recently used pattern ids when enough choices remain", () => {
@@ -62,9 +63,9 @@ describe("boss patterns", () => {
     expect(queue[0]).not.toBe("center_crush");
   });
 
-  it("forces hard bosses to include both lane pressure and trap variety", () => {
+  it("forces later hard bosses to include both lane pressure and trap variety", () => {
     const state = createGameEngine("hard");
-    state.round = 8;
+    state.round = 10;
 
     const queue = buildBossPatternQueue(state);
     const families = queue.map((id) => getBossPatternFamily(id));

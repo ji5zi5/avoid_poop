@@ -207,7 +207,7 @@ describe("game engine", () => {
     }
     gaps.push(state.width - (hitboxes[hitboxes.length - 1].x + hitboxes[hitboxes.length - 1].width));
 
-    expect(Math.max(...gaps)).toBeGreaterThanOrEqual(playerHitbox.width);
+    expect(Math.max(...gaps)).toBeGreaterThanOrEqual(playerHitbox.width + 8);
   });
 
   it("keeps hard-only boss patterns out of normal mode queues", () => {
@@ -248,7 +248,7 @@ describe("game engine", () => {
     updateGame(state, 0.4, 0);
 
     expect(state.hazards.length).toBeGreaterThan(3);
-    expect(state.hazards.some((hazard) => hazard.speed >= 320)).toBe(true);
+    expect(state.hazards.some((hazard) => hazard.speed >= 260)).toBe(true);
   });
 
   it("remembers recently finished boss patterns to avoid repetition next time", () => {
