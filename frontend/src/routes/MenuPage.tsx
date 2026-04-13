@@ -40,25 +40,46 @@ export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, on
               <span className="info-card__label">최고 기록</span>
               <strong>{selectedMode === "hard" ? "82,400 pts" : "58,200 pts"}</strong>
             </div>
-            <div className="menu-hero-stage__grid" />
-            <span className="menu-hero-drop menu-hero-drop--1" />
-            <span className="menu-hero-drop menu-hero-drop--2" />
-            <span className="menu-hero-drop menu-hero-drop--3" />
-            <span className="menu-hero-drop menu-hero-drop--4" />
-            <div className="menu-hero-character">
-              <div className="menu-hero-character__head">
-                <span className="menu-hero-character__eye" />
-                <span className="menu-hero-character__eye" />
-                <span className="menu-hero-character__blush menu-hero-character__blush--left" />
-                <span className="menu-hero-character__blush menu-hero-character__blush--right" />
-              </div>
-              <div className="menu-hero-character__body" />
-              <div className="menu-hero-character__feet">
-                <span />
-                <span />
-              </div>
-            </div>
-            <div className="menu-hero-floor" />
+            <svg className="menu-hero-illustration" viewBox="0 0 360 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="heroBg" x1="180" y1="18" x2="180" y2="220" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#FFF8F2" />
+                  <stop offset="1" stopColor="#F3E2D2" />
+                </linearGradient>
+                <linearGradient id="floorGrad" x1="180" y1="184" x2="180" y2="212" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#D8C0A8" />
+                  <stop offset="1" stopColor="#C5A88A" />
+                </linearGradient>
+                <linearGradient id="bodyGrad" x1="180" y1="116" x2="180" y2="182" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#D88B73" />
+                  <stop offset="1" stopColor="#C5664F" />
+                </linearGradient>
+                <linearGradient id="headGrad" x1="180" y1="72" x2="180" y2="126" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#FFF9F3" />
+                  <stop offset="1" stopColor="#F2E1D0" />
+                </linearGradient>
+                <linearGradient id="dropGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop stopColor="#D88B73" />
+                  <stop offset="1" stopColor="#B95F49" />
+                </linearGradient>
+              </defs>
+              <rect x="18" y="18" width="324" height="166" rx="28" fill="url(#heroBg)" />
+              <path d="M42 188C84 168 130 162 180 162C230 162 276 168 318 188V208H42V188Z" fill="url(#floorGrad)" />
+              <path d="M76 82C70 92 66 98 66 106C66 118 75 128 88 128C101 128 110 118 110 106C110 98 105 91 98 82C95 78 91 70 88 62C85 70 81 78 76 82Z" fill="url(#dropGrad)" />
+              <path d="M263 96C257 106 252 112 252 120C252 132 261 142 274 142C287 142 296 132 296 120C296 112 291 105 284 96C281 92 277 84 274 76C271 84 268 91 263 96Z" fill="url(#dropGrad)" />
+              <path d="M226 58C222 66 218 72 218 78C218 88 225 96 234 96C244 96 251 88 251 78C251 72 247 66 242 58C239 54 236 48 234 42C232 48 229 54 226 58Z" fill="url(#dropGrad)" opacity="0.92" />
+              <path d="M126 122C122 129 119 134 119 140C119 149 126 156 134 156C143 156 150 149 150 140C150 134 147 129 143 122C140 118 137 112 134 106C132 112 129 118 126 122Z" fill="url(#dropGrad)" opacity="0.84" />
+              <ellipse cx="180" cy="196" rx="54" ry="12" fill="#B88D72" opacity="0.22" />
+              <rect x="129" y="114" width="102" height="66" rx="30" fill="url(#bodyGrad)" stroke="#A75642" strokeWidth="2" />
+              <rect x="146" y="68" width="68" height="56" rx="24" fill="url(#headGrad)" stroke="#DCC2AD" strokeWidth="2" />
+              <ellipse cx="168" cy="94" rx="5" ry="7" fill="#2B1E12" />
+              <ellipse cx="192" cy="94" rx="5" ry="7" fill="#2B1E12" />
+              <ellipse cx="157" cy="106" rx="9" ry="4" fill="#E9A397" opacity="0.8" />
+              <ellipse cx="203" cy="106" rx="9" ry="4" fill="#E9A397" opacity="0.8" />
+              <path d="M167 112C171 116 176 118 180 118C184 118 189 116 193 112" stroke="#8F4B38" strokeWidth="3" strokeLinecap="round" />
+              <rect x="153" y="178" width="18" height="12" rx="6" fill="#8A6A49" opacity="0.42" />
+              <rect x="189" y="178" width="18" height="12" rx="6" fill="#8A6A49" opacity="0.42" />
+            </svg>
           </div>
 
           <button
