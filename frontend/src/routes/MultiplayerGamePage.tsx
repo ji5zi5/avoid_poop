@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import { copy } from "../content/copy";
+import { createHorizontalInputTracker } from "../lib/horizontalInput";
 import type { MultiplayerGameSnapshot } from "../lib/multiplayerClient";
 import { renderMultiplayerGame } from "../game/multiplayer/renderMultiplayerGame";
 
@@ -14,6 +15,7 @@ type Props = {
 
 export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, onJump, onLeave }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const inputTrackerRef = useRef(createHorizontalInputTracker());
   const me = game.players.find((player) => player.userId === currentUserId) ?? null;
   const remaining = game.players.filter((player) => player.status === "alive").length;
   const currentDebuffs = me?.activeDebuffs ?? [];
@@ -33,11 +35,9 @@ export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, on
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "ArrowLeft") {
-        onDirectionChange(-1);
-      }
-      if (event.key === "ArrowRight") {
-        onDirectionChange(1);
+      const nextDirection = inputTrackerRef.current.keyDown(event.key);
+      if (nextDirection !== null) {
+        onDirectionChange(nextDirection);
       }
       if ((event.key === " " || event.key === "ArrowUp") && game.options.bodyBlock) {
         event.preventDefault();
@@ -46,8 +46,9 @@ export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, on
     }
 
     function onKeyUp(event: KeyboardEvent) {
-      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-        onDirectionChange(0);
+      const nextDirection = inputTrackerRef.current.keyUp(event.key);
+      if (nextDirection !== null) {
+        onDirectionChange(nextDirection);
       }
     }
 
@@ -56,6 +57,7 @@ export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, on
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      inputTrackerRef.current.clear();
     };
   }, [game.options.bodyBlock, onDirectionChange, onJump]);
 
@@ -93,9 +95,9 @@ export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, on
             </div>
           ) : null}
           <div className="mobile-controls">
-            <button className="control-button" onPointerDown={() => onDirectionChange(-1)} onPointerUp={() => onDirectionChange(0)} onPointerLeave={() => onDirectionChange(0)} onPointerCancel={() => onDirectionChange(0)}>◀</button>
+            <button className="control-button" onPointerDown={() => onDirectionChange(inputTrackerRef.current.press(-1))} onPointerUp={() => onDirectionChange(inputTrackerRef.current.release(-1))} onPointerLeave={() => onDirectionChange(inputTrackerRef.current.release(-1))} onPointerCancel={() => onDirectionChange(inputTrackerRef.current.release(-1))}>◀</button>
             {game.options.bodyBlock ? <button className="control-button" onPointerDown={onJump}>▲</button> : <span className="control-button control-button--ghost">·</span>}
-            <button className="control-button" onPointerDown={() => onDirectionChange(1)} onPointerUp={() => onDirectionChange(0)} onPointerLeave={() => onDirectionChange(0)} onPointerCancel={() => onDirectionChange(0)}>▶</button>
+            <button className="control-button" onPointerDown={() => onDirectionChange(inputTrackerRef.current.press(1))} onPointerUp={() => onDirectionChange(inputTrackerRef.current.release(1))} onPointerLeave={() => onDirectionChange(inputTrackerRef.current.release(1))} onPointerCancel={() => onDirectionChange(inputTrackerRef.current.release(1))}>▶</button>
           </div>
           {game.options.bodyBlock ? <p className="home-card__meta">{copy.multiplayer.jumpHint}</p> : null}
           <button className="ghost-button subtle-button" onClick={onLeave}>{copy.multiplayer.leave}</button>

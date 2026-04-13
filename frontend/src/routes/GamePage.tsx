@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { RecordEntry, RunResultPayload } from "../../../shared/src/contracts/index";
 import type { GameMode } from "../../../shared/src/contracts/index";
 import { copy, formatSecondsLabel } from "../content/copy";
+import { createHorizontalInputTracker } from "../lib/horizontalInput";
 import { createGameEngine, updateGame } from "../game/engine";
 import { createLoop } from "../game/loop";
 import { renderGame } from "../game/rendering/canvasRenderer";
@@ -28,6 +29,7 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<GameState>(createGameEngine(mode));
   const directionRef = useRef(0);
+  const inputTrackerRef = useRef(createHorizontalInputTracker());
   const [, forceRender] = useState(0);
   const [runId, setRunId] = useState(0);
   const [result, setResult] = useState<RunResultPayload | null>(null);
@@ -38,6 +40,7 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
 
   function restartRun() {
     directionRef.current = 0;
+    inputTrackerRef.current.clear();
     stateRef.current = createGameEngine(mode);
     setResult(null);
     setRunId((value) => value + 1);
@@ -46,6 +49,7 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
 
   useEffect(() => {
     directionRef.current = 0;
+    inputTrackerRef.current.clear();
     stateRef.current = createGameEngine(mode);
     setResult(null);
     const loop = createLoop((delta) => {
@@ -68,17 +72,16 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
       if (result) {
         return;
       }
-      if (event.key === "ArrowLeft") {
-        setDirection(-1);
-      }
-      if (event.key === "ArrowRight") {
-        setDirection(1);
+      const nextDirection = inputTrackerRef.current.keyDown(event.key);
+      if (nextDirection !== null) {
+        setDirection(nextDirection);
       }
     }
 
     function onKeyUp(event: KeyboardEvent) {
-      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-        setDirection(0);
+      const nextDirection = inputTrackerRef.current.keyUp(event.key);
+      if (nextDirection !== null) {
+        setDirection(nextDirection);
       }
     }
 
@@ -89,6 +92,7 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      inputTrackerRef.current.clear();
       loop.stop();
     };
   }, [mode, runId]);
@@ -189,10 +193,10 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
               className="control-button"
               aria-label={copy.game.left}
               disabled={Boolean(result)}
-              onPointerDown={() => setDirection(-1)}
-              onPointerUp={() => setDirection(0)}
-              onPointerLeave={() => setDirection(0)}
-              onPointerCancel={() => setDirection(0)}
+              onPointerDown={() => setDirection(inputTrackerRef.current.press(-1))}
+              onPointerUp={() => setDirection(inputTrackerRef.current.release(-1))}
+              onPointerLeave={() => setDirection(inputTrackerRef.current.release(-1))}
+              onPointerCancel={() => setDirection(inputTrackerRef.current.release(-1))}
             >
               ◀
             </button>
@@ -200,10 +204,10 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
               className="control-button"
               aria-label={copy.game.right}
               disabled={Boolean(result)}
-              onPointerDown={() => setDirection(1)}
-              onPointerUp={() => setDirection(0)}
-              onPointerLeave={() => setDirection(0)}
-              onPointerCancel={() => setDirection(0)}
+              onPointerDown={() => setDirection(inputTrackerRef.current.press(1))}
+              onPointerUp={() => setDirection(inputTrackerRef.current.release(1))}
+              onPointerLeave={() => setDirection(inputTrackerRef.current.release(1))}
+              onPointerCancel={() => setDirection(inputTrackerRef.current.release(1))}
             >
               ▶
             </button>
