@@ -6,6 +6,12 @@ import type {
   RecordsResponse,
   RunResultPayload,
 } from "../../../shared/src/contracts/index";
+import type {
+  CreateRoomPayload,
+  JoinRoomPayload,
+  QuickJoinPayload,
+  RoomSummary,
+} from "./multiplayerClient";
 
 export class ApiRequestError extends Error {
   status: number;
@@ -49,4 +55,20 @@ export const api = {
   records: () => request<RecordsResponse>("/api/records"),
   saveRecord: (payload: RunResultPayload) =>
     request<RecordEntry>("/api/records", { method: "POST", body: JSON.stringify(payload) }),
+  createRoom: (payload?: CreateRoomPayload) =>
+    request<RoomSummary>("/api/multiplayer/rooms", {
+      method: "POST",
+      body: JSON.stringify(payload ?? {}),
+    }),
+  joinRoom: (payload: JoinRoomPayload) =>
+    request<RoomSummary>("/api/multiplayer/join", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  quickJoin: (payload?: QuickJoinPayload) =>
+    request<RoomSummary>("/api/multiplayer/quick-join", {
+      method: "POST",
+      body: JSON.stringify(payload ?? {}),
+    }),
+  getRoom: (roomCode: string) => request<RoomSummary>(`/api/multiplayer/rooms/${encodeURIComponent(roomCode)}`),
 };
