@@ -143,3 +143,37 @@ test('debuff item spawn and collect targets a random alive opponent', () => {
   const target = game.players.find((entry) => entry.userId === 2)!;
   assert.deepEqual(target.activeDebuffs.map((entry) => entry.type), ['slow']);
 });
+
+
+test('input delay debuff queues movement until the delay window passes', () => {
+  const game = service.createGame(createRoomSummary('normal', false, 2));
+  service.applyPlayerHit(game, 3, 3);
+  const item = service.spawnDebuffItem(game, game.players[0]!.x, game.players[0]!.y);
+  const result = service.collectItem(game, 1, item.id, 10_000, 0.95);
+
+  assert.equal(result?.debuffType, 'input_delay');
+
+  const target = game.players.find((entry) => entry.userId === 2)!;
+  const startX = target.x;
+  service.setPlayerDirection(game, 2, 1, 10_100);
+  service.tick(game, 0.1, 10_200);
+  assert.equal(target.x, startX);
+
+  service.tick(game, 0.1, 10_320);
+  assert.ok(target.x > startX);
+});
+
+test('item lock debuff blocks the target from collecting new items', () => {
+  const game = service.createGame(createRoomSummary('normal', false, 3));
+  service.applyPlayerHit(game, 3, 3);
+  const lockItem = service.spawnDebuffItem(game, game.players[0]!.x, game.players[0]!.y);
+  const lockResult = service.collectItem(game, 1, lockItem.id, 20_000, 0.99);
+
+  assert.equal(lockResult?.debuffType, 'item_lock');
+
+  const target = game.players.find((entry) => entry.userId === 2)!;
+  const followupItem = service.spawnDebuffItem(game, target.x, target.y);
+  service.tick(game, 0, 20_050);
+
+  assert.ok(game.items.some((entry) => entry.id === followupItem.id));
+});

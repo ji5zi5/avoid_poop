@@ -19,6 +19,7 @@ const PLAYER_LIVES = 3;
 const DEBUFF_ITEM_SIZE = 18;
 const DEBUFF_DURATION_MS = 4000;
 const JUMP_DURATION_MS = 650;
+const INPUT_DELAY_MS = 180;
 
 export class MultiplayerGameService {
   constructor(private readonly debuffService = new MultiplayerDebuffService()) {}
@@ -43,12 +44,19 @@ export class MultiplayerGameService {
     };
   }
 
-  setPlayerDirection(game: MultiplayerGameState, userId: number, direction: -1 | 0 | 1) {
+  setPlayerDirection(game: MultiplayerGameState, userId: number, direction: -1 | 0 | 1, now = Date.now()) {
     const player = game.players.find((entry) => entry.userId === userId);
     if (!player || player.status !== 'alive') {
       return;
     }
+    if (hasDebuff(player, 'input_delay')) {
+      player.queuedDirection = direction;
+      player.queuedDirectionAt = now + INPUT_DELAY_MS;
+      return;
+    }
     player.direction = direction;
+    player.queuedDirection = direction;
+    player.queuedDirectionAt = null;
   }
 
   jumpPlayer(game: MultiplayerGameState, userId: number, now = Date.now()) {
@@ -77,6 +85,8 @@ export class MultiplayerGameService {
 
     player.status = 'disconnected';
     player.direction = 0;
+    player.queuedDirection = 0;
+    player.queuedDirectionAt = null;
     player.disconnectDeadlineAt = now + config.multiplayerReconnectGraceMs;
     player.airborneUntil = null;
     return true;
@@ -103,6 +113,8 @@ export class MultiplayerGameService {
     if (player.lives === 0) {
       player.status = 'spectator';
       player.direction = 0;
+      player.queuedDirection = 0;
+      player.queuedDirectionAt = null;
       player.disconnectDeadlineAt = null;
       player.airborneUntil = null;
       recordPlacement(game, player.userId);
@@ -163,6 +175,10 @@ export class MultiplayerGameService {
       player.activeDebuffs = player.activeDebuffs.filter((debuff) => debuff.expiresAt > now);
       if (player.airborneUntil && player.airborneUntil <= now) {
         player.airborneUntil = null;
+      }
+      if (player.queuedDirectionAt && player.queuedDirectionAt <= now) {
+        player.direction = player.queuedDirection;
+        player.queuedDirectionAt = null;
       }
       if (player.status === 'alive') {
         const direction = getEffectiveDirection(player);
@@ -247,7 +263,7 @@ export class MultiplayerGameService {
     for (const item of game.items) {
       let consumed = false;
       for (const player of game.players) {
-        if (player.status !== 'alive') {
+        if (player.status !== 'alive' || hasDebuff(player, 'item_lock')) {
           continue;
         }
         if (overlaps(item.x, item.y, item.width, item.height, player.x, player.y, player.width, player.height)) {
@@ -312,6 +328,8 @@ function createPlayerState(userId: number, username: string, index: number, tota
     x: Math.round(index * spacing),
     y: GAME_HEIGHT - 56,
     direction: 0,
+    queuedDirection: 0,
+    queuedDirectionAt: null,
     lives: PLAYER_LIVES,
     status: 'alive',
     disconnectDeadlineAt: null,

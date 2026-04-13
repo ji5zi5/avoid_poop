@@ -36,4 +36,10 @@ describe('MultiplayerGamePage', () => {
     render(<MultiplayerGamePage currentUserId={1} game={{...game, players: [{...game.players[0], status: 'disconnected', disconnectDeadlineAt: Date.now() + 1000}, game.players[1]]}} onDirectionChange={vi.fn()} onJump={vi.fn()} onLeave={vi.fn()} />);
     expect(screen.getByText('재접속 대기').textContent).toBe('재접속 대기');
   });
+
+  it('shows active debuff chips and vision jam overlay for the current player', () => {
+    render(<MultiplayerGamePage currentUserId={1} game={{...game, players: [{...game.players[0], activeDebuffs: [{type: 'vision_jam', expiresAt: Date.now() + 1000}, {type: 'input_delay', expiresAt: Date.now() + 1000}]}, game.players[1]]}} onDirectionChange={vi.fn()} onJump={vi.fn()} onLeave={vi.fn()} />);
+    expect(screen.getByText('시야 방해').textContent).toBe('시야 방해');
+    expect(screen.getByText('입력 지연').textContent).toBe('입력 지연');
+  });
 });

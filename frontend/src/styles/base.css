@@ -2249,3 +2249,27 @@ input {
     grid-template-columns: 1fr;
   }
 }
+
+.multiplayer-debuff-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.effect-pill--danger {
+  border-color: rgba(206, 122, 99, 0.6);
+  background: rgba(206, 122, 99, 0.14);
+  color: #7f2d1b;
+}
+
+.vision-jam-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 22%, transparent 0 34px, rgba(70, 63, 26, 0.55) 48px),
+    radial-gradient(circle at 78% 58%, transparent 0 42px, rgba(70, 63, 26, 0.62) 56px),
+    radial-gradient(circle at 48% 82%, transparent 0 28px, rgba(70, 63, 26, 0.6) 44px),
+    rgba(70, 63, 26, 0.28);
+  mix-blend-mode: multiply;
+}

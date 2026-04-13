@@ -194,6 +194,14 @@ export const copy = {
     chat: '채팅',
     sendChat: '보내기',
     jumpHint: '부딪힘 ON일 때 점프로 통과 가능',
+    debuffActive: '현재 디버프',
+    debuffLabels: {
+      slow: '이동 둔화',
+      reverse: '좌우 반전',
+      input_delay: '입력 지연',
+      vision_jam: '시야 방해',
+      item_lock: '아이템 봉인',
+    },
   },
   transitions: {
     bossIncoming: "보스 패턴이 시작됩니다",

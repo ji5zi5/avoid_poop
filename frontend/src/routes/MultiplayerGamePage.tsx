@@ -16,6 +16,8 @@ export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, on
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const me = game.players.find((player) => player.userId === currentUserId) ?? null;
   const remaining = game.players.filter((player) => player.status === "alive").length;
+  const currentDebuffs = me?.activeDebuffs ?? [];
+  const jammed = currentDebuffs.some((debuff) => debuff.type === "vision_jam");
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -37,7 +39,7 @@ export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, on
       if (event.key === "ArrowRight") {
         onDirectionChange(1);
       }
-      if (event.key === " " || event.key === "ArrowUp") {
+      if ((event.key === " " || event.key === "ArrowUp") && game.options.bodyBlock) {
         event.preventDefault();
         onJump();
       }
@@ -55,7 +57,7 @@ export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, on
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
-  }, [onDirectionChange, onJump]);
+  }, [game.options.bodyBlock, onDirectionChange, onJump]);
 
   return (
     <section className="game-screen multiplayer-game-screen">
@@ -68,6 +70,7 @@ export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, on
         <div className="game-frame multiplayer-game-frame">
           <div className="game-playfield">
             <canvas ref={canvasRef} width={360} height={520} className="game-canvas" />
+            {jammed ? <div className="vision-jam-overlay" aria-label={copy.multiplayer.debuffLabels.vision_jam} /> : null}
             {me?.status === "spectator" ? <div className="spectator-banner">{copy.multiplayer.spectator}</div> : null}
             {me?.status === "disconnected" ? <div className="spectator-banner">{copy.multiplayer.reconnecting}</div> : null}
           </div>
@@ -80,6 +83,15 @@ export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, on
               </div>
             ))}
           </div>
+          {currentDebuffs.length > 0 ? (
+            <div className="multiplayer-debuff-strip" aria-label={copy.multiplayer.debuffActive}>
+              {currentDebuffs.map((debuff) => (
+                <span key={`${debuff.type}-${debuff.expiresAt}`} className="effect-pill effect-pill--danger">
+                  {copy.multiplayer.debuffLabels[debuff.type]}
+                </span>
+              ))}
+            </div>
+          ) : null}
           <div className="mobile-controls">
             <button className="control-button" onPointerDown={() => onDirectionChange(-1)} onPointerUp={() => onDirectionChange(0)} onPointerLeave={() => onDirectionChange(0)} onPointerCancel={() => onDirectionChange(0)}>◀</button>
             {game.options.bodyBlock ? <button className="control-button" onPointerDown={onJump}>▲</button> : <span className="control-button control-button--ghost">·</span>}

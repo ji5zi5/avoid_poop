@@ -15,6 +15,8 @@ function createPlayer(userId: number, status: MultiplayerPlayerState['status'] =
     width: 36,
     height: 24,
     direction: 0,
+    queuedDirection: 0,
+    queuedDirectionAt: null,
     lives: 3,
     status,
     disconnectDeadlineAt: null,

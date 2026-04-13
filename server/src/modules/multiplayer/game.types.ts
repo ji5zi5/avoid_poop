@@ -13,6 +13,8 @@ export type MultiplayerPlayerState = {
   activeDebuffs: MultiplayerActiveDebuff[];
   airborneUntil: number | null;
   direction: -1 | 0 | 1;
+  queuedDirection: -1 | 0 | 1;
+  queuedDirectionAt: number | null;
   disconnectDeadlineAt: number | null;
   height: number;
   lives: number;
