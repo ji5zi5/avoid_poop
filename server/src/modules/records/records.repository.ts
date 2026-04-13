@@ -11,6 +11,22 @@ export type DbRecord = {
   createdAt: string;
 };
 
+export type DbSingleLeaderboardEntry = {
+  userId: number;
+  username: string;
+  score: number;
+  reachedRound: number;
+  survivalTime: number;
+  clear: boolean;
+  createdAt: string;
+};
+
+export type DbSinglePlayerProfile = {
+  totalRuns: number;
+  totalClears: number;
+  totalScore: number;
+};
+
 export function createRecord(input: Omit<DbRecord, 'id' | 'createdAt'>) {
   const db = getDb();
   const stmt = db.prepare(
@@ -93,4 +109,51 @@ export function findBestRecordByMode(userId: number, mode: 'normal' | 'hard') {
     ...row,
     clear: Boolean(row.clear)
   } satisfies DbRecord;
+}
+
+export function getSinglePlayerProfile(userId: number) {
+  const db = getDb();
+  const row = db.prepare(
+    `SELECT
+       COUNT(*) AS totalRuns,
+       COALESCE(SUM(clear), 0) AS totalClears,
+       COALESCE(SUM(score), 0) AS totalScore
+     FROM records
+     WHERE user_id = ?`
+  ).get(userId) as DbSinglePlayerProfile;
+
+  return row;
+}
+
+export function listSingleLeaderboard(mode: 'normal' | 'hard', limit = 20) {
+  const db = getDb();
+  const rows = db.prepare(
+    `WITH ranked AS (
+       SELECT
+         r.user_id AS userId,
+         u.username AS username,
+         r.score AS score,
+         r.reached_round AS reachedRound,
+         r.survival_time AS survivalTime,
+         r.clear AS clear,
+         r.created_at AS createdAt,
+         ROW_NUMBER() OVER (
+           PARTITION BY r.user_id
+           ORDER BY r.score DESC, r.reached_round DESC, r.survival_time DESC, r.id DESC
+         ) AS rowNumber
+       FROM records r
+       JOIN users u ON u.id = r.user_id
+       WHERE r.mode = ?
+     )
+     SELECT userId, username, score, reachedRound, survivalTime, clear, createdAt
+     FROM ranked
+     WHERE rowNumber = 1
+     ORDER BY score DESC, reachedRound DESC, survivalTime DESC, userId ASC
+     LIMIT ?`
+  ).all(mode, limit) as Array<Omit<DbSingleLeaderboardEntry, 'clear'> & {clear: number}>;
+
+  return rows.map((row) => ({
+    ...row,
+    clear: Boolean(row.clear)
+  })) as DbSingleLeaderboardEntry[];
 }

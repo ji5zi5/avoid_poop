@@ -27,6 +27,11 @@ test('run result schema requires a positive round number', () => {
 
 test('records response schema accepts nullable best entries', () => {
   const parsed = recordsResponseSchema.parse({
+    profile: {
+      totalRuns: 0,
+      totalClears: 0,
+      totalScore: 0
+    },
     best: {},
     recent: [],
     multiplayer: {
@@ -36,6 +41,11 @@ test('records response schema accepts nullable best entries', () => {
         bestPlacement: null
       },
       recent: []
+    },
+    leaderboard: {
+      normal: [],
+      hard: [],
+      multiplayer: []
     }
   });
 

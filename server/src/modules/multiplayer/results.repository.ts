@@ -14,6 +14,15 @@ export type CreateMultiplayerMatchInput = {
   winnerUserId: number | null;
 };
 
+export type DbMultiplayerLeaderboardEntry = {
+  userId: number;
+  username: string;
+  wins: number;
+  matchesPlayed: number;
+  bestPlacement: number | null;
+  bestReachedRound: number | null;
+};
+
 export function createMultiplayerMatch(input: CreateMultiplayerMatchInput) {
   const db = getDb();
   const insertMatch = db.prepare(
@@ -85,4 +94,22 @@ export function listRecentMultiplayerRecords(userId: number) {
     }),
     won: Boolean((row as {won: number}).won)
   }));
+}
+
+export function listMultiplayerLeaderboard(limit = 20) {
+  const db = getDb();
+  return db.prepare(
+    `SELECT
+       p.user_id AS userId,
+       u.username AS username,
+       COALESCE(SUM(p.won), 0) AS wins,
+       COUNT(*) AS matchesPlayed,
+       MIN(p.placement) AS bestPlacement,
+       MAX(p.reached_round) AS bestReachedRound
+     FROM multiplayer_participants p
+     JOIN users u ON u.id = p.user_id
+     GROUP BY p.user_id, u.username
+     ORDER BY wins DESC, bestPlacement ASC, bestReachedRound DESC, matchesPlayed DESC, username ASC
+     LIMIT ?`
+  ).all(limit) as DbMultiplayerLeaderboardEntry[];
 }

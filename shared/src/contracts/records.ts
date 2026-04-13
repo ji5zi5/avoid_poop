@@ -31,7 +31,35 @@ export const multiplayerStatsSchema = z.object({
   bestPlacement: z.number().int().positive().nullable()
 });
 
+export const singlePlayerProfileSchema = z.object({
+  totalRuns: z.number().int().nonnegative(),
+  totalClears: z.number().int().nonnegative(),
+  totalScore: z.number().int().nonnegative()
+});
+
+export const singleLeaderboardEntrySchema = z.object({
+  rank: z.number().int().positive(),
+  userId: z.number().int().positive(),
+  username: z.string().min(1),
+  score: z.number().int().nonnegative(),
+  reachedRound: z.number().int().positive(),
+  survivalTime: z.number().nonnegative(),
+  clear: z.boolean(),
+  createdAt: z.string()
+});
+
+export const multiplayerLeaderboardEntrySchema = z.object({
+  rank: z.number().int().positive(),
+  userId: z.number().int().positive(),
+  username: z.string().min(1),
+  wins: z.number().int().nonnegative(),
+  matchesPlayed: z.number().int().nonnegative(),
+  bestPlacement: z.number().int().positive().nullable(),
+  bestReachedRound: z.number().int().positive().nullable()
+});
+
 export const recordsResponseSchema = z.object({
+  profile: singlePlayerProfileSchema,
   best: z.object({
     normal: recordEntrySchema.optional(),
     hard: recordEntrySchema.optional()
@@ -40,6 +68,11 @@ export const recordsResponseSchema = z.object({
   multiplayer: z.object({
     stats: multiplayerStatsSchema,
     recent: z.array(multiplayerRecordEntrySchema)
+  }),
+  leaderboard: z.object({
+    normal: z.array(singleLeaderboardEntrySchema),
+    hard: z.array(singleLeaderboardEntrySchema),
+    multiplayer: z.array(multiplayerLeaderboardEntrySchema)
   })
 });
 
@@ -48,4 +81,7 @@ export type RunResultPayload = z.infer<typeof runResultPayloadSchema>;
 export type RecordEntry = z.infer<typeof recordEntrySchema>;
 export type MultiplayerRecordEntry = z.infer<typeof multiplayerRecordEntrySchema>;
 export type MultiplayerStats = z.infer<typeof multiplayerStatsSchema>;
+export type SinglePlayerProfile = z.infer<typeof singlePlayerProfileSchema>;
+export type SingleLeaderboardEntry = z.infer<typeof singleLeaderboardEntrySchema>;
+export type MultiplayerLeaderboardEntry = z.infer<typeof multiplayerLeaderboardEntrySchema>;
 export type RecordsResponse = z.infer<typeof recordsResponseSchema>;

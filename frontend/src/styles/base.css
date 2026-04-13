@@ -2772,3 +2772,43 @@ input {
 .multiplayer-create-sheet {
   gap: 0.85rem;
 }
+
+.records-board--three {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.records-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.records-section-heading h3 {
+  margin: 0;
+  color: var(--tone-3);
+}
+
+.records-tabs {
+  min-width: min(100%, 320px);
+}
+
+.leaderboard-entry {
+  gap: 0.18rem;
+}
+
+@media (max-width: 900px) {
+  .records-board--three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .records-section-heading {
+    display: grid;
+  }
+}
+
+@media (max-width: 760px) {
+  .records-board--three {
+    grid-template-columns: 1fr;
+  }
+}

@@ -110,10 +110,14 @@ test('records endpoints require auth and return best plus recent runs', async ()
 
   assert.equal(records.statusCode, 200);
   const body = records.json();
+  assert.equal(body.profile.totalRuns, 2);
+  assert.equal(body.profile.totalClears, 0);
   assert.equal(body.best.normal.score, 120);
   assert.equal(body.best.hard.score, 180);
   assert.equal(body.recent.length, 2);
   assert.equal(body.multiplayer.stats.matchesPlayed, 0);
   assert.equal(body.multiplayer.recent.length, 0);
+  assert.equal(body.leaderboard.normal[0].username, 'record_user');
+  assert.equal(body.leaderboard.hard[0].username, 'record_user');
   await app.close();
 });
