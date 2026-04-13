@@ -122,6 +122,23 @@ export class RoomService {
     }));
   }
 
+  setReady(roomCode: string, userId: number, ready: boolean) {
+    const normalizedRoomCode = normalizeRoomCode(roomCode);
+    const room = this.rooms.get(normalizedRoomCode);
+
+    if (!room) {
+      throw new RoomNotFoundError('Room not found.');
+    }
+
+    const player = room.players.find((entry) => entry.userId === userId);
+    if (!player) {
+      throw new RoomAccessError('You are not a member of this room.');
+    }
+
+    player.ready = ready;
+    return this.toSummary(room);
+  }
+
   markRoomInProgress(roomCode: string) {
     const normalizedRoomCode = normalizeRoomCode(roomCode);
     const room = this.rooms.get(normalizedRoomCode);

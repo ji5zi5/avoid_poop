@@ -51,6 +51,56 @@ export const roomSummarySchema = z.object({
   options: roomOptionsSchema
 });
 
+export const multiplayerActiveDebuffSchema = z.object({
+  expiresAt: z.number().int().nonnegative(),
+  type: z.enum(['slow', 'reverse', 'input_delay', 'vision_jam', 'item_lock'])
+});
+
+export const multiplayerPlayerSnapshotSchema = z.object({
+  userId: z.number().int().positive(),
+  username: z.string().min(1),
+  x: z.number(),
+  y: z.number(),
+  width: z.number().positive(),
+  height: z.number().positive(),
+  direction: z.union([z.literal(-1), z.literal(0), z.literal(1)]),
+  lives: z.number().int().nonnegative(),
+  status: z.enum(['alive', 'spectator', 'disconnected']),
+  disconnectDeadlineAt: z.number().int().nonnegative().nullable(),
+  activeDebuffs: z.array(multiplayerActiveDebuffSchema)
+});
+
+export const multiplayerHazardSnapshotSchema = z.object({
+  id: z.number().int().positive(),
+  owner: z.enum(['wave', 'boss']),
+  x: z.number(),
+  y: z.number(),
+  width: z.number().positive(),
+  height: z.number().positive(),
+  speed: z.number().nonnegative()
+});
+
+export const multiplayerItemSnapshotSchema = z.object({
+  id: z.number().int().positive(),
+  type: z.literal('debuff'),
+  x: z.number(),
+  y: z.number(),
+  width: z.number().positive(),
+  height: z.number().positive()
+});
+
+export const multiplayerGameSnapshotSchema = z.object({
+  roomCode: z.string().length(ROOM_CODE_LENGTH).regex(/^[A-Z0-9]+$/),
+  phase: z.enum(['wave', 'boss', 'complete']),
+  round: z.number().int().positive(),
+  elapsedInPhase: z.number().nonnegative(),
+  options: roomOptionsSchema,
+  players: z.array(multiplayerPlayerSnapshotSchema),
+  hazards: z.array(multiplayerHazardSnapshotSchema),
+  items: z.array(multiplayerItemSnapshotSchema),
+  winnerUserId: z.number().int().positive().nullable()
+});
+
 export const multiplayerClientEventSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('subscribe_room'),
@@ -58,6 +108,17 @@ export const multiplayerClientEventSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('ping')
+  }),
+  z.object({
+    type: z.literal('set_ready'),
+    ready: z.boolean()
+  }),
+  z.object({
+    type: z.literal('start_game')
+  }),
+  z.object({
+    type: z.literal('player_input'),
+    direction: z.union([z.literal(-1), z.literal(0), z.literal(1)])
   })
 ]);
 
@@ -75,6 +136,10 @@ export const multiplayerServerEventSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('room_snapshot'),
     room: roomSummarySchema
+  }),
+  z.object({
+    type: z.literal('game_snapshot'),
+    game: multiplayerGameSnapshotSchema
   }),
   z.object({
     type: z.literal('pong')

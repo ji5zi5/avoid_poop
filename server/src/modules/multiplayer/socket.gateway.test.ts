@@ -84,6 +84,55 @@ test('subscribing to a room broadcasts room snapshots to room members', async ()
   await app.close();
 });
 
+test('host can start a game and clients receive game snapshots', async () => {
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+
+  const hostCookie = await signup(app, 'start_host');
+  const guestCookie = await signup(app, 'start_guest');
+
+  const created = await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/rooms',
+    cookies: {avoid_poop_session: hostCookie}
+  });
+  const roomCode = created.json().roomCode as string;
+
+  await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/join',
+    cookies: {avoid_poop_session: guestCookie},
+    payload: {roomCode}
+  });
+
+  const {socket: hostSocket} = await connectSocketAndWaitForConnected(port, hostCookie);
+  const {socket: guestSocket} = await connectSocketAndWaitForConnected(port, guestCookie);
+
+  const hostEvents: Array<any> = [];
+  const guestEvents: Array<any> = [];
+  hostSocket.on('message', (payload: RawData) => hostEvents.push(JSON.parse(payload.toString())));
+  guestSocket.on('message', (payload: RawData) => guestEvents.push(JSON.parse(payload.toString())));
+
+  hostSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+  guestSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+  hostSocket.send(JSON.stringify({type: 'set_ready', ready: true}));
+  guestSocket.send(JSON.stringify({type: 'set_ready', ready: true}));
+  hostSocket.send(JSON.stringify({type: 'start_game'}));
+
+  await waitFor(() => hostEvents.some((event) => event.type === 'game_snapshot'));
+  await waitFor(() => guestEvents.some((event) => event.type === 'game_snapshot'));
+
+  const gameSnapshot = hostEvents.find((event) => event.type === 'game_snapshot');
+  assert.equal(gameSnapshot.game.roomCode, roomCode);
+  assert.equal(gameSnapshot.game.phase, 'wave');
+  assert.equal(gameSnapshot.game.players.length, 2);
+
+  hostSocket.close();
+  guestSocket.close();
+  await app.close();
+});
+
 test('reconnect token can be reused within grace period', async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});

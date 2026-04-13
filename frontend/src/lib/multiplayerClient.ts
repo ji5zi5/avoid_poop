@@ -127,6 +127,7 @@ export function createMultiplayerClient({
 }: MultiplayerClientOptions) {
   let socket: WebSocket | null = null;
   let activeReconnectToken = reconnectToken;
+  const pendingMessages: ClientSocketEvent[] = [];
   const listeners = new Set<(event: ServerSocketEvent) => void>();
 
   if (onEvent) {
@@ -139,6 +140,7 @@ export function createMultiplayerClient({
     }
 
     socket = new WebSocket(buildSocketUrl(url, activeReconnectToken));
+    socket.addEventListener("open", flushPendingMessages);
     socket.addEventListener("message", handleMessage);
     socket.addEventListener("close", handleClose);
     socket.addEventListener("error", handleError);
@@ -164,9 +166,19 @@ export function createMultiplayerClient({
 
   function send(event: ClientSocketEvent) {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
+      pendingMessages.push(event);
       return;
     }
     socket.send(JSON.stringify(event));
+  }
+
+  function flushPendingMessages() {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    while (pendingMessages.length > 0) {
+      socket.send(JSON.stringify(pendingMessages.shift()));
+    }
   }
 
   function cleanup() {
@@ -174,6 +186,7 @@ export function createMultiplayerClient({
       return;
     }
 
+    socket.removeEventListener("open", flushPendingMessages);
     socket.removeEventListener("message", handleMessage);
     socket.removeEventListener("close", handleClose);
     socket.removeEventListener("error", handleError);

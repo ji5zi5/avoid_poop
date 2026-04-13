@@ -6,8 +6,11 @@ import {WebSocketServer, type RawData, type WebSocket} from 'ws';
 
 import {config} from '../../config.js';
 import {resolveSessionUserFromSignedCookie} from '../auth/auth.service.js';
+import {MultiplayerGameService} from './game.service.js';
+import type {MultiplayerGameState} from './game.types.js';
 import {
   multiplayerClientEventSchema,
+  multiplayerGameSnapshotSchema,
   multiplayerServerEventSchema,
   type MultiplayerClientEvent
 } from './multiplayer.schemas.js';
@@ -43,9 +46,13 @@ type ConnectionMetadata = {
 export class MultiplayerSocketGateway {
   private readonly connections = new Map<WebSocket, ConnectionContext>();
   private readonly reconnectRecords = new Map<string, ReconnectRecord>();
+  private readonly gameIntervals = new Map<string, NodeJS.Timeout>();
+  private readonly activeGames = new Map<string, MultiplayerGameState>();
+  private readonly gameService = new MultiplayerGameService();
   private readonly server = new WebSocketServer({noServer: true});
 
   constructor(private readonly app: FastifyInstance, private readonly options: SocketGatewayOptions) {
+    this.server.on('connection', (_socket: WebSocket, _request: IncomingMessage, _metadata: ConnectionMetadata) => {});
     this.server.on('connection', (socket: WebSocket, request: IncomingMessage, metadata: ConnectionMetadata) => {
       const context: ConnectionContext = {
         socket,
@@ -68,6 +75,13 @@ export class MultiplayerSocketGateway {
 
       socket.on('close', () => {
         this.connections.delete(socket);
+        if (context.roomCode) {
+          const game = this.activeGames.get(context.roomCode);
+          if (game) {
+            this.gameService.disconnectPlayer(game, context.user.id);
+            this.broadcastGameSnapshot(context.roomCode);
+          }
+        }
         this.reconnectRecords.set(context.reconnectToken, {
           user: context.user,
           expiresAt: Date.now() + config.multiplayerReconnectGraceMs
@@ -105,6 +119,9 @@ export class MultiplayerSocketGateway {
     });
 
     this.app.addHook('onClose', async () => {
+      for (const interval of this.gameIntervals.values()) {
+        clearInterval(interval);
+      }
       for (const socket of this.connections.keys()) {
         socket.close();
       }
@@ -138,6 +155,23 @@ export class MultiplayerSocketGateway {
     }
   }
 
+  broadcastGameSnapshot(roomCode: string) {
+    const game = this.activeGames.get(roomCode);
+    if (!game) {
+      return;
+    }
+
+    const snapshot = multiplayerGameSnapshotSchema.parse(game);
+    for (const context of this.connections.values()) {
+      if (context.roomCode === roomCode) {
+        this.send(context.socket, {
+          type: 'game_snapshot',
+          game: snapshot
+        });
+      }
+    }
+  }
+
   private handleMessage(context: ConnectionContext, raw: string) {
     const parsed = multiplayerClientEventSchema.safeParse(JSON.parse(raw));
     if (!parsed.success) {
@@ -156,6 +190,7 @@ export class MultiplayerSocketGateway {
         const room = this.options.roomService.getRoomForUser(context.user.id, event.roomCode);
         context.roomCode = room.roomCode;
         this.broadcastRoomSnapshot(room.roomCode);
+        this.broadcastGameSnapshot(room.roomCode);
       } catch (error) {
         if (error instanceof RoomNotFoundError || error instanceof RoomAccessError) {
           this.send(context.socket, {type: 'error', error: error.message});
@@ -163,7 +198,84 @@ export class MultiplayerSocketGateway {
         }
         throw error;
       }
+      return;
     }
+
+    if (!context.roomCode) {
+      this.send(context.socket, {type: 'error', error: 'Subscribe to a room first.'});
+      return;
+    }
+
+    if (event.type === 'set_ready') {
+      try {
+        this.options.roomService.setReady(context.roomCode, context.user.id, event.ready);
+        this.broadcastRoomSnapshot(context.roomCode);
+      } catch (error) {
+        if (error instanceof RoomNotFoundError || error instanceof RoomAccessError) {
+          this.send(context.socket, {type: 'error', error: error.message});
+          return;
+        }
+        throw error;
+      }
+      return;
+    }
+
+    if (event.type === 'start_game') {
+      try {
+        const room = this.options.roomService.getRoomForUser(context.user.id, context.roomCode);
+        if (room.hostUserId !== context.user.id) {
+          this.send(context.socket, {type: 'error', error: 'Only the host can start the game.'});
+          return;
+        }
+        const startedRoom = this.options.roomService.markRoomInProgress(context.roomCode);
+        const game = this.gameService.createGame(startedRoom);
+        this.activeGames.set(context.roomCode, game);
+        this.ensureGameLoop(context.roomCode);
+        this.broadcastRoomSnapshot(context.roomCode);
+        this.broadcastGameSnapshot(context.roomCode);
+      } catch (error) {
+        if (error instanceof RoomNotFoundError || error instanceof RoomAccessError) {
+          this.send(context.socket, {type: 'error', error: error.message});
+          return;
+        }
+        throw error;
+      }
+      return;
+    }
+
+    if (event.type === 'player_input') {
+      const game = this.activeGames.get(context.roomCode);
+      if (!game) {
+        this.send(context.socket, {type: 'error', error: 'Game has not started.'});
+        return;
+      }
+      this.gameService.setPlayerDirection(game, context.user.id, event.direction);
+      this.broadcastGameSnapshot(context.roomCode);
+    }
+  }
+
+  private ensureGameLoop(roomCode: string) {
+    if (this.gameIntervals.has(roomCode)) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const game = this.activeGames.get(roomCode);
+      if (!game) {
+        clearInterval(interval);
+        this.gameIntervals.delete(roomCode);
+        return;
+      }
+
+      this.gameService.tick(game, 0.1, Date.now());
+      this.broadcastGameSnapshot(roomCode);
+      if (game.phase === 'complete') {
+        clearInterval(interval);
+        this.gameIntervals.delete(roomCode);
+      }
+    }, 100);
+
+    this.gameIntervals.set(roomCode, interval);
   }
 
   private resolveUser(request: IncomingMessage) {
