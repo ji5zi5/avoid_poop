@@ -2594,25 +2594,36 @@ input {
   }
 }
 
-.stitch-preview-card {
+.menu-hero-stage {
   position: relative;
   min-height: 220px;
   border-radius: 34px;
   border: 1px solid rgba(74, 52, 31, 0.08);
-  background: linear-gradient(180deg, rgba(255, 252, 247, 0.98) 0%, rgba(244, 232, 220, 0.92) 100%);
+  background: linear-gradient(180deg, rgba(255, 252, 247, 0.98) 0%, rgba(244, 232, 220, 0.9) 100%);
   box-shadow: 0 20px 34px rgba(43, 30, 18, 0.12);
   overflow: hidden;
 }
 
-.stitch-preview-card::after {
+.menu-hero-stage::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 40%, rgba(43, 30, 18, 0.08) 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 46%, rgba(43, 30, 18, 0.06) 100%);
   pointer-events: none;
 }
 
-.stitch-preview-badge {
+.menu-hero-stage__grid {
+  position: absolute;
+  inset: 1rem 1rem 2.2rem;
+  border-radius: 28px;
+  background:
+    linear-gradient(rgba(213, 167, 91, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(213, 167, 91, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255,255,255,0.65) 0%, rgba(249, 235, 221, 0.45) 100%);
+  background-size: 28px 28px, 28px 28px, auto;
+}
+
+.menu-hero-score-bubble {
   position: absolute;
   top: 1rem;
   left: 1rem;
@@ -2626,11 +2637,51 @@ input {
   box-shadow: 0 12px 22px rgba(43, 30, 18, 0.16);
 }
 
-.stitch-preview-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+.menu-hero-drop {
+  position: absolute;
+  width: 26px;
+  height: 32px;
+  border-radius: 50% 50% 45% 45%;
+  background: linear-gradient(180deg, rgba(208, 122, 99, 0.98) 0%, rgba(183, 98, 75, 0.95) 100%);
+  box-shadow: 0 10px 18px rgba(208, 122, 99, 0.18);
+}
+
+.menu-hero-drop--1 { top: 56px; left: 18%; }
+.menu-hero-drop--2 { top: 92px; right: 18%; }
+.menu-hero-drop--3 { top: 48px; right: 34%; width: 20px; height: 25px; }
+.menu-hero-drop--4 { top: 118px; left: 34%; width: 18px; height: 22px; }
+
+.menu-hero-player {
+  position: absolute;
+  left: 50%;
+  bottom: 2.4rem;
+  transform: translateX(-50%);
+  width: 86px;
+  height: 52px;
+  border-radius: 26px 26px 18px 18px;
+  background: linear-gradient(180deg, rgba(45, 33, 22, 0.92) 0%, rgba(74, 52, 31, 0.9) 100%);
+  box-shadow: 0 16px 24px rgba(43, 30, 18, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+}
+
+.menu-hero-player__eye {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #fff8f1;
+}
+
+.menu-hero-floor {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  height: 24px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(74, 52, 31, 0.14) 0%, rgba(74, 52, 31, 0.2) 100%);
 }
 
 .menu-bottom-links {
@@ -2644,30 +2695,6 @@ input {
   border-radius: 16px;
 }
 
-.menu-bottom-dock {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.6rem;
-  padding: 0.75rem;
-  border-radius: 999px;
-  background: rgba(255, 248, 241, 0.88);
-  border: 1px solid rgba(74, 52, 31, 0.08);
-  box-shadow: 0 18px 36px rgba(43, 30, 18, 0.14);
-}
-
-.menu-dock-item {
-  display: grid;
-  place-items: center;
-  min-height: 2.8rem;
-  border-radius: 999px;
-  color: rgba(74, 52, 31, 0.68);
-  font-size: 0.78rem;
-}
-
-.menu-dock-item.is-active {
-  background: linear-gradient(180deg, #d88b73 0%, #c5664f 100%);
-  color: #fff8f1;
-}
 
 .multiplayer-home-card--stitch,
 .multiplayer-lobby-card--stitch {
@@ -2790,7 +2817,7 @@ input {
     gap: 0.85rem;
   }
 
-  .stitch-preview-card {
+  .menu-hero-stage {
     min-height: 188px;
   }
 }

@@ -3,7 +3,6 @@ import { useState } from "react";
 import type { AuthUser } from "../../../shared/src/contracts/index";
 import type { GameMode } from "../../../shared/src/contracts/index";
 import { copy } from "../content/copy";
-import stitchMenuReference from "../assets/stitch-menu-reference.png";
 
 type Props = {
   user: AuthUser;
@@ -36,15 +35,30 @@ export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, on
             <p className="home-hero__tagline">하늘에서 떨어지는 위기를 피하세요!</p>
           </div>
 
-          <div className="stitch-preview-card" aria-hidden="true">
-            <img className="stitch-preview-image" src={stitchMenuReference} alt="" />
-            <div className="stitch-preview-badge">
+          <div className="menu-hero-stage" aria-hidden="true">
+            <div className="menu-hero-score-bubble">
               <span className="info-card__label">최고 기록</span>
               <strong>{selectedMode === "hard" ? "82,400 pts" : "58,200 pts"}</strong>
             </div>
+            <div className="menu-hero-stage__grid" />
+            <span className="menu-hero-drop menu-hero-drop--1" />
+            <span className="menu-hero-drop menu-hero-drop--2" />
+            <span className="menu-hero-drop menu-hero-drop--3" />
+            <span className="menu-hero-drop menu-hero-drop--4" />
+            <div className="menu-hero-player">
+              <span className="menu-hero-player__eye" />
+              <span className="menu-hero-player__eye" />
+            </div>
+            <div className="menu-hero-floor" />
           </div>
 
-          <button className="home-start-button home-start-button--hero" onClick={() => { setSelectionOpen(true); setSingleOpen(false); }}>
+          <button
+            className="home-start-button home-start-button--hero"
+            onClick={() => {
+              setSelectionOpen(true);
+              setSingleOpen(false);
+            }}
+          >
             {copy.menu.start}
           </button>
 
