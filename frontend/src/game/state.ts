@@ -12,6 +12,8 @@ export type BossPatternId =
   | "edge_crush"
   | "double_side_stomp"
   | "center_swing"
+  | "three_gate_shuffle"
+  | "pillar_press"
   | "shifting_corridor"
   | "zigzag_corridor"
   | "staircase_corridor"
@@ -19,10 +21,12 @@ export type BossPatternId =
   | "switch_press"
   | "crossfall_mix"
   | "fake_safe_lane"
+  | "funnel_switch"
   | "residue_zone"
   | "residue_switch"
   | "fake_warning"
   | "center_collapse"
+  | "shoulder_crush"
   | "delayed_burst"
   | "last_hit_followup";
 export type BossPatternPhase = "idle" | "telegraph" | "attack" | "cooldown";

@@ -1,6 +1,6 @@
 import type { BossPatternFamily, BossPatternId, GameState } from "../state";
 
-import { createCustomHazard, spawnCenterHazard, spawnEdgeHazards, spawnHalfHazard, spawnLaneBarrage } from "./spawn";
+import { createCustomHazard, spawnCenterHazard, spawnEdgeHazards, spawnGiantHazard, spawnHalfHazard, spawnLaneBarrage } from "./spawn";
 
 type BossPatternDefinition = {
   archetype: string;
@@ -13,11 +13,15 @@ type BossPatternDefinition = {
 };
 
 const HARD_ONLY_PATTERNS: BossPatternId[] = [
+  "three_gate_shuffle",
+  "pillar_press",
   "fake_safe_lane",
+  "funnel_switch",
   "residue_zone",
   "residue_switch",
   "fake_warning",
   "center_collapse",
+  "shoulder_crush",
   "delayed_burst",
 ];
 
@@ -73,9 +77,9 @@ function nextSeed(state: GameState) {
 function desiredQueueLength(state: GameState) {
   if (state.mode === "hard") {
     if (state.round >= 10) {
-      return 7;
+      return 8;
     }
-    return state.round >= 6 ? 6 : 5;
+    return state.round >= 6 ? 7 : 5;
   }
   if (state.round >= 12) {
     return 5;
@@ -130,6 +134,23 @@ function tickPattern(state: GameState, delta: number, interval: number, shots: n
 function spawnFollowupPair(state: GameState, speed: number) {
   createCustomHazard(state, { x: Math.floor(state.width * 0.28), size: 20, speed, owner: "boss", variant: "medium" });
   createCustomHazard(state, { x: Math.floor(state.width * 0.58), size: 20, speed, owner: "boss", variant: "medium" });
+}
+
+function spawnSafeThirdSetup(state: GameState, safeZone: "left" | "center" | "right", speed: number, height = 84) {
+  if (safeZone === "center") {
+    spawnEdgeHazards(state, 0.31, speed, height);
+    return;
+  }
+
+  const coverage = Math.floor(state.width * 0.66);
+  const x = safeZone === "left" ? state.width - coverage : 0;
+  spawnGiantHazard(state, x, coverage, speed, height);
+}
+
+function spawnTwinPillars(state: GameState, leftRatio: number, rightRatio: number, widthRatio: number, speed: number, height = 110) {
+  const width = Math.floor(state.width * widthRatio);
+  spawnGiantHazard(state, Math.floor(state.width * leftRatio), width, speed, height);
+  spawnGiantHazard(state, Math.floor(state.width * rightRatio), width, speed, height);
 }
 
 function buildSweepOrder(laneCount: number, startSide: "left" | "right") {
@@ -288,6 +309,43 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       });
     },
   },
+  three_gate_shuffle: {
+    archetype: "three_gate",
+    family: "pressure",
+    label: () => "삼문 셔플",
+    normalAllowed: false,
+    telegraphHardMs: 340,
+    telegraphNormalMs: 700,
+    run(state, delta) {
+      const firstSide = pickSide(state) === "left" ? ["left", "center", "right", "center"] as const : ["right", "center", "left", "center"] as const;
+      const shots = state.round >= 11 ? firstSide.length + 1 : firstSide.length;
+      return tickPattern(state, delta, scaledInterval(state, 0.3, 0.4, 0.18, 0.24), shots, (shot) => {
+        const zone = firstSide[shot % firstSide.length];
+        spawnSafeThirdSetup(state, zone, giantSpeed(state, 34), zone === "center" ? 82 : 88);
+      });
+    },
+  },
+  pillar_press: {
+    archetype: "pillar_press",
+    family: "pressure",
+    label: () => "기둥 압박",
+    normalAllowed: false,
+    telegraphHardMs: 380,
+    telegraphNormalMs: 720,
+    run(state, delta) {
+      return tickPattern(state, delta, scaledInterval(state, 0.4, 0.5, 0.22, 0.3), 3 + (state.round >= 12 ? 1 : 0), (shot) => {
+        if (shot % 3 === 0) {
+          spawnTwinPillars(state, 0.16, 0.64, 0.18, giantSpeed(state, -28), 118);
+          return;
+        }
+        if (shot % 3 === 1) {
+          spawnCenterHazard(state, 0.32, giantSpeed(state, 20), 84);
+          return;
+        }
+        spawnTwinPillars(state, 0.06, 0.76, 0.14, giantSpeed(state, 14), 102);
+      });
+    },
+  },
   shifting_corridor: {
     archetype: "corridor_shift",
     family: "lane",
@@ -401,6 +459,35 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       });
     },
   },
+  funnel_switch: {
+    archetype: "trap_funnel_switch",
+    family: "trap",
+    label: () => "통로 뒤집기",
+    normalAllowed: false,
+    telegraphHardMs: 440,
+    telegraphNormalMs: 780,
+    run(state, delta) {
+      const laneCount = getLaneCount(state);
+      const firstSafeSide = pickSide(state) === "left" ? "left" : "right";
+      const firstSafeLane = firstSafeSide === "left" ? 0 : laneCount - 1;
+      const secondSafeLane = firstSafeSide === "left" ? laneCount - 1 : 0;
+      return tickPattern(state, delta, scaledInterval(state, 0.34, 0.44, 0.2, 0.28), 3 + (state.round >= 12 ? 1 : 0), (shot) => {
+        if (shot === 0) {
+          spawnSafeThirdSetup(state, firstSafeSide, giantSpeed(state, 26), 88);
+          return;
+        }
+        if (shot === 1) {
+          spawnLaneBarrage(state, secondSafeLane, laneCount, laneSpeed(state, 38), 24);
+          return;
+        }
+        if (shot === 2) {
+          spawnSafeThirdSetup(state, secondSafeLane === 0 ? "left" : "right", giantSpeed(state, 42), 82);
+          return;
+        }
+        spawnCenterHazard(state, 0.36, giantSpeed(state, 24), 78);
+      });
+    },
+  },
   residue_zone: {
     archetype: "trap_residue",
     family: "trap",
@@ -480,6 +567,32 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
           return;
         }
         spawnFollowupPair(state, mediumSpeed(state, 50));
+      });
+    },
+  },
+  shoulder_crush: {
+    archetype: "shoulder_crush",
+    family: "trap",
+    label: () => "어깨 붕괴",
+    normalAllowed: false,
+    telegraphHardMs: 400,
+    telegraphNormalMs: 740,
+    run(state, delta) {
+      const firstSide = pickSide(state);
+      return tickPattern(state, delta, scaledInterval(state, 0.38, 0.5, 0.22, 0.3), 3 + (state.round >= 12 ? 1 : 0), (shot) => {
+        if (shot === 0) {
+          spawnGiantHazard(state, firstSide === "left" ? Math.floor(state.width * 0.08) : Math.floor(state.width * 0.62), Math.floor(state.width * 0.24), giantSpeed(state, -12), 106);
+          return;
+        }
+        if (shot === 1) {
+          spawnGiantHazard(state, firstSide === "left" ? Math.floor(state.width * 0.62) : Math.floor(state.width * 0.08), Math.floor(state.width * 0.24), giantSpeed(state, 22), 106);
+          return;
+        }
+        if (shot === 2) {
+          spawnCenterHazard(state, 0.28, giantSpeed(state, 36), 82);
+          return;
+        }
+        spawnFollowupPair(state, mediumSpeed(state, 58));
       });
     },
   },
@@ -586,6 +699,10 @@ export function buildBossPatternQueue(state: GameState) {
   if (state.mode === "hard" && state.round >= 5) {
     ensureQueueIncludes(state, queue, available.filter((id) => getBossPatternFamily(id) === "trap"));
     ensureQueueIncludes(state, queue, available.filter((id) => getBossPatternFamily(id) === "lane"));
+  }
+
+  if (state.mode === "hard" && state.round >= 6) {
+    ensureQueueIncludes(state, queue, ["three_gate_shuffle", "pillar_press", "funnel_switch", "shoulder_crush"]);
   }
 
   if (state.mode === "hard" && state.round >= 8) {

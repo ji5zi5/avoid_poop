@@ -5,7 +5,7 @@ import { buildBossPatternQueue, getAvailableBossPatternIds, getBossPatternFamily
 
 describe("boss patterns", () => {
   it("exposes a larger hard-mode boss pattern pool", () => {
-    expect(getAvailableBossPatternIds("hard")).toHaveLength(19);
+    expect(getAvailableBossPatternIds("hard")).toHaveLength(23);
   });
 
   it("keeps normal queues inside the normal-safe pattern pool", () => {
@@ -80,5 +80,14 @@ describe("boss patterns", () => {
     const queue = buildBossPatternQueue(state);
 
     expect(queue.some((id) => id === "residue_zone" || id === "residue_switch")).toBe(true);
+  });
+
+  it("makes hard bosses pull in at least one giant set-piece pattern", () => {
+    const state = createGameEngine("hard");
+    state.round = 7;
+
+    const queue = buildBossPatternQueue(state);
+
+    expect(queue.some((id) => ["three_gate_shuffle", "pillar_press", "funnel_switch", "shoulder_crush"].includes(id))).toBe(true);
   });
 });
