@@ -5,20 +5,21 @@ import {MultiplayerGameService} from './game.service.js';
 
 const service = new MultiplayerGameService();
 
-function createRoomSummary() {
+function createRoomSummary(bodyBlock = false, debuffTier: 2 | 3 = 2) {
   return {
     roomCode: 'ROOM42',
     hostUserId: 1,
     status: 'waiting' as const,
     maxPlayers: 8 as const,
-    playerCount: 2,
+    playerCount: 3,
     players: [
       {userId: 1, username: 'alpha', isHost: true, ready: true},
-      {userId: 2, username: 'beta', isHost: false, ready: true}
+      {userId: 2, username: 'beta', isHost: false, ready: true},
+      {userId: 3, username: 'gamma', isHost: false, ready: true}
     ],
     options: {
-      bodyBlock: false,
-      debuffTier: 2 as const
+      bodyBlock,
+      debuffTier
     }
   };
 }
@@ -26,7 +27,7 @@ function createRoomSummary() {
 test('creates shared map state for multiple players', () => {
   const game = service.createGame(createRoomSummary());
 
-  assert.equal(game.players.length, 2);
+  assert.equal(game.players.length, 3);
   assert.equal(game.players[0]?.status, 'alive');
   assert.equal(game.players[1]?.status, 'alive');
   assert.notEqual(game.players[0]?.x, game.players[1]?.x);
@@ -37,6 +38,7 @@ test('last alive player wins', () => {
   const game = service.createGame(createRoomSummary());
 
   service.applyPlayerHit(game, 2, 3);
+  service.applyPlayerHit(game, 3, 3);
 
   assert.equal(game.phase, 'complete');
   assert.equal(game.winnerUserId, 1);
@@ -74,4 +76,30 @@ test('wave phase transitions into boss phase on boss rounds', () => {
 
   assert.equal(game.round, 3);
   assert.equal(game.phase, 'boss');
+});
+
+test('body block option separates overlapping alive players', () => {
+  const game = service.createGame(createRoomSummary(true));
+  game.players[0]!.x = 120;
+  game.players[1]!.x = 130;
+
+  service.tick(game, 0, 1_000);
+
+  const first = game.players[0]!;
+  const second = game.players[1]!;
+  assert.ok(first.x + first.width <= second.x || second.x + second.width <= first.x);
+});
+
+test('debuff item spawn and collect targets a random alive opponent', () => {
+  const game = service.createGame(createRoomSummary(false, 2));
+  service.applyPlayerHit(game, 3, 3);
+  const item = service.spawnDebuffItem(game, 160, 200);
+
+  const result = service.collectItem(game, 1, item.id, 10_000, 0);
+
+  assert.equal(game.items.length, 0);
+  assert.equal(result?.targetUserId, 2);
+  assert.equal(result?.debuffType, 'slow');
+  const target = game.players.find((entry) => entry.userId === 2)!;
+  assert.deepEqual(target.activeDebuffs.map((entry) => entry.type), ['slow']);
 });

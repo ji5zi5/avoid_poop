@@ -1,7 +1,14 @@
 import {config} from '../../config.js';
 
-import type {RoomOptions, RoomSummary} from './multiplayer.schemas.js';
-import type {MultiplayerGameState, MultiplayerHazardState, MultiplayerPlayerState} from './game.types.js';
+import type {RoomSummary} from './multiplayer.schemas.js';
+import {MultiplayerDebuffService} from './debuff.service.js';
+import type {
+  MultiplayerDebuffType,
+  MultiplayerGameState,
+  MultiplayerHazardState,
+  MultiplayerItemState,
+  MultiplayerPlayerState
+} from './game.types.js';
 
 const GAME_WIDTH = 360;
 const GAME_HEIGHT = 520;
@@ -12,8 +19,12 @@ const PLAYER_LIVES = 3;
 const ROUND_DURATION = 9;
 const BOSS_DURATION = 12;
 const SPAWN_INTERVAL = 0.85;
+const DEBUFF_ITEM_SIZE = 18;
+const DEBUFF_DURATION_MS = 4000;
 
 export class MultiplayerGameService {
+  constructor(private readonly debuffService = new MultiplayerDebuffService()) {}
+
   createGame(room: RoomSummary, startedAt = Date.now()): MultiplayerGameState {
     return {
       roomCode: room.roomCode,
@@ -24,7 +35,9 @@ export class MultiplayerGameService {
       elapsedInPhase: 0,
       spawnTimer: 0,
       nextHazardId: 1,
+      nextItemId: 1,
       hazards: [],
+      items: [],
       players: room.players.map((player, index, players) => createPlayerState(player.userId, player.username, index, players.length)),
       winnerUserId: null
     };
@@ -77,6 +90,45 @@ export class MultiplayerGameService {
     return true;
   }
 
+  spawnDebuffItem(game: MultiplayerGameState, x = GAME_WIDTH / 2 - DEBUFF_ITEM_SIZE / 2, y = GAME_HEIGHT / 2) {
+    const item: MultiplayerItemState = {
+      id: game.nextItemId,
+      type: 'debuff',
+      x,
+      y,
+      width: DEBUFF_ITEM_SIZE,
+      height: DEBUFF_ITEM_SIZE
+    };
+    game.nextItemId += 1;
+    game.items.push(item);
+    return item;
+  }
+
+  collectItem(game: MultiplayerGameState, collectorUserId: number, itemId: number, now = Date.now(), randomValue = Math.random()) {
+    const collector = game.players.find((entry) => entry.userId === collectorUserId);
+    if (!collector || collector.status !== 'alive') {
+      return null;
+    }
+
+    const itemIndex = game.items.findIndex((entry) => entry.id === itemId);
+    if (itemIndex === -1) {
+      return null;
+    }
+
+    game.items.splice(itemIndex, 1);
+    const target = this.debuffService.chooseRandomTarget(game.players, collectorUserId, randomValue);
+    if (!target) {
+      return null;
+    }
+
+    const debuffType = this.debuffService.chooseDebuff(game.options, randomValue);
+    this.applyDebuff(game, target.userId, debuffType, now);
+    return {
+      targetUserId: target.userId,
+      debuffType
+    };
+  }
+
   tick(game: MultiplayerGameState, delta: number, now = Date.now()) {
     if (game.phase === 'complete') {
       return game;
@@ -86,13 +138,20 @@ export class MultiplayerGameService {
     game.spawnTimer += delta;
 
     for (const player of game.players) {
+      player.activeDebuffs = player.activeDebuffs.filter((debuff) => debuff.expiresAt > now);
       if (player.status === 'alive') {
-        player.x = clamp(player.x + player.direction * PLAYER_SPEED * delta, 0, GAME_WIDTH - player.width);
+        const direction = getEffectiveDirection(player);
+        const speed = getEffectiveSpeed(player);
+        player.x = clamp(player.x + direction * speed * delta, 0, GAME_WIDTH - player.width);
       }
       if (player.status === 'disconnected' && player.disconnectDeadlineAt && player.disconnectDeadlineAt <= now) {
         player.status = 'spectator';
         player.disconnectDeadlineAt = null;
       }
+    }
+
+    if (game.options.bodyBlock) {
+      resolveBodyBlock(game.players);
     }
 
     if (game.phase !== 'boss' && game.spawnTimer >= SPAWN_INTERVAL) {
@@ -128,6 +187,24 @@ export class MultiplayerGameService {
     return game;
   }
 
+  private applyDebuff(game: MultiplayerGameState, userId: number, debuffType: MultiplayerDebuffType, now: number) {
+    const player = game.players.find((entry) => entry.userId === userId);
+    if (!player) {
+      return;
+    }
+
+    const existing = player.activeDebuffs.find((debuff) => debuff.type === debuffType);
+    if (existing) {
+      existing.expiresAt = now + DEBUFF_DURATION_MS;
+      return;
+    }
+
+    player.activeDebuffs.push({
+      type: debuffType,
+      expiresAt: now + DEBUFF_DURATION_MS
+    });
+  }
+
   private resolveWinner(game: MultiplayerGameState) {
     const alivePlayers = game.players.filter((player) => player.status === 'alive');
     if (alivePlayers.length > 1) {
@@ -151,7 +228,8 @@ function createPlayerState(userId: number, username: string, index: number, tota
     direction: 0,
     lives: PLAYER_LIVES,
     status: 'alive',
-    disconnectDeadlineAt: null
+    disconnectDeadlineAt: null,
+    activeDebuffs: []
   };
 }
 
@@ -170,7 +248,44 @@ function createHazard(id: number, round: number, phase: MultiplayerGameState['ph
 }
 
 function shouldEnterBoss(round: number) {
-  return round >= 3 && round % 3 === 0
+  return round >= 3 && round % 3 === 0;
+}
+
+function getEffectiveDirection(player: MultiplayerPlayerState) {
+  return hasDebuff(player, 'reverse') ? (player.direction * -1 as -1 | 0 | 1) : player.direction;
+}
+
+function getEffectiveSpeed(player: MultiplayerPlayerState) {
+  return hasDebuff(player, 'slow') ? PLAYER_SPEED * 0.6 : PLAYER_SPEED;
+}
+
+function hasDebuff(player: MultiplayerPlayerState, debuffType: MultiplayerDebuffType) {
+  return player.activeDebuffs.some((debuff) => debuff.type === debuffType);
+}
+
+function resolveBodyBlock(players: MultiplayerPlayerState[]) {
+  const alivePlayers = players.filter((player) => player.status === 'alive');
+  for (let index = 0; index < alivePlayers.length; index += 1) {
+    for (let otherIndex = index + 1; otherIndex < alivePlayers.length; otherIndex += 1) {
+      const left = alivePlayers[index]!;
+      const right = alivePlayers[otherIndex]!;
+      const overlap = left.x + left.width - right.x;
+      const reverseOverlap = right.x + right.width - left.x;
+      const actualOverlap = Math.min(overlap, reverseOverlap);
+      if (actualOverlap <= 0) {
+        continue;
+      }
+
+      const shift = Math.ceil(actualOverlap / 2);
+      if (left.x <= right.x) {
+        left.x = clamp(left.x - shift, 0, GAME_WIDTH - left.width);
+        right.x = clamp(right.x + shift, 0, GAME_WIDTH - right.width);
+      } else {
+        left.x = clamp(left.x + shift, 0, GAME_WIDTH - left.width);
+        right.x = clamp(right.x - shift, 0, GAME_WIDTH - right.width);
+      }
+    }
+  }
 }
 
 function clamp(value: number, min: number, max: number) {
