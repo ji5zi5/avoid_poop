@@ -19,6 +19,7 @@ function createRoomSummary(difficulty: 'normal' | 'hard' = 'normal', bodyBlock =
     ],
     options: {
       difficulty,
+      visibility: 'public' as const,
       bodyBlock,
       debuffTier
     },

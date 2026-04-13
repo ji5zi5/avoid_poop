@@ -264,6 +264,10 @@ export class RoomService {
         continue;
       }
 
+      if (room.options.visibility !== 'public') {
+        continue;
+      }
+
       if (!matchesRequestedOptions(room.options, options)) {
         continue;
       }

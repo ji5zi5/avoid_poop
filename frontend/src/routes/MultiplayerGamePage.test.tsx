@@ -9,7 +9,7 @@ const game = {
   phase: 'wave' as const,
   round: 2,
   elapsedInPhase: 1,
-  options: {difficulty: 'normal' as const, bodyBlock: false, debuffTier: 2 as const},
+  options: {difficulty: 'normal' as const, visibility: 'public' as const, bodyBlock: false, debuffTier: 2 as const},
   players: [
     {userId: 1, username: 'alpha', x: 0, y: 0, width: 36, height: 24, direction: 0 as const, lives: 3, status: 'alive' as const, disconnectDeadlineAt: null, airborneUntil: null, activeDebuffs: []},
     {userId: 2, username: 'beta', x: 20, y: 0, width: 36, height: 24, direction: 0 as const, lives: 0, status: 'spectator' as const, disconnectDeadlineAt: null, airborneUntil: null, activeDebuffs: []},

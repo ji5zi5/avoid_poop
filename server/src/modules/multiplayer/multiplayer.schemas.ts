@@ -11,9 +11,11 @@ export const roomCodeValueSchema = z
 
 export const roomStatusSchema = z.enum(['waiting', 'in_progress']);
 export const roomDifficultySchema = z.enum(['normal', 'hard']);
+export const roomVisibilitySchema = z.enum(['public', 'private']);
 
 export const roomOptionsSchema = z.object({
   difficulty: roomDifficultySchema,
+  visibility: roomVisibilitySchema,
   bodyBlock: z.boolean(),
   debuffTier: z.union([z.literal(2), z.literal(3)])
 });
@@ -28,9 +30,7 @@ export const joinRoomPayloadSchema = z.object({
   roomCode: roomCodeValueSchema
 });
 
-export const quickJoinPayloadSchema = z.object({
-  options: roomOptionsPatchSchema.optional()
-});
+export const quickJoinPayloadSchema = z.object({});
 
 export const roomCodeParamsSchema = z.object({
   roomCode: roomCodeValueSchema
@@ -179,6 +179,7 @@ export const multiplayerServerEventSchema = z.discriminatedUnion('type', [
 
 export const defaultRoomOptions = roomOptionsSchema.parse({
   difficulty: 'normal',
+  visibility: 'public',
   bodyBlock: false,
   debuffTier: 2
 });

@@ -52,7 +52,7 @@ describe('App multiplayer entry flow', () => {
       maxPlayers: 8,
       playerCount: 1,
       players: [{userId: 1, username: 'alpha', isHost: true, ready: false}],
-      options: {difficulty: 'normal', bodyBlock: false, debuffTier: 2},
+      options: {difficulty: 'normal', visibility: 'public', bodyBlock: false, debuffTier: 2},
       chatMessages: [],
     });
     leaveRoom.mockResolvedValue({ok: true});

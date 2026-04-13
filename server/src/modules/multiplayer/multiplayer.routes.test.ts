@@ -47,6 +47,7 @@ test('creating a room returns the room code and host assignment', async () => {
     payload: {
       options: {
         difficulty: 'hard',
+        visibility: 'private',
         bodyBlock: true,
         debuffTier: 3
       }
@@ -59,7 +60,7 @@ test('creating a room returns the room code and host assignment', async () => {
   assert.equal(room.hostUserId, host.user.id);
   assert.equal(room.status, 'waiting');
   assert.equal(room.playerCount, 1);
-  assert.deepEqual(room.options, {difficulty: 'hard', bodyBlock: true, debuffTier: 3});
+  assert.deepEqual(room.options, {difficulty: 'hard', visibility: 'private', bodyBlock: true, debuffTier: 3});
   assert.deepEqual(room.players, [
     {
       userId: host.user.id,
@@ -202,7 +203,7 @@ test('quick join reuses a waiting room and creates one when none exist', async (
   const matchedRoom = secondJoin.json();
   assert.equal(matchedRoom.roomCode, createdRoom.roomCode);
   assert.equal(matchedRoom.playerCount, 2);
-  assert.deepEqual(matchedRoom.options, {difficulty: 'normal', bodyBlock: false, debuffTier: 2});
+  assert.deepEqual(matchedRoom.options, {difficulty: 'normal', visibility: 'public', bodyBlock: false, debuffTier: 2});
   assert.deepEqual(matchedRoom.players, [
     {
       userId: firstPlayer.user.id,
@@ -258,5 +259,32 @@ test('leave endpoint removes the user from the room', async () => {
 
   const hostView = await app.inject({ method: 'GET', url: `/api/multiplayer/rooms/${createdRoom.roomCode}`, cookies: { avoid_poop_session: host.cookie } });
   assert.equal(hostView.json().playerCount, 1);
+  await app.close();
+});
+
+
+test('private rooms are skipped by quick join', async () => {
+  const app = await createApp();
+  const privateHost = await signupAndGetCookie(app, 'private_host');
+  const quickUser = await signupAndGetCookie(app, 'quick_public');
+
+  const privateRoom = await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/rooms',
+    cookies: { avoid_poop_session: privateHost.cookie },
+    payload: { options: { visibility: 'private' } }
+  });
+  assert.equal(privateRoom.statusCode, 201);
+
+  const quickJoin = await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/quick-join',
+    cookies: { avoid_poop_session: quickUser.cookie },
+    payload: {}
+  });
+
+  assert.equal(quickJoin.statusCode, 200);
+  assert.notEqual(quickJoin.json().roomCode, privateRoom.json().roomCode);
+  assert.equal(quickJoin.json().options.visibility, 'public');
   await app.close();
 });

@@ -45,6 +45,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
 
         <div className="lobby-summary-strip">
           <span className="home-status-chip">{copy.multiplayer.players} {room.playerCount}/8</span>
+          <span className="home-status-chip">{room.options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
           <span className="home-status-chip">{room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
           <span className="home-status-chip">{copy.multiplayer.debuffTier} {room.options.debuffTier}</span>
           <span className="home-status-chip">{room.options.bodyBlock ? "길막 ON" : "길막 OFF"}</span>
@@ -53,6 +54,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
         <div className="multiplayer-lobby-shell">
           <div className="multiplayer-lobby-main">
             <div className="multiplayer-lobby-options multiplayer-lobby-options--heroic">
+              <span>{copy.multiplayer.visibility}: {room.options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
               <span>{copy.multiplayer.difficulty}: {room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
               <span>{copy.multiplayer.bodyBlock}: {room.options.bodyBlock ? "ON" : "OFF"}</span>
               <span>{copy.multiplayer.debuffTier}: {room.options.debuffTier}</span>

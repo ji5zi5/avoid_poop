@@ -1,11 +1,13 @@
 export type RoomStatus = "waiting" | "in_progress";
 export type RoomDifficulty = "normal" | "hard";
+export type RoomVisibility = "public" | "private";
 export type MultiplayerPhase = "wave" | "boss" | "complete";
 export type MultiplayerPlayerStatus = "alive" | "spectator" | "disconnected";
 export type MultiplayerDebuffType = "slow" | "reverse" | "input_delay" | "vision_jam" | "item_lock";
 
 export type RoomOptions = {
   difficulty: RoomDifficulty;
+  visibility: RoomVisibility;
   bodyBlock: boolean;
   debuffTier: 2 | 3;
 };
@@ -44,9 +46,7 @@ export type JoinRoomPayload = {
   roomCode: string;
 };
 
-export type QuickJoinPayload = {
-  options?: Partial<RoomOptions>;
-};
+export type QuickJoinPayload = Record<string, never>;
 
 export type MultiplayerActiveDebuff = {
   expiresAt: number;

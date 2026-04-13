@@ -36,7 +36,7 @@ test('completed multiplayer games are persisted and exposed as stats/recent reco
       {userId: beta.id, username: beta.username, isHost: false, ready: true},
       {userId: gamma.id, username: gamma.username, isHost: false, ready: true}
     ],
-    options: {difficulty: 'normal', bodyBlock: false, debuffTier: 2},
+    options: {difficulty: 'normal', visibility: 'public', bodyBlock: false, debuffTier: 2},
     chatMessages: []
   });
 

@@ -2768,3 +2768,7 @@ input {
     min-height: 188px;
   }
 }
+
+.multiplayer-create-sheet {
+  gap: 0.85rem;
+}

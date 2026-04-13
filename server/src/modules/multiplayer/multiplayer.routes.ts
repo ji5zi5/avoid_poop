@@ -57,7 +57,7 @@ export const multiplayerRoutes: FastifyPluginAsync<MultiplayerRoutesOptions> = a
       return reply.status(400).send({error: getValidationErrorMessage(parsed.error)});
     }
 
-    return reply.send(matchmakingService.quickJoin(request.user!, parsed.data.options));
+    return reply.send(matchmakingService.quickJoin(request.user!));
   });
 
   app.post('/leave', {preHandler: requireUser}, async (request, reply) => {
