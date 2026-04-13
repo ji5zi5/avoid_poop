@@ -185,6 +185,22 @@ describe("game engine", () => {
     expect(state.hazards.some((hazard) => hazard.speed >= 320)).toBe(true);
   });
 
+  it("remembers recently finished boss patterns to avoid repetition next time", () => {
+    const state = createGameEngine("hard");
+    state.round = 8;
+    state.currentPhase = "boss";
+    state.bossPatternQueue = ["center_swing"];
+    state.bossPatternActiveId = null;
+    state.bossPatternIndex = 0;
+    state.bossEncounterDuration = 30;
+
+    for (let step = 0; step < 80 && !state.bossRecentPatterns.includes("center_swing"); step += 1) {
+      updateGame(state, 0.1, 0);
+    }
+
+    expect(state.bossRecentPatterns).toContain("center_swing");
+  });
+
   it("shows a reward toast and burst when an item is collected", () => {
     const state = createGameEngine("normal");
     state.items.push({

@@ -4,8 +4,8 @@ import { createGameEngine } from "../engine";
 import { buildBossPatternQueue, getAvailableBossPatternIds, getBossPatternFamily, isHardOnlyPattern } from "./bossPatterns";
 
 describe("boss patterns", () => {
-  it("exposes 14 total boss patterns across hard mode", () => {
-    expect(getAvailableBossPatternIds("hard")).toHaveLength(14);
+  it("exposes a larger hard-mode boss pattern pool", () => {
+    expect(getAvailableBossPatternIds("hard")).toHaveLength(19);
   });
 
   it("keeps normal queues inside the normal-safe pattern pool", () => {
@@ -60,5 +60,25 @@ describe("boss patterns", () => {
     expect(queue[0]).not.toBe("half_stomp_alternating");
     expect(queue[0]).not.toBe("closing_doors");
     expect(queue[0]).not.toBe("center_crush");
+  });
+
+  it("forces hard bosses to include both lane pressure and trap variety", () => {
+    const state = createGameEngine("hard");
+    state.round = 8;
+
+    const queue = buildBossPatternQueue(state);
+    const families = queue.map((id) => getBossPatternFamily(id));
+
+    expect(families).toContain("lane");
+    expect(families).toContain("trap");
+  });
+
+  it("makes late hard bosses include a residue-style trap", () => {
+    const state = createGameEngine("hard");
+    state.round = 11;
+
+    const queue = buildBossPatternQueue(state);
+
+    expect(queue.some((id) => id === "residue_zone" || id === "residue_switch")).toBe(true);
   });
 });

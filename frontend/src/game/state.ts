@@ -11,13 +11,18 @@ export type BossPatternId =
   | "center_crush"
   | "edge_crush"
   | "double_side_stomp"
+  | "center_swing"
   | "shifting_corridor"
   | "zigzag_corridor"
+  | "staircase_corridor"
+  | "center_break"
   | "switch_press"
   | "crossfall_mix"
   | "fake_safe_lane"
   | "residue_zone"
+  | "residue_switch"
   | "fake_warning"
+  | "center_collapse"
   | "delayed_burst"
   | "last_hit_followup";
 export type BossPatternPhase = "idle" | "telegraph" | "attack" | "cooldown";
