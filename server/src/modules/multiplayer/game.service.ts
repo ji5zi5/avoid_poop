@@ -168,7 +168,7 @@ export class MultiplayerGameService {
     }
     game.hazards = game.hazards.filter((hazard) => hazard.y < GAME_HEIGHT + hazard.height);
 
-    this.resolveWinner(game);
+    this.resolveWinner(game, now);
     if (game.winnerUserId !== null) {
       return game;
     }
@@ -208,7 +208,14 @@ export class MultiplayerGameService {
     });
   }
 
-  private resolveWinner(game: MultiplayerGameState) {
+  private resolveWinner(game: MultiplayerGameState, now = Date.now()) {
+    const reconnectPending = game.players.some(
+      (player) => player.status === 'disconnected' && !!player.disconnectDeadlineAt && player.disconnectDeadlineAt > now
+    );
+    if (reconnectPending) {
+      return;
+    }
+
     const alivePlayers = game.players.filter((player) => player.status === 'alive');
     if (alivePlayers.length > 1) {
       return;

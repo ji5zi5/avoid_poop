@@ -67,6 +67,19 @@ test('reconnect within grace period preserves the player slot', () => {
   assert.equal(after?.x, originalX);
 });
 
+test('disconnect grace prevents premature winner resolution', () => {
+  const game = service.createGame(createRoomSummary(), 1_000);
+  service.applyPlayerHit(game, 3, 3);
+
+  assert.equal(service.disconnectPlayer(game, 2, 5_000), true);
+
+  service.tick(game, 0.1, 5_100);
+
+  assert.equal(game.phase, 'wave');
+  assert.equal(game.winnerUserId, null);
+  assert.equal(game.players.find((entry) => entry.userId === 2)?.status, 'disconnected');
+});
+
 test('wave phase transitions into boss phase on boss rounds', () => {
   const game = service.createGame(createRoomSummary());
   game.round = 2;

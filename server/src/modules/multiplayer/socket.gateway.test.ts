@@ -154,6 +154,81 @@ test('reconnect token can be reused within grace period', async () => {
   await app.close();
 });
 
+test('reconnecting to an active game restores the player from disconnected state', async () => {
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+
+  const hostCookie = await signup(app, 'reconnect_host');
+  const guestCookie = await signup(app, 'reconnect_guest');
+
+  const created = await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/rooms',
+    cookies: {avoid_poop_session: hostCookie}
+  });
+  const roomCode = created.json().roomCode as string;
+
+  await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/join',
+    cookies: {avoid_poop_session: guestCookie},
+    payload: {roomCode}
+  });
+
+  const {socket: hostSocket, connected: hostConnected} = await connectSocketAndWaitForConnected(port, hostCookie);
+  const {socket: guestSocket} = await connectSocketAndWaitForConnected(port, guestCookie);
+  const reconnectToken = hostConnected.reconnectToken as string;
+
+  const hostEvents: Array<any> = [];
+  const guestEvents: Array<any> = [];
+  hostSocket.on('message', (payload: RawData) => hostEvents.push(JSON.parse(payload.toString())));
+  guestSocket.on('message', (payload: RawData) => guestEvents.push(JSON.parse(payload.toString())));
+
+  hostSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+  guestSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+  hostSocket.send(JSON.stringify({type: 'set_ready', ready: true}));
+  guestSocket.send(JSON.stringify({type: 'set_ready', ready: true}));
+  hostSocket.send(JSON.stringify({type: 'start_game'}));
+
+  await waitFor(() => guestEvents.some((event) => event.type === 'game_snapshot'));
+
+  hostSocket.close();
+  await waitFor(() =>
+    guestEvents.some(
+      (event) =>
+        event.type === 'game_snapshot' &&
+        event.game.players.some((player: {userId: number; status: string}) => player.userId === 1 && player.status === 'disconnected')
+    )
+  );
+
+  const {socket: reconnectedSocket, connected: reconnectedEvent} = await connectSocketAndWaitForConnected(port, hostCookie, reconnectToken);
+  assert.equal(reconnectedEvent.reconnected, true);
+  const reconnectedEvents: Array<any> = [];
+  reconnectedSocket.on('message', (payload: RawData) => reconnectedEvents.push(JSON.parse(payload.toString())));
+  reconnectedSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+
+  await waitFor(() =>
+    reconnectedEvents.some(
+      (event) =>
+        event.type === 'game_snapshot' &&
+        event.game.players.some(
+          (player: {userId: number; status: string; disconnectDeadlineAt: number | null}) =>
+            player.userId === 1 && player.status === 'alive' && player.disconnectDeadlineAt === null
+        )
+    )
+  );
+
+  const restoredSnapshot = [...reconnectedEvents].reverse().find((event: any) => event.type === 'game_snapshot');
+  const restoredHost = restoredSnapshot.game.players.find((player: {userId: number}) => player.userId === 1);
+  assert.equal(restoredHost.status, 'alive');
+  assert.equal(restoredHost.disconnectDeadlineAt, null);
+
+  reconnectedSocket.close();
+  guestSocket.close();
+  await app.close();
+});
+
 async function signup(app: Awaited<ReturnType<typeof createApp>>, username: string) {
   const response = await app.inject({
     method: 'POST',

@@ -25,4 +25,23 @@ describe('MultiplayerGamePage', () => {
     render(<MultiplayerGamePage currentUserId={2} game={game} onDirectionChange={vi.fn()} onLeave={vi.fn()} />);
     expect(screen.getByText('관전 중').textContent).toBe('관전 중');
   });
+
+  it('shows reconnecting banner for disconnected player', () => {
+    render(
+      <MultiplayerGamePage
+        currentUserId={1}
+        game={{
+          ...game,
+          players: [
+            {...game.players[0]!, status: 'disconnected', disconnectDeadlineAt: 12_000},
+            game.players[1]!
+          ]
+        }}
+        onDirectionChange={vi.fn()}
+        onLeave={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('재접속 대기').textContent).toBe('재접속 대기');
+  });
 });
