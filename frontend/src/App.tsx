@@ -21,17 +21,18 @@ export default function App() {
   const [saveCount, setSaveCount] = useState(0);
   const [room, setRoom] = useState<RoomSummary | null>(null);
   const [game, setGame] = useState<MultiplayerGameSnapshot | null>(null);
-  const [reconnectToken, setReconnectToken] = useState<string | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [reconnectSequence, setReconnectSequence] = useState(0);
 
   const multiplayerClient = useMemo(
     () =>
       createMultiplayerClient({
-        reconnectToken,
-        onClose: () => setSocketConnected(false),
+        onClose: () => {
+          setSocketConnected(false);
+          setReconnectSequence((value) => value + 1);
+        },
         onEvent: (event) => {
           if (event.type === "connected") {
-            setReconnectToken(event.reconnectToken);
             setSocketConnected(true);
             return;
           }
@@ -48,7 +49,7 @@ export default function App() {
           }
         },
       }),
-    [reconnectToken],
+    [],
   );
 
   useEffect(() => {
@@ -61,14 +62,18 @@ export default function App() {
       .catch(() => setScreen("auth"));
   }, []);
 
+  const activeMultiplayerRoomCode =
+    screen === "multiplayer-lobby" || screen === "multiplayer-game" ? room?.roomCode ?? null : null;
+
   useEffect(() => {
-    if ((screen === "multiplayer-lobby" || screen === "multiplayer-game") && room) {
-      multiplayerClient.connect();
-      multiplayerClient.subscribeRoom(room.roomCode);
-      return () => multiplayerClient.disconnect();
+    if (!activeMultiplayerRoomCode) {
+      return undefined;
     }
-    return undefined;
-  }, [multiplayerClient, room, screen]);
+
+    multiplayerClient.connect();
+    multiplayerClient.subscribeRoom(activeMultiplayerRoomCode);
+    return () => multiplayerClient.disconnect();
+  }, [activeMultiplayerRoomCode, multiplayerClient, reconnectSequence]);
 
   function handleAuthenticated(authUser: AuthUser) {
     setUser(authUser);
@@ -94,7 +99,15 @@ export default function App() {
     const nextRoom = await loadRoom;
     setRoom(nextRoom);
     setGame(null);
+    setSocketConnected(false);
     setScreen("multiplayer-lobby");
+  }
+
+  function handleLeaveMultiplayer() {
+    setRoom(null);
+    setGame(null);
+    setSocketConnected(false);
+    setScreen("multiplayer-home");
   }
 
   const screenLabel = copy.app.screens[screen as keyof typeof copy.app.screens] ?? copy.app.screens.menu;
@@ -150,7 +163,7 @@ export default function App() {
               connected={socketConnected}
               room={room}
               userId={user.id}
-              onLeave={() => setScreen("multiplayer-home")}
+              onLeave={handleLeaveMultiplayer}
               onSetReady={(ready) => multiplayerClient.send({ type: "set_ready", ready })}
               onStart={() => multiplayerClient.send({ type: "start_game" })}
             />
@@ -160,7 +173,7 @@ export default function App() {
               currentUserId={user.id}
               game={game}
               onDirectionChange={(direction) => multiplayerClient.send({ type: "player_input", direction })}
-              onLeave={() => setScreen("multiplayer-home")}
+              onLeave={handleLeaveMultiplayer}
             />
           ) : null}
         </section>

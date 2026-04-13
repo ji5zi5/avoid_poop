@@ -30,17 +30,20 @@ type ConnectionContext = {
   reconnectToken: string;
   roomCode: string | null;
   socket: WebSocket;
+  suppressDisconnect: boolean;
   user: ConnectedUser;
 };
 
 type ReconnectRecord = {
   expiresAt: number;
+  roomCode: string | null;
   user: ConnectedUser;
 };
 
 type ConnectionMetadata = {
   reconnectToken: string;
   reconnected: boolean;
+  roomCode: string | null;
   user: ConnectedUser;
 };
 
@@ -59,7 +62,8 @@ export class MultiplayerSocketGateway {
         socket,
         user: metadata.user,
         reconnectToken: metadata.reconnectToken,
-        roomCode: null
+        roomCode: metadata.roomCode,
+        suppressDisconnect: false
       };
       this.connections.set(socket, context);
       this.send(socket, {
@@ -69,6 +73,14 @@ export class MultiplayerSocketGateway {
         user: context.user,
         reconnected: metadata.reconnected
       });
+      if (context.roomCode) {
+        const game = this.activeGames.get(context.roomCode);
+        if (metadata.reconnected && game) {
+          this.gameService.reconnectPlayer(game, context.user.id);
+        }
+        this.broadcastRoomSnapshot(context.roomCode);
+        this.broadcastGameSnapshot(context.roomCode);
+      }
 
       socket.on('message', (payload: RawData) => {
         this.handleMessage(context, payload.toString());
@@ -76,6 +88,9 @@ export class MultiplayerSocketGateway {
 
       socket.on('close', () => {
         this.connections.delete(socket);
+        if (context.suppressDisconnect) {
+          return;
+        }
         if (context.roomCode) {
           const game = this.activeGames.get(context.roomCode);
           if (game) {
@@ -85,6 +100,7 @@ export class MultiplayerSocketGateway {
         }
         this.reconnectRecords.set(context.reconnectToken, {
           user: context.user,
+          roomCode: context.roomCode,
           expiresAt: Date.now() + config.multiplayerReconnectGraceMs
         });
       });
@@ -106,16 +122,10 @@ export class MultiplayerSocketGateway {
       }
 
       const requestedReconnectToken = upgradeUrl.searchParams.get('reconnectToken') ?? undefined;
-      const reconnectToken = this.resolveReconnectToken(user, requestedReconnectToken);
-      const reconnected = reconnectToken === requestedReconnectToken;
-      this.reconnectRecords.delete(reconnectToken);
+      const connectionMetadata = this.resolveConnectionMetadata(user, requestedReconnectToken);
 
       this.server.handleUpgrade(request, socket, head, (ws: WebSocket) => {
-        this.server.emit('connection', ws, request, {
-          user,
-          reconnectToken,
-          reconnected
-        });
+        this.server.emit('connection', ws, request, connectionMetadata);
       });
     });
 
@@ -285,25 +295,40 @@ export class MultiplayerSocketGateway {
     return resolveSessionUserFromSignedCookie(cookieValue, (value) => this.app.unsignCookie(value));
   }
 
-  private resolveReconnectToken(user: ConnectedUser, requestedToken?: string) {
+  private resolveConnectionMetadata(user: ConnectedUser, requestedToken?: string): ConnectionMetadata {
     this.pruneReconnectRecords();
 
     if (requestedToken) {
       const liveContext = this.findLiveContextByReconnectToken(user.id, requestedToken);
       if (liveContext) {
-        this.connections.delete(liveContext.socket);
+        liveContext.suppressDisconnect = true;
         liveContext.socket.close();
-        return requestedToken;
+        return {
+          user,
+          reconnectToken: requestedToken,
+          reconnected: true,
+          roomCode: liveContext.roomCode
+        };
       }
 
       const record = this.reconnectRecords.get(requestedToken);
       if (record && record.user.id === user.id && record.expiresAt > Date.now()) {
         this.reconnectRecords.delete(requestedToken);
-        return requestedToken;
+        return {
+          user,
+          reconnectToken: requestedToken,
+          reconnected: true,
+          roomCode: record.roomCode
+        };
       }
     }
 
-    return randomUUID();
+    return {
+      user,
+      reconnectToken: randomUUID(),
+      reconnected: false,
+      roomCode: null
+    };
   }
 
   private findLiveContextByReconnectToken(userId: number, reconnectToken: string) {
