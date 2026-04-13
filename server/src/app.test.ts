@@ -121,3 +121,62 @@ test('records endpoints require auth and return best plus recent runs', async ()
   assert.equal(body.leaderboard.hard[0].username, 'record_user');
   await app.close();
 });
+
+
+test('records endpoint exposes real cross-user leaderboards', async () => {
+  const app = await createApp();
+
+  const firstSignup = await app.inject({
+    method: 'POST',
+    url: '/api/auth/signup',
+    payload: { username: 'rank_one', password: 'secret123' }
+  });
+  const secondSignup = await app.inject({
+    method: 'POST',
+    url: '/api/auth/signup',
+    payload: { username: 'rank_two', password: 'secret123' }
+  });
+
+  const firstCookie = firstSignup.cookies[0]!.value;
+  const secondCookie = secondSignup.cookies[0]!.value;
+
+  await app.inject({
+    method: 'POST',
+    url: '/api/records',
+    cookies: { avoid_poop_session: firstCookie },
+    payload: { mode: 'normal', score: 320, reachedRound: 7, survivalTime: 41.2, clear: true }
+  });
+  await app.inject({
+    method: 'POST',
+    url: '/api/records',
+    cookies: { avoid_poop_session: secondCookie },
+    payload: { mode: 'normal', score: 210, reachedRound: 5, survivalTime: 26.8, clear: false }
+  });
+
+  const hostRoom = await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/rooms',
+    cookies: { avoid_poop_session: firstCookie },
+    payload: {}
+  });
+  const roomCode = hostRoom.json().roomCode;
+  await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/join',
+    cookies: { avoid_poop_session: secondCookie },
+    payload: { roomCode }
+  });
+
+  const recordsView = await app.inject({
+    method: 'GET',
+    url: '/api/records',
+    cookies: { avoid_poop_session: firstCookie }
+  });
+
+  assert.equal(recordsView.statusCode, 200);
+  const body = recordsView.json();
+  assert.equal(body.leaderboard.normal[0].username, 'rank_one');
+  assert.equal(body.leaderboard.normal[1].username, 'rank_two');
+  assert.equal(body.profile.totalRuns, 1);
+  await app.close();
+});
