@@ -2273,3 +2273,327 @@ input {
     rgba(70, 63, 26, 0.28);
   mix-blend-mode: multiply;
 }
+
+/* Stitch-style UI refresh */
+.auth-screen--stitch {
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  align-items: stretch;
+  gap: 0.9rem;
+}
+
+.auth-brand-panel,
+.auth-form-panel,
+.simple-home-card--heroic,
+.multiplayer-home-card,
+.multiplayer-lobby-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 32px;
+  border: 1px solid rgba(74, 52, 31, 0.14);
+  box-shadow: 0 28px 60px rgba(43, 30, 18, 0.18);
+}
+
+.auth-brand-panel,
+.simple-home-card--heroic,
+.multiplayer-home-card,
+.multiplayer-lobby-card {
+  background:
+    radial-gradient(circle at top right, rgba(208, 122, 99, 0.18), transparent 28%),
+    radial-gradient(circle at left bottom, rgba(213, 167, 91, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(255, 248, 241, 0.98) 0%, rgba(246, 232, 218, 0.96) 100%);
+}
+
+.auth-brand-panel {
+  justify-content: space-between;
+  min-height: 100%;
+  padding: 1.2rem;
+}
+
+.auth-brand-title {
+  font-size: clamp(2.4rem, 5.2vw, 4.2rem);
+}
+
+.auth-brand-badges,
+.simple-home-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.home-status-chip,
+.room-status-chip,
+.room-code-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid rgba(74, 52, 31, 0.16);
+  background: rgba(255, 252, 247, 0.8);
+  color: var(--tone-4);
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.room-status-chip.is-live {
+  background: rgba(213, 167, 91, 0.18);
+  color: #6f4d17;
+  border-color: rgba(213, 167, 91, 0.32);
+}
+
+.room-code-chip {
+  margin-top: 0.55rem;
+  font-weight: 700;
+}
+
+.auth-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.auth-feature-card {
+  min-height: 142px;
+  border-radius: 22px;
+  background: rgba(255, 252, 247, 0.78);
+  border: 1px solid rgba(74, 52, 31, 0.1);
+}
+
+.auth-form-panel {
+  width: min(100%, 460px);
+  justify-self: stretch;
+  padding: 1rem;
+  background: linear-gradient(180deg, rgba(255, 251, 247, 0.98) 0%, rgba(250, 241, 233, 0.96) 100%);
+}
+
+.auth-form-stack {
+  gap: 0.75rem;
+}
+
+.auth-form-panel input,
+.multiplayer-home-options select,
+.multiplayer-code-form input,
+.multiplayer-chat-form input {
+  border-radius: 18px;
+  border: 1px solid rgba(74, 52, 31, 0.18);
+  background: rgba(255, 252, 247, 0.95);
+  padding: 0.9rem 1rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.auth-submit-button,
+.home-start-button--hero {
+  min-height: 4rem;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #d88b73 0%, #c5664f 100%);
+  border-color: rgba(85, 42, 28, 0.7);
+  box-shadow: 0 16px 28px rgba(208, 122, 99, 0.28), 0 6px 0 rgba(85, 42, 28, 0.86);
+}
+
+.auth-submit-button:hover,
+.home-start-button--hero:hover {
+  box-shadow: 0 20px 34px rgba(208, 122, 99, 0.34), 0 8px 0 rgba(85, 42, 28, 0.94);
+}
+
+.simple-home-stage {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+}
+
+.simple-home-card--heroic {
+  width: min(100%, 620px);
+  gap: 1.1rem;
+  padding: 1.25rem 1.1rem 1rem;
+}
+
+.simple-home-topline,
+.multiplayer-screen-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.simple-home-headline {
+  gap: 0.65rem;
+}
+
+.simple-home-surface {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem;
+  border-radius: 28px;
+  background: rgba(255, 252, 247, 0.74);
+  border: 1px solid rgba(74, 52, 31, 0.12);
+}
+
+.menu-secondary-cta {
+  min-height: 3.5rem;
+  border-radius: 18px;
+}
+
+.home-secondary-actions--simple {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.multiplayer-home-card,
+.multiplayer-lobby-card {
+  gap: 1.1rem;
+  padding: 1.15rem;
+}
+
+.matchmaking-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.matchmaking-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+  border-radius: 26px;
+  border: 1px solid rgba(74, 52, 31, 0.12);
+  background: rgba(255, 252, 247, 0.8);
+}
+
+.matchmaking-card strong {
+  font-size: 1.1rem;
+  color: var(--tone-4);
+}
+
+.matchmaking-card p {
+  margin: 0;
+  color: rgba(74, 52, 31, 0.76);
+  line-height: 1.45;
+}
+
+.matchmaking-card--highlight {
+  background: linear-gradient(180deg, rgba(255, 244, 237, 0.95) 0%, rgba(255, 233, 220, 0.9) 100%);
+}
+
+.multiplayer-home-options--refined,
+.multiplayer-lobby-options--heroic {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.multiplayer-code-form--card {
+  padding: 0.95rem;
+  border-radius: 24px;
+  background: rgba(255, 252, 247, 0.78);
+  border: 1px solid rgba(74, 52, 31, 0.12);
+}
+
+.multiplayer-player-list--cards {
+  gap: 0.75rem;
+}
+
+.multiplayer-player-row--card {
+  align-items: center;
+  padding: 0.85rem 1rem;
+  border-radius: 22px;
+  border: 1px solid rgba(74, 52, 31, 0.12);
+  background: rgba(255, 252, 247, 0.82);
+}
+
+.lobby-player-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.lobby-player-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(208, 122, 99, 0.95) 0%, rgba(183, 98, 75, 0.95) 100%);
+  color: #fff8f1;
+  font-size: 0.95rem;
+  box-shadow: 0 8px 16px rgba(208, 122, 99, 0.22);
+}
+
+.multiplayer-lobby-actions--heroic {
+  grid-template-columns: 1fr 1.3fr;
+}
+
+.multiplayer-chat-panel--heroic {
+  padding: 1rem;
+  border-radius: 26px;
+  background: rgba(255, 252, 247, 0.82);
+  border: 1px solid rgba(74, 52, 31, 0.12);
+}
+
+.multiplayer-chat-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.multiplayer-chat-log li {
+  border-radius: 16px;
+  border: 1px solid rgba(74, 52, 31, 0.08);
+}
+
+.multiplayer-game-hud .readout-panel,
+.multiplayer-player-strip .effect-pill,
+.multiplayer-debuff-strip .effect-pill {
+  border-radius: 18px;
+}
+
+.multiplayer-game-frame {
+  gap: 1rem;
+}
+
+.multiplayer-game-frame .ghost-button.subtle-button {
+  border-radius: 18px;
+}
+
+.mobile-controls {
+  gap: 0.7rem;
+}
+
+.control-button {
+  border-radius: 18px;
+  min-height: 3.6rem;
+}
+
+@media (max-width: 880px) {
+  .auth-screen--stitch,
+  .matchmaking-grid,
+  .multiplayer-home-options--refined,
+  .multiplayer-lobby-options--heroic {
+    grid-template-columns: 1fr;
+  }
+
+  .multiplayer-screen-heading,
+  .simple-home-topline,
+  .multiplayer-chat-heading {
+    display: grid;
+  }
+}
+
+@media (max-width: 760px) {
+  .auth-brand-panel,
+  .simple-home-card--heroic,
+  .multiplayer-home-card,
+  .multiplayer-lobby-card,
+  .auth-form-panel {
+    border-radius: 26px;
+  }
+
+  .auth-feature-grid,
+  .multiplayer-lobby-actions--heroic {
+    grid-template-columns: 1fr;
+  }
+
+  .simple-home-card--heroic,
+  .multiplayer-home-card,
+  .multiplayer-lobby-card {
+    padding: 1rem 0.9rem;
+  }
+}

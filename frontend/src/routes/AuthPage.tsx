@@ -27,9 +27,37 @@ export function AuthPage({ onAuthenticated }: Props) {
   }
 
   return (
-    <section className="auth-screen">
-      <div className="console-panel console-panel--form console-panel--compact">
+    <section className="auth-screen auth-screen--stitch">
+      <div className="console-panel console-panel--brand auth-brand-panel">
         <div className="panel-heading">
+          <p className="panel-kicker">{copy.auth.consoleTitle}</p>
+          <h1 className="home-card__title auth-brand-title">{copy.auth.title}</h1>
+          <p className="panel-copy">{copy.auth.consoleDescription}</p>
+        </div>
+
+        <div className="auth-brand-badges">
+          <span className="home-status-chip">{copy.auth.featureRounds}</span>
+          <span className="home-status-chip">{copy.auth.featureItems}</span>
+          <span className="home-status-chip">{copy.auth.featureSave}</span>
+        </div>
+
+        <div className="auth-feature-grid">
+          <article className="info-card auth-feature-card">
+            <span className="info-card__label">ARCADE LOOP</span>
+            <strong>{copy.auth.featureRounds}</strong>
+            <span>라운드가 올라갈수록 더 촘촘하고 보스가 더 악랄해집니다.</span>
+          </article>
+          <article className="info-card auth-feature-card">
+            <span className="info-card__label">ACCOUNT SAVE</span>
+            <strong>{copy.auth.featureSave}</strong>
+            <span>싱글 기록과 멀티 전적이 계정 단위로 같이 쌓입니다.</span>
+          </article>
+        </div>
+      </div>
+
+      <div className="console-panel console-panel--form console-panel--compact auth-form-panel">
+        <div className="panel-heading">
+          <p className="panel-kicker">{copy.app.online}</p>
           <h2>{mode === "signup" ? copy.auth.signup : copy.auth.login}</h2>
         </div>
 
@@ -50,7 +78,7 @@ export function AuthPage({ onAuthenticated }: Props) {
           </button>
         </div>
 
-        <form className="stack" onSubmit={handleSubmit}>
+        <form className="stack auth-form-stack" onSubmit={handleSubmit}>
           <label>
             {copy.auth.username}
             <input value={username} onChange={(event) => setUsername(event.target.value)} minLength={3} required />
@@ -66,7 +94,7 @@ export function AuthPage({ onAuthenticated }: Props) {
             />
           </label>
           {error ? <p className="error-text">{error}</p> : null}
-          <button type="submit" className="primary-action">
+          <button type="submit" className="primary-action auth-submit-button">
             {mode === "signup" ? copy.auth.signup : copy.auth.login}
           </button>
         </form>
