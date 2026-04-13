@@ -152,6 +152,7 @@ export default function App() {
               }}
               onViewRecords={() => setScreen("records")}
               onLogout={handleLogout}
+              onSessionExpired={handleSessionExpired}
             />
           ) : null}
           {screen === "game" ? (

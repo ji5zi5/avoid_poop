@@ -2,12 +2,13 @@
 import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
-const {me, createRoom, quickJoin, joinRoom, leaveRoom} = vi.hoisted(() => ({
+const {me, createRoom, quickJoin, joinRoom, leaveRoom, records} = vi.hoisted(() => ({
   me: vi.fn(),
   createRoom: vi.fn(),
   quickJoin: vi.fn(),
   joinRoom: vi.fn(),
   leaveRoom: vi.fn(),
+  records: vi.fn(),
 }));
 
 vi.mock('./lib/api', () => ({
@@ -17,7 +18,7 @@ vi.mock('./lib/api', () => ({
     createRoom,
     quickJoin,
     joinRoom,
-    records: vi.fn(),
+    records,
     saveRecord: vi.fn(),
     leaveRoom,
   },
@@ -56,6 +57,13 @@ describe('App multiplayer entry flow', () => {
       chatMessages: [],
     });
     leaveRoom.mockResolvedValue({ok: true});
+    records.mockResolvedValue({
+      profile: {totalRuns: 0, totalClears: 0, totalScore: 0},
+      best: {},
+      recent: [],
+      multiplayer: {stats: {matchesPlayed: 0, wins: 0, bestPlacement: null}, recent: []},
+      leaderboard: {normal: [], hard: [], multiplayer: []},
+    });
   });
 
   it('opens multiplayer home after game start then multiplayer selection', async () => {

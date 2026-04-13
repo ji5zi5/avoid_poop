@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { AuthUser } from "../../../shared/src/contracts/index";
 import type { GameMode } from "../../../shared/src/contracts/index";
 import { copy } from "../content/copy";
+import { api, ApiRequestError } from "../lib/api";
 import { MenuHeroCanvas } from "./MenuHeroCanvas";
 
 type Props = {
@@ -12,12 +13,34 @@ type Props = {
   onPlay: (mode: GameMode) => void;
   onViewRecords: () => void;
   onLogout: () => void;
+  onSessionExpired: () => void;
 };
 
-export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, onViewRecords, onLogout }: Props) {
+export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, onViewRecords, onLogout, onSessionExpired }: Props) {
   const [selectionOpen, setSelectionOpen] = useState(false);
   const [singleOpen, setSingleOpen] = useState(false);
   const [selectedMode, setSelectedMode] = useState<GameMode>("normal");
+  const [bestScores, setBestScores] = useState<{ normal: number | null; hard: number | null }>({ normal: null, hard: null });
+
+  useEffect(() => {
+    api.records()
+      .then((response) => {
+        setBestScores({
+          normal: response.best.normal?.score ?? null,
+          hard: response.best.hard?.score ?? null,
+        });
+      })
+      .catch((caught) => {
+        if (caught instanceof ApiRequestError && caught.status === 401) {
+          onSessionExpired();
+        }
+      });
+  }, [onSessionExpired, sessionSaveCount]);
+
+  const bestScoreLabel = useMemo(() => {
+    const score = selectedMode === "hard" ? bestScores.hard : bestScores.normal;
+    return score === null ? copy.records.none : `${score.toLocaleString()} pts`;
+  }, [bestScores.hard, bestScores.normal, selectedMode]);
 
   return (
     <section className="menu-screen simple-menu-screen">
@@ -39,7 +62,7 @@ export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, on
           <div className="menu-hero-stage" aria-hidden="true">
             <div className="menu-hero-score-bubble">
               <span className="info-card__label">최고 기록</span>
-              <strong>{selectedMode === "hard" ? "82,400 pts" : "58,200 pts"}</strong>
+              <strong>{bestScoreLabel}</strong>
             </div>
             <MenuHeroCanvas />
           </div>

@@ -199,6 +199,11 @@ button:disabled {
   grid-template-columns: 1fr;
 }
 
+.records-screen {
+  align-items: start;
+  padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
+}
+
 .game-screen {
   grid-template-columns: 1fr;
 }
@@ -2815,6 +2820,7 @@ input {
 
 .records-hub {
   width: min(100%, 820px);
+  align-self: start;
 }
 
 .records-heading {
