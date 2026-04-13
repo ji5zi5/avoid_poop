@@ -33,7 +33,18 @@ export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, on
           <div className="home-hero__headline simple-home-headline">
             <p className="home-card__subtitle">{copy.menu.heroLine}</p>
             <h1 className="home-card__title">{copy.app.title}</h1>
-            <p className="home-hero__tagline">{copy.menu.welcome(user.username)}</p>
+            <p className="home-hero__tagline">하늘에서 떨어지는 위기를 피하세요!</p>
+          </div>
+
+          <div className="stitch-preview-card" aria-hidden="true">
+            <div className="stitch-preview-badge">
+              <span className="info-card__label">최고 기록</span>
+              <strong>{selectedMode === "hard" ? "82,400 pts" : "58,200 pts"}</strong>
+            </div>
+            <div className="stitch-preview-console">
+              <div className="stitch-preview-screen" />
+              <div className="stitch-preview-base" />
+            </div>
           </div>
 
           <div className="simple-home-surface">
@@ -63,9 +74,16 @@ export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, on
             )}
           </div>
 
-          <div className="action-row home-secondary-actions home-secondary-actions--simple">
+          <div className="menu-bottom-links">
             <button className="ghost-button subtle-button" onClick={onViewRecords}>{copy.menu.records}</button>
             <button className="ghost-button subtle-button" onClick={onLogout}>{copy.menu.logout}</button>
+          </div>
+
+          <div className="menu-bottom-dock" aria-hidden="true">
+            <span className="menu-dock-item is-active">홈</span>
+            <span className="menu-dock-item">모드</span>
+            <span className="menu-dock-item">기록</span>
+            <span className="menu-dock-item">설정</span>
           </div>
         </div>
       </div>
