@@ -51,6 +51,40 @@ export const roomSummarySchema = z.object({
   options: roomOptionsSchema
 });
 
+export const multiplayerClientEventSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('subscribe_room'),
+    roomCode: roomCodeValueSchema
+  }),
+  z.object({
+    type: z.literal('ping')
+  })
+]);
+
+export const multiplayerServerEventSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('connected'),
+    reconnectToken: z.string().uuid(),
+    reconnectGraceMs: z.number().int().nonnegative(),
+    user: z.object({
+      id: z.number().int().positive(),
+      username: z.string().min(1)
+    }),
+    reconnected: z.boolean()
+  }),
+  z.object({
+    type: z.literal('room_snapshot'),
+    room: roomSummarySchema
+  }),
+  z.object({
+    type: z.literal('pong')
+  }),
+  z.object({
+    type: z.literal('error'),
+    error: z.string().min(1)
+  })
+]);
+
 export const defaultRoomOptions = roomOptionsSchema.parse({
   bodyBlock: false,
   debuffTier: 2
@@ -60,3 +94,5 @@ export type RoomOptions = z.infer<typeof roomOptionsSchema>;
 export type RoomOptionsPatch = z.infer<typeof roomOptionsPatchSchema>;
 export type LobbyPlayer = z.infer<typeof lobbyPlayerSchema>;
 export type RoomSummary = z.infer<typeof roomSummarySchema>;
+export type MultiplayerClientEvent = z.infer<typeof multiplayerClientEventSchema>;
+export type MultiplayerServerEvent = z.infer<typeof multiplayerServerEventSchema>;

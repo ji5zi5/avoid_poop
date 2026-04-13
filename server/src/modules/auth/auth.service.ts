@@ -66,16 +66,23 @@ export function clearSession(reply: FastifyReply, sessionId?: string) {
   });
 }
 
-export function resolveSessionUser(request: FastifyRequest) {
+type UnsignCookieResult = {
+  valid: boolean;
+  value: string | null;
+};
+
+export function resolveSessionUserFromSignedCookie(
+  rawCookie: string | undefined,
+  unsignCookie: (cookieValue: string) => UnsignCookieResult
+) {
   deleteExpiredSessions();
 
-  const rawCookie = request.cookies[config.sessionCookieName];
   if (!rawCookie) {
     return null;
   }
 
-  const unsigned = request.unsignCookie(rawCookie);
-  if (!unsigned.valid) {
+  const unsigned = unsignCookie(rawCookie);
+  if (!unsigned.valid || !unsigned.value) {
     return null;
   }
 
@@ -90,4 +97,11 @@ export function resolveSessionUser(request: FastifyRequest) {
   }
 
   return findUserById(session.userId);
+}
+
+export function resolveSessionUser(request: FastifyRequest) {
+  return resolveSessionUserFromSignedCookie(
+    request.cookies[config.sessionCookieName],
+    (cookieValue) => request.unsignCookie(cookieValue)
+  );
 }

@@ -97,6 +97,17 @@ export class RoomService {
     return this.toSummary(room);
   }
 
+  getRoom(roomCode: string) {
+    const normalizedRoomCode = normalizeRoomCode(roomCode);
+    const room = this.rooms.get(normalizedRoomCode);
+
+    if (!room) {
+      throw new RoomNotFoundError('Room not found.');
+    }
+
+    return this.toSummary(room);
+  }
+
   getRoomForUser(userId: number, roomCode: string) {
     const normalizedRoomCode = normalizeRoomCode(roomCode);
     const room = this.rooms.get(normalizedRoomCode);

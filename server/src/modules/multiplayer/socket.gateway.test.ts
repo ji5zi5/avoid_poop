@@ -1,0 +1,186 @@
+import assert from 'node:assert/strict';
+import type {IncomingMessage} from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import test from 'node:test';
+
+import WebSocket, {type RawData} from 'ws';
+
+import {config} from '../../config.js';
+import {createApp} from '../../app.js';
+import {resetDbForTests} from '../../db/client.js';
+
+const dbPath = path.join(process.cwd(), 'data', 'avoid-poop-socket-test.sqlite');
+process.env.DB_PATH = dbPath;
+
+test.afterEach(() => {
+  resetDbForTests();
+  if (fs.existsSync(dbPath)) {
+    fs.unlinkSync(dbPath);
+  }
+});
+
+test('websocket connect requires authentication', async () => {
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+
+  await new Promise<void>((resolve) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}${config.multiplayerWebSocketPath}`);
+    ws.once('unexpected-response', (_request: IncomingMessage, response: IncomingMessage) => {
+      assert.equal(response.statusCode, 401);
+      response.resume();
+      resolve();
+    });
+  });
+
+  await app.close();
+});
+
+test('subscribing to a room broadcasts room snapshots to room members', async () => {
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+
+  const hostCookie = await signup(app, 'socket_host');
+  const guestCookie = await signup(app, 'socket_guest');
+
+  const created = await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/rooms',
+    cookies: {avoid_poop_session: hostCookie}
+  });
+  const roomCode = created.json().roomCode as string;
+
+  await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/join',
+    cookies: {avoid_poop_session: guestCookie},
+    payload: {roomCode}
+  });
+
+  const {socket: hostSocket} = await connectSocketAndWaitForConnected(port, hostCookie);
+  const {socket: guestSocket} = await connectSocketAndWaitForConnected(port, guestCookie);
+
+  const hostEvents: Array<any> = [];
+  const guestEvents: Array<any> = [];
+  hostSocket.on('message', (payload: RawData) => hostEvents.push(JSON.parse(payload.toString())));
+  guestSocket.on('message', (payload: RawData) => guestEvents.push(JSON.parse(payload.toString())));
+
+  hostSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+  guestSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+
+  await waitFor(() => hostEvents.some((event) => event.type === 'room_snapshot'));
+  await waitFor(() => guestEvents.some((event) => event.type === 'room_snapshot'));
+
+  const hostSnapshot = hostEvents.find((event) => event.type === 'room_snapshot');
+  const guestSnapshot = guestEvents.find((event) => event.type === 'room_snapshot');
+  assert.equal(hostSnapshot.room.roomCode, roomCode);
+  assert.equal(hostSnapshot.room.playerCount, 2);
+  assert.equal(guestSnapshot.room.playerCount, 2);
+
+  hostSocket.close();
+  guestSocket.close();
+  await app.close();
+});
+
+test('reconnect token can be reused within grace period', async () => {
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+  const cookie = await signup(app, 'socket_reconnect');
+
+  const {socket: firstSocket, connected: firstConnected} = await connectSocketAndWaitForConnected(port, cookie);
+  assert.equal(firstConnected.reconnected, false);
+  const reconnectToken = firstConnected.reconnectToken as string;
+
+  firstSocket.close();
+  await waitFor(() => firstSocket.readyState === WebSocket.CLOSED);
+
+  const {socket: secondSocket, connected: secondConnected} = await connectSocketAndWaitForConnected(port, cookie, reconnectToken);
+  assert.equal(secondConnected.reconnectToken, reconnectToken);
+  assert.equal(secondConnected.reconnected, true);
+
+  secondSocket.close();
+  await app.close();
+});
+
+async function signup(app: Awaited<ReturnType<typeof createApp>>, username: string) {
+  const response = await app.inject({
+    method: 'POST',
+    url: '/api/auth/signup',
+    payload: {
+      username,
+      password: 'secret123'
+    }
+  });
+
+  assert.equal(response.statusCode, 200);
+  return response.cookies[0]!.value;
+}
+
+async function connectSocketAndWaitForConnected(port: number, cookie: string, reconnectToken?: string) {
+  return await new Promise<{socket: WebSocket; connected: any}>((resolve, reject) => {
+    const suffix = reconnectToken ? `?reconnectToken=${reconnectToken}` : '';
+    const ws = new WebSocket(`ws://127.0.0.1:${port}${config.multiplayerWebSocketPath}${suffix}`, {
+      headers: {
+        Cookie: `${config.sessionCookieName}=${cookie}`
+      }
+    });
+
+    let opened = false;
+    let connectedEvent: any = null;
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('Timed out waiting for websocket connection')); 
+    }, 3000);
+
+    const cleanup = () => {
+      clearTimeout(timeout);
+      ws.off('open', handleOpen);
+      ws.off('message', handleMessage);
+      ws.off('error', handleError);
+    };
+
+    const finishIfReady = () => {
+      if (!opened || !connectedEvent) {
+        return;
+      }
+      cleanup();
+      resolve({socket: ws, connected: connectedEvent});
+    };
+
+    const handleOpen = () => {
+      opened = true;
+      finishIfReady();
+    };
+
+    const handleMessage = (payload: RawData) => {
+      const event = JSON.parse(payload.toString());
+      if (event.type !== 'connected') {
+        return;
+      }
+      connectedEvent = event;
+      finishIfReady();
+    };
+
+    const handleError = (error: Error) => {
+      cleanup();
+      reject(error);
+    };
+
+    ws.on('open', handleOpen);
+    ws.on('message', handleMessage);
+    ws.on('error', handleError);
+  });
+}
+
+async function waitFor(predicate: () => boolean) {
+  const startedAt = Date.now();
+  while (!predicate()) {
+    if (Date.now() - startedAt > 3000) {
+      throw new Error('Timed out waiting for condition');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+}

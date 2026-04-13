@@ -6,7 +6,8 @@
     "outDir": "dist",
     "rootDir": "..",
     "types": [
-      "node"
+      "node",
+      "ws"
     ]
   },
   "include": [

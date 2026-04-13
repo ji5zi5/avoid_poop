@@ -11,5 +11,7 @@ export const config = {
     return process.env.DB_PATH ?? path.join(process.cwd(), 'server', 'data', 'avoid-poop.sqlite');
   },
   sessionCookieName: 'avoid_poop_session',
-  sessionTtlMs: 1000 * 60 * 60 * 24 * 7
+  sessionTtlMs: 1000 * 60 * 60 * 24 * 7,
+  multiplayerWebSocketPath: '/api/multiplayer/ws',
+  multiplayerReconnectGraceMs: 10_000
 };
