@@ -1,19 +1,20 @@
 :root {
-  --bg-main: #f9ebe0;
-  --tone-2: #60492c;
-  --tone-3: #463f1a;
-  --tone-4: #2e2513;
-  --tone-2-soft: rgba(96, 73, 44, 0.14);
-  --panel: rgba(249, 235, 224, 0.94);
-  --panel-strong: rgba(255, 248, 240, 0.98);
-  --panel-dark: rgba(96, 73, 44, 0.94);
-  --shadow: rgba(70, 63, 26, 0.24);
-  --error: #a84a3a;
+  --bg-main: #fff8f3;
+  --tone-2: #8a6a49;
+  --tone-3: #2b1e12;
+  --tone-4: #1f140b;
+  --tone-2-soft: rgba(138, 106, 73, 0.12);
+  --panel: rgba(255, 250, 245, 0.94);
+  --panel-strong: rgba(255, 252, 247, 0.98);
+  --panel-dark: rgba(255, 244, 236, 0.96);
+  --shadow: rgba(43, 30, 18, 0.16);
+  --error: #b55a46;
   font-family: "DungGeunMo", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   color: var(--tone-3);
   background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.58), transparent 30%),
-    linear-gradient(180deg, #8c6b45 0%, #60492c 30%, #463f1a 100%);
+    radial-gradient(circle at top left, rgba(208, 122, 99, 0.18), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(213, 167, 91, 0.12), transparent 30%),
+    linear-gradient(180deg, #fffaf6 0%, #f8ebdd 100%);
 }
 
 * {
@@ -39,29 +40,30 @@ input {
 
 button {
   cursor: pointer;
-  border: 3px solid var(--tone-4);
-  color: var(--bg-main);
-  background: linear-gradient(180deg, #6d5434 0%, #463f1a 100%);
+  border: 1px solid rgba(85, 42, 28, 0.32);
+  color: #fff8f1;
+  background: linear-gradient(180deg, #d88b73 0%, #c5664f 100%);
   padding: 0.9rem 1rem;
-  box-shadow: 4px 4px 0 rgba(46, 37, 19, 0.8);
+  box-shadow: 0 12px 24px rgba(208, 122, 99, 0.22);
   transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
 }
 
 button:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 6px 6px 0 rgba(46, 37, 19, 0.92);
+  transform: translateY(-1px);
+  box-shadow: 0 16px 28px rgba(208, 122, 99, 0.28);
 }
 
 button:disabled {
   cursor: default;
   opacity: 0.72;
   transform: none;
-  box-shadow: 3px 3px 0 rgba(46, 37, 19, 0.55);
+  box-shadow: 0 10px 20px rgba(208, 122, 99, 0.14);
 }
 
 .ghost-button {
   color: var(--tone-4);
-  background: rgba(249, 235, 224, 0.92);
+  background: rgba(255, 252, 247, 0.92);
+  box-shadow: 0 8px 18px rgba(43, 30, 18, 0.08);
 }
 
 .primary-action {
@@ -87,32 +89,24 @@ button:disabled {
   margin: 0 auto;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 0.28rem;
-  padding: 0.18rem;
+  gap: 0.45rem;
+  padding: 0.35rem;
   border: 0;
-  background:
-    linear-gradient(180deg, rgba(83, 63, 38, 0.92) 0%, rgba(54, 43, 24, 0.96) 100%);
-  box-shadow: 0 14px 28px rgba(24, 18, 8, 0.28);
+  background: transparent;
+  box-shadow: none;
 }
 
 .app-shell--menu .console-shell {
   max-width: 1080px;
-  padding: 0.35rem;
-  background:
-    radial-gradient(circle at 20% 18%, rgba(249, 235, 224, 0.16), transparent 18%),
-    radial-gradient(circle at 82% 22%, rgba(249, 235, 224, 0.12), transparent 16%),
-    radial-gradient(circle at 50% 84%, rgba(249, 235, 224, 0.1), transparent 24%),
-    linear-gradient(180deg, rgba(83, 63, 38, 0.96) 0%, rgba(54, 43, 24, 0.98) 100%);
+  padding: 0.45rem;
+  background: transparent;
 }
 
 .app-shell--results .console-shell,
 .app-shell--records .console-shell {
   max-width: 920px;
-  padding: 0.28rem;
-  background:
-    radial-gradient(circle at 18% 20%, rgba(249, 235, 224, 0.14), transparent 18%),
-    radial-gradient(circle at 82% 18%, rgba(249, 235, 224, 0.1), transparent 16%),
-    linear-gradient(180deg, rgba(83, 63, 38, 0.96) 0%, rgba(54, 43, 24, 0.98) 100%);
+  padding: 0.35rem;
+  background: transparent;
 }
 
 .app-shell--game .console-shell {
@@ -132,19 +126,21 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.24rem 0.4rem;
-  background: rgba(249, 235, 224, 0.12);
-  border: 0;
-  color: var(--bg-main);
+  padding: 0.28rem 0.5rem;
+  background: rgba(255, 252, 247, 0.8);
+  border: 1px solid rgba(74, 52, 31, 0.08);
+  border-radius: 999px;
+  color: var(--tone-4);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.68rem;
 }
 
 .console-pill {
-  padding: 0.14rem 0.3rem;
-  background: var(--bg-main);
-  color: var(--tone-4);
+  padding: 0.16rem 0.42rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #d88b73 0%, #c5664f 100%);
+  color: #fff8f1;
 }
 
 .console-marquee__label {
@@ -153,7 +149,7 @@ button:disabled {
 
 .console-marquee__presence {
   margin-left: auto;
-  color: rgba(249, 235, 224, 0.78);
+  color: rgba(74, 52, 31, 0.62);
 }
 
 .console-header--compact {
@@ -2600,20 +2596,20 @@ input {
 
 .stitch-preview-card {
   position: relative;
-  min-height: 240px;
+  min-height: 220px;
   border-radius: 34px;
-  padding: 1rem;
-  background: linear-gradient(180deg, rgba(44, 32, 22, 0.96) 0%, rgba(90, 72, 53, 0.72) 100%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 24px 40px rgba(43, 30, 18, 0.18);
+  border: 1px solid rgba(74, 52, 31, 0.08);
+  background: linear-gradient(180deg, rgba(255, 252, 247, 0.98) 0%, rgba(244, 232, 220, 0.92) 100%);
+  box-shadow: 0 20px 34px rgba(43, 30, 18, 0.12);
   overflow: hidden;
 }
 
 .stitch-preview-card::after {
   content: "";
   position: absolute;
-  inset: auto -30% -35% 10%;
-  height: 180px;
-  background: radial-gradient(circle, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 70%);
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 40%, rgba(43, 30, 18, 0.08) 100%);
+  pointer-events: none;
 }
 
 .stitch-preview-badge {
@@ -2630,33 +2626,11 @@ input {
   box-shadow: 0 12px 22px rgba(43, 30, 18, 0.16);
 }
 
-.stitch-preview-console {
-  position: absolute;
-  inset: 3rem 2rem 1.6rem;
-  display: grid;
-  align-items: end;
-  justify-items: center;
-}
-
-.stitch-preview-screen {
-  width: min(100%, 250px);
-  height: 112px;
-  border-radius: 22px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%),
-    repeating-linear-gradient(90deg, rgba(208, 122, 99, 0.18) 0 2px, transparent 2px 46px),
-    linear-gradient(180deg, rgba(33, 27, 18, 0.88), rgba(64, 47, 30, 0.82));
-  box-shadow: inset 0 0 0 8px rgba(255,255,255,0.04);
-}
-
-.stitch-preview-base {
-  width: min(100%, 190px);
-  height: 54px;
-  margin-top: 0.9rem;
-  border-radius: 18px 18px 26px 26px;
-  background: linear-gradient(180deg, rgba(235, 226, 216, 0.28) 0%, rgba(185, 169, 149, 0.22) 100%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+.stitch-preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .menu-bottom-links {

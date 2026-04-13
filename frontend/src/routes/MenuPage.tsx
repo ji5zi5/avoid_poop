@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { AuthUser } from "../../../shared/src/contracts/index";
 import type { GameMode } from "../../../shared/src/contracts/index";
 import { copy } from "../content/copy";
+import stitchMenuReference from "../assets/stitch-menu-reference.png";
 
 type Props = {
   user: AuthUser;
@@ -36,13 +37,10 @@ export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, on
           </div>
 
           <div className="stitch-preview-card" aria-hidden="true">
+            <img className="stitch-preview-image" src={stitchMenuReference} alt="" />
             <div className="stitch-preview-badge">
               <span className="info-card__label">최고 기록</span>
               <strong>{selectedMode === "hard" ? "82,400 pts" : "58,200 pts"}</strong>
-            </div>
-            <div className="stitch-preview-console">
-              <div className="stitch-preview-screen" />
-              <div className="stitch-preview-base" />
             </div>
           </div>
 
