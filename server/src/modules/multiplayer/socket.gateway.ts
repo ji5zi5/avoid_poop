@@ -15,7 +15,7 @@ import {
   multiplayerServerEventSchema,
   type MultiplayerClientEvent
 } from './multiplayer.schemas.js';
-import {RoomAccessError, RoomNotFoundError, type RoomService} from './room.service.js';
+import {RoomAccessError, RoomNotFoundError, RoomStartError, type RoomService} from './room.service.js';
 
 type SocketGatewayOptions = {
   roomService: RoomService;
@@ -148,6 +148,23 @@ export class MultiplayerSocketGateway {
     });
   }
 
+  leaveUser(userId: number) {
+    const contexts = [...this.connections.values()].filter((context) => context.user.id === userId && context.roomCode);
+    const roomCode = contexts[0]?.roomCode ?? this.options.roomService.getRoomForUserId(userId)?.roomCode ?? null;
+    const nextRoom = this.options.roomService.leaveCurrentRoom(userId);
+    if (roomCode) {
+      const game = this.activeGames.get(roomCode);
+      if (game) {
+        this.gameService.applyPlayerHit(game, userId, 99);
+      }
+      for (const context of contexts) {
+        context.roomCode = nextRoom?.roomCode ?? null;
+      }
+      this.broadcastRoomSnapshot(roomCode);
+      this.broadcastGameSnapshot(roomCode);
+    }
+  }
+
   broadcastRoomSnapshot(roomCode: string) {
     let room;
     try {
@@ -203,7 +220,7 @@ export class MultiplayerSocketGateway {
         this.broadcastRoomSnapshot(room.roomCode);
         this.broadcastGameSnapshot(room.roomCode);
       } catch (error) {
-        if (error instanceof RoomNotFoundError || error instanceof RoomAccessError) {
+        if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
           this.send(context.socket, {type: 'error', error: error.message});
           return;
         }
@@ -222,7 +239,7 @@ export class MultiplayerSocketGateway {
         this.options.roomService.setReady(context.roomCode, context.user.id, event.ready);
         this.broadcastRoomSnapshot(context.roomCode);
       } catch (error) {
-        if (error instanceof RoomNotFoundError || error instanceof RoomAccessError) {
+        if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
           this.send(context.socket, {type: 'error', error: error.message});
           return;
         }
@@ -233,11 +250,7 @@ export class MultiplayerSocketGateway {
 
     if (event.type === 'start_game') {
       try {
-        const room = this.options.roomService.getRoomForUser(context.user.id, context.roomCode);
-        if (room.hostUserId !== context.user.id) {
-          this.send(context.socket, {type: 'error', error: 'Only the host can start the game.'});
-          return;
-        }
+        this.options.roomService.ensureRoomCanStart(context.roomCode, context.user.id);
         const startedRoom = this.options.roomService.markRoomInProgress(context.roomCode);
         const game = this.gameService.createGame(startedRoom);
         this.activeGames.set(context.roomCode, game);
@@ -245,12 +258,17 @@ export class MultiplayerSocketGateway {
         this.broadcastRoomSnapshot(context.roomCode);
         this.broadcastGameSnapshot(context.roomCode);
       } catch (error) {
-        if (error instanceof RoomNotFoundError || error instanceof RoomAccessError) {
+        if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
           this.send(context.socket, {type: 'error', error: error.message});
           return;
         }
         throw error;
       }
+      return;
+    }
+
+    if (event.type === 'leave_room') {
+      this.leaveUser(context.user.id);
       return;
     }
 

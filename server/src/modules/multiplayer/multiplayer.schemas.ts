@@ -119,6 +119,9 @@ export const multiplayerClientEventSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('player_input'),
     direction: z.union([z.literal(-1), z.literal(0), z.literal(1)])
+  }),
+  z.object({
+    type: z.literal('leave_room')
   })
 ]);
 

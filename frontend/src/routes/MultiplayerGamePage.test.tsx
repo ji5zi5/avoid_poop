@@ -45,3 +45,9 @@ describe('MultiplayerGamePage', () => {
     expect(screen.getByText('재접속 대기').textContent).toBe('재접속 대기');
   });
 });
+
+
+it('shows win banner when the current player wins', () => {
+  render(<MultiplayerGamePage currentUserId={1} game={{...game, phase: 'complete', winnerUserId: 1}} onDirectionChange={vi.fn()} onLeave={vi.fn()} />);
+  expect(screen.getByText('WIN').textContent).toBe('WIN');
+});

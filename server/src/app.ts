@@ -32,7 +32,8 @@ export async function createApp() {
     await authScope.register(multiplayerRoutes, {
       prefix: '/api/multiplayer',
       roomService,
-      matchmakingService
+      matchmakingService,
+      leaveRoom: (userId: number) => multiplayerSocketGateway.leaveUser(userId)
     });
   });
 

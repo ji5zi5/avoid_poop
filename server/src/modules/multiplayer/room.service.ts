@@ -33,6 +33,7 @@ export class RoomNotFoundError extends Error {}
 export class RoomFullError extends Error {}
 export class RoomClosedError extends Error {}
 export class RoomAccessError extends Error {}
+export class RoomStartError extends Error {}
 
 export class RoomService {
   private readonly rooms = new Map<string, RoomRecord>();
@@ -122,6 +123,48 @@ export class RoomService {
     }));
   }
 
+  leaveCurrentRoom(userId: number) {
+    const roomCode = this.userRoomIndex.get(userId);
+    if (!roomCode) {
+      return null;
+    }
+
+    const room = this.rooms.get(roomCode);
+    this.userRoomIndex.delete(userId);
+    if (!room) {
+      return null;
+    }
+
+    room.players = room.players.filter((player) => player.userId !== userId);
+    if (room.players.length === 0) {
+      this.rooms.delete(room.roomCode);
+      return null;
+    }
+
+    if (room.hostUserId === userId) {
+      room.hostUserId = room.players[0]!.userId;
+    }
+
+    return this.toSummary(room);
+  }
+
+  ensureRoomCanStart(roomCode: string, userId: number) {
+    const room = this.getRoomForUser(userId, roomCode);
+    if (room.status !== 'waiting') {
+      throw new RoomStartError('Game has already started.');
+    }
+    if (room.hostUserId !== userId) {
+      throw new RoomStartError('Only the host can start the game.');
+    }
+    if (room.playerCount < 2) {
+      throw new RoomStartError('At least 2 players are required to start.');
+    }
+    if (!room.players.every((player) => player.ready)) {
+      throw new RoomStartError('All players must be ready before starting.');
+    }
+    return room;
+  }
+
   setReady(roomCode: string, userId: number, ready: boolean) {
     const normalizedRoomCode = normalizeRoomCode(roomCode);
     const room = this.rooms.get(normalizedRoomCode);
@@ -198,28 +241,7 @@ export class RoomService {
   }
 
   private removeUserFromCurrentRoom(userId: number) {
-    const roomCode = this.userRoomIndex.get(userId);
-    if (!roomCode) {
-      return;
-    }
-
-    const room = this.rooms.get(roomCode);
-    this.userRoomIndex.delete(userId);
-
-    if (!room) {
-      return;
-    }
-
-    room.players = room.players.filter((player) => player.userId !== userId);
-
-    if (room.players.length === 0) {
-      this.rooms.delete(room.roomCode);
-      return;
-    }
-
-    if (room.hostUserId === userId) {
-      room.hostUserId = room.players[0]!.userId;
-    }
+    this.leaveCurrentRoom(userId);
   }
 
   private toSummary(room: RoomRecord): RoomSummary {

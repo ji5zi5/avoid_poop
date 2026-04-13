@@ -175,6 +175,7 @@ export const copy = {
     debuffTier: '디버프 강도',
     spectator: '관전 중',
     reconnecting: '재접속 대기',
+    finished: '종료',
     remainingPlayers: '남은 인원',
     players: '플레이어',
     waitingRoom: '대기 중',

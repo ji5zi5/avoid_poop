@@ -71,4 +71,5 @@ export const api = {
       body: JSON.stringify(payload ?? {}),
     }),
   getRoom: (roomCode: string) => request<RoomSummary>(`/api/multiplayer/rooms/${encodeURIComponent(roomCode)}`),
+  leaveRoom: () => request<{ ok: true }>("/api/multiplayer/leave", { method: "POST" }),
 };

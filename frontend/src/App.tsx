@@ -103,7 +103,9 @@ export default function App() {
     setScreen("multiplayer-lobby");
   }
 
-  function handleLeaveMultiplayer() {
+  async function handleLeaveMultiplayer() {
+    await api.leaveRoom().catch(() => undefined);
+    multiplayerClient.disconnect();
     setRoom(null);
     setGame(null);
     setSocketConnected(false);

@@ -92,7 +92,8 @@ export type ClientSocketEvent =
   | { type: "ping" }
   | { type: "set_ready"; ready: boolean }
   | { type: "start_game" }
-  | { type: "player_input"; direction: -1 | 0 | 1 };
+  | { type: "player_input"; direction: -1 | 0 | 1 }
+  | { type: "leave_room" };
 
 export type ServerSocketEvent =
   | {

@@ -238,3 +238,22 @@ async function signupAndGetCookie(app: Awaited<ReturnType<typeof createApp>>, us
     }
   };
 }
+
+
+test('leave endpoint removes the user from the room', async () => {
+  const app = await createApp();
+  const host = await signupAndGetCookie(app, 'leave_host');
+  const guest = await signupAndGetCookie(app, 'leave_guest');
+
+  const createRoom = await app.inject({ method: 'POST', url: '/api/multiplayer/rooms', cookies: { avoid_poop_session: host.cookie }, payload: {} });
+  const createdRoom = createRoom.json();
+
+  await app.inject({ method: 'POST', url: '/api/multiplayer/join', cookies: { avoid_poop_session: guest.cookie }, payload: { roomCode: createdRoom.roomCode } });
+
+  const leave = await app.inject({ method: 'POST', url: '/api/multiplayer/leave', cookies: { avoid_poop_session: guest.cookie } });
+  assert.equal(leave.statusCode, 200);
+
+  const hostView = await app.inject({ method: 'GET', url: `/api/multiplayer/rooms/${createdRoom.roomCode}`, cookies: { avoid_poop_session: host.cookie } });
+  assert.equal(hostView.json().playerCount, 1);
+  await app.close();
+});

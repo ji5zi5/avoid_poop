@@ -57,7 +57,7 @@ export function MultiplayerGamePage({currentUserId, game, onDirectionChange, onL
       <div className="console-panel console-panel--game">
         <div className="game-hud-grid multiplayer-game-hud">
           <div className="readout-panel"><span>{copy.game.round}</span><strong>{game.round}</strong></div>
-          <div className={`readout-panel readout-panel--phase ${game.phase === "boss" ? "is-boss" : ""}`}><span>{copy.game.mode}</span><strong>{game.phase === "boss" ? copy.game.boss : copy.game.wave}</strong></div>
+          <div className={`readout-panel readout-panel--phase ${game.phase === "boss" ? "is-boss" : ""}`}><span>{copy.game.mode}</span><strong>{game.phase === "boss" ? copy.game.boss : game.phase === "complete" ? copy.multiplayer.finished : copy.game.wave}</strong></div>
           <div className="readout-panel"><span>{copy.multiplayer.remainingPlayers}</span><strong>{remaining}</strong></div>
         </div>
         <div className="game-frame multiplayer-game-frame">
@@ -66,6 +66,7 @@ export function MultiplayerGamePage({currentUserId, game, onDirectionChange, onL
             {me?.status === "spectator" ? <div className="spectator-banner">{copy.multiplayer.spectator}</div> : null}
             {me?.status === "disconnected" ? <div className="spectator-banner">{copy.multiplayer.reconnecting}</div> : null}
           </div>
+          {game.phase === 'complete' ? <div className="spectator-banner">{game.winnerUserId === currentUserId ? 'WIN' : '게임 종료'}</div> : null}
           <div className="multiplayer-player-strip">
             {game.players.map((player) => (
               <div key={player.userId} className={`effect-pill ${player.userId === currentUserId ? 'is-self' : ''}`}>

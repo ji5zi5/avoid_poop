@@ -14,17 +14,19 @@ import {
   RoomClosedError,
   RoomFullError,
   RoomNotFoundError,
-  RoomService
+  RoomService,
+  RoomStartError
 } from './room.service.js';
 
 type MultiplayerRoutesOptions = {
   roomService: RoomService;
   matchmakingService: MatchmakingService;
+  leaveRoom: (userId: number) => void;
 };
 
 export const multiplayerRoutes: FastifyPluginAsync<MultiplayerRoutesOptions> = async (
   app,
-  {roomService, matchmakingService}
+  {roomService, matchmakingService, leaveRoom}
 ) => {
   app.post('/rooms', {preHandler: requireUser}, async (request, reply) => {
     const parsed = createRoomPayloadSchema.safeParse(request.body ?? {});
@@ -58,6 +60,11 @@ export const multiplayerRoutes: FastifyPluginAsync<MultiplayerRoutesOptions> = a
     return reply.send(matchmakingService.quickJoin(request.user!, parsed.data.options));
   });
 
+  app.post('/leave', {preHandler: requireUser}, async (request, reply) => {
+    leaveRoom(request.user!.id);
+    return reply.send({ok: true});
+  });
+
   app.get('/rooms/:roomCode', {preHandler: requireUser}, async (request, reply) => {
     const parsed = roomCodeParamsSchema.safeParse(request.params);
     if (!parsed.success) {
@@ -83,6 +90,10 @@ function sendRoomError(reply: FastifyReply, error: unknown) {
 
   if (error instanceof RoomAccessError) {
     return reply.status(403).send({error: error.message});
+  }
+
+  if (error instanceof RoomStartError) {
+    return reply.status(400).send({error: error.message});
   }
 
   if (error instanceof RoomClosedError || error instanceof RoomFullError) {

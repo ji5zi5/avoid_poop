@@ -48,6 +48,7 @@ export type MultiplayerGameState = {
   items: MultiplayerItemState[];
   nextHazardId: number;
   nextItemId: number;
+  itemSpawnTimer: number;
   options: RoomOptions;
   phase: MultiplayerPhase;
   players: MultiplayerPlayerState[];
