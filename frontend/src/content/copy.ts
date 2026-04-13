@@ -58,7 +58,7 @@ export const copy = {
       normal: "일반 모드",
       hard: "하드 모드",
     },
-    records: "기록 보기",
+    records: "랭킹 보기",
     logout: "로그아웃",
     normalSummary: "완만한 웨이브와 짧은 보스",
     hardSummary: "더 빠른 낙하와 긴 보스",
