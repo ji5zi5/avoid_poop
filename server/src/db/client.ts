@@ -3,7 +3,7 @@ import path from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
 
 import {config} from '../config.js';
-import {schemaSql} from './schema.js';
+import {postgresSchemaSql, schemaSql} from './schema.js';
 
 let dbInstance: DatabaseSync | null = null;
 
@@ -54,28 +54,54 @@ function migrateRecordsModeSchema(db: DatabaseSync) {
   `);
 }
 
+function createSqliteDb() {
+  const dir = path.dirname(config.dbPath);
+  fs.mkdirSync(dir, {recursive: true});
+
+  const db = new DatabaseSync(config.dbPath);
+  db.exec('PRAGMA foreign_keys = ON;');
+  db.exec(schemaSql);
+  migrateRecordsModeSchema(db);
+
+  return db;
+}
+
+function createPostgresNotReadyError() {
+  if (!config.databaseUrl) {
+    return new Error('DB_PROVIDER=postgres requires DATABASE_URL to be set.');
+  }
+
+  return new Error(
+    'DB_PROVIDER=postgres is scaffolded but no Postgres runtime driver is installed yet. ' +
+      'Use server/src/db/schema.ts::postgresSchemaSql for migrations and keep DB_PROVIDER=sqlite until the driver/query adapter lands.'
+  );
+}
+
 export function getDb() {
   if (dbInstance) {
     return dbInstance;
   }
 
-  const dir = path.dirname(config.dbPath);
-  fs.mkdirSync(dir, {recursive: true});
+  if (config.databaseProvider === 'postgres') {
+    throw createPostgresNotReadyError();
+  }
 
-  dbInstance = new DatabaseSync(config.dbPath);
-  dbInstance.exec('PRAGMA foreign_keys = ON;');
-  dbInstance.exec(schemaSql);
-  migrateRecordsModeSchema(dbInstance);
-
+  dbInstance = createSqliteDb();
   return dbInstance;
 }
 
+export function getPostgresSchemaSql() {
+  return postgresSchemaSql;
+}
+
 export function resetDbForTests() {
+  const runtime = assertSupportedDatabaseRuntime();
+
   if (dbInstance) {
     dbInstance.close();
     dbInstance = null;
   }
-  if (fs.existsSync(config.dbPath)) {
-    fs.unlinkSync(config.dbPath);
+  if (fs.existsSync(runtime.dbPath)) {
+    fs.unlinkSync(runtime.dbPath);
   }
 }
