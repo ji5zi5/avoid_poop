@@ -108,6 +108,32 @@ export class RoomService {
     return this.toSummary(room);
   }
 
+  getRoomUsers(roomCode: string) {
+    const normalizedRoomCode = normalizeRoomCode(roomCode);
+    const room = this.rooms.get(normalizedRoomCode);
+
+    if (!room) {
+      throw new RoomNotFoundError('Room not found.');
+    }
+
+    return room.players.map((player) => ({
+      id: player.userId,
+      username: player.username
+    }));
+  }
+
+  markRoomInProgress(roomCode: string) {
+    const normalizedRoomCode = normalizeRoomCode(roomCode);
+    const room = this.rooms.get(normalizedRoomCode);
+
+    if (!room) {
+      throw new RoomNotFoundError('Room not found.');
+    }
+
+    room.status = 'in_progress';
+    return this.toSummary(room);
+  }
+
   getRoomForUser(userId: number, roomCode: string) {
     const normalizedRoomCode = normalizeRoomCode(roomCode);
     const room = this.rooms.get(normalizedRoomCode);

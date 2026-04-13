@@ -1,0 +1,178 @@
+import {config} from '../../config.js';
+
+import type {RoomOptions, RoomSummary} from './multiplayer.schemas.js';
+import type {MultiplayerGameState, MultiplayerHazardState, MultiplayerPlayerState} from './game.types.js';
+
+const GAME_WIDTH = 360;
+const GAME_HEIGHT = 520;
+const PLAYER_WIDTH = 36;
+const PLAYER_HEIGHT = 24;
+const PLAYER_SPEED = 210;
+const PLAYER_LIVES = 3;
+const ROUND_DURATION = 9;
+const BOSS_DURATION = 12;
+const SPAWN_INTERVAL = 0.85;
+
+export class MultiplayerGameService {
+  createGame(room: RoomSummary, startedAt = Date.now()): MultiplayerGameState {
+    return {
+      roomCode: room.roomCode,
+      options: room.options,
+      startedAt,
+      phase: 'wave',
+      round: 1,
+      elapsedInPhase: 0,
+      spawnTimer: 0,
+      nextHazardId: 1,
+      hazards: [],
+      players: room.players.map((player, index, players) => createPlayerState(player.userId, player.username, index, players.length)),
+      winnerUserId: null
+    };
+  }
+
+  setPlayerDirection(game: MultiplayerGameState, userId: number, direction: -1 | 0 | 1) {
+    const player = game.players.find((entry) => entry.userId === userId);
+    if (!player || player.status !== 'alive') {
+      return;
+    }
+    player.direction = direction;
+  }
+
+  disconnectPlayer(game: MultiplayerGameState, userId: number, now = Date.now()) {
+    const player = game.players.find((entry) => entry.userId === userId);
+    if (!player || player.status === 'spectator') {
+      return false;
+    }
+
+    player.status = 'disconnected';
+    player.direction = 0;
+    player.disconnectDeadlineAt = now + config.multiplayerReconnectGraceMs;
+    return true;
+  }
+
+  reconnectPlayer(game: MultiplayerGameState, userId: number, now = Date.now()) {
+    const player = game.players.find((entry) => entry.userId === userId);
+    if (!player || player.status !== 'disconnected' || !player.disconnectDeadlineAt || player.disconnectDeadlineAt < now) {
+      return false;
+    }
+
+    player.status = 'alive';
+    player.disconnectDeadlineAt = null;
+    return true;
+  }
+
+  applyPlayerHit(game: MultiplayerGameState, userId: number, damage = 1) {
+    const player = game.players.find((entry) => entry.userId === userId);
+    if (!player || player.status !== 'alive') {
+      return false;
+    }
+
+    player.lives = Math.max(0, player.lives - damage);
+    if (player.lives === 0) {
+      player.status = 'spectator';
+      player.direction = 0;
+      player.disconnectDeadlineAt = null;
+      this.resolveWinner(game);
+    }
+    return true;
+  }
+
+  tick(game: MultiplayerGameState, delta: number, now = Date.now()) {
+    if (game.phase === 'complete') {
+      return game;
+    }
+
+    game.elapsedInPhase += delta;
+    game.spawnTimer += delta;
+
+    for (const player of game.players) {
+      if (player.status === 'alive') {
+        player.x = clamp(player.x + player.direction * PLAYER_SPEED * delta, 0, GAME_WIDTH - player.width);
+      }
+      if (player.status === 'disconnected' && player.disconnectDeadlineAt && player.disconnectDeadlineAt <= now) {
+        player.status = 'spectator';
+        player.disconnectDeadlineAt = null;
+      }
+    }
+
+    if (game.phase !== 'boss' && game.spawnTimer >= SPAWN_INTERVAL) {
+      game.spawnTimer = 0;
+      game.hazards.push(createHazard(game.nextHazardId, game.round, game.phase));
+      game.nextHazardId += 1;
+    }
+
+    for (const hazard of game.hazards) {
+      hazard.y += hazard.speed * delta;
+    }
+    game.hazards = game.hazards.filter((hazard) => hazard.y < GAME_HEIGHT + hazard.height);
+
+    this.resolveWinner(game);
+    if (game.winnerUserId !== null) {
+      return game;
+    }
+
+    if (game.phase === 'wave' && game.elapsedInPhase >= ROUND_DURATION) {
+      const nextRound = game.round + 1;
+      game.round = nextRound;
+      game.elapsedInPhase = 0;
+      game.phase = shouldEnterBoss(nextRound) ? 'boss' : 'wave';
+      return game;
+    }
+
+    if (game.phase === 'boss' && game.elapsedInPhase >= BOSS_DURATION) {
+      game.elapsedInPhase = 0;
+      game.phase = 'wave';
+      return game;
+    }
+
+    return game;
+  }
+
+  private resolveWinner(game: MultiplayerGameState) {
+    const alivePlayers = game.players.filter((player) => player.status === 'alive');
+    if (alivePlayers.length > 1) {
+      return;
+    }
+
+    game.phase = 'complete';
+    game.winnerUserId = alivePlayers[0]?.userId ?? null;
+  }
+}
+
+function createPlayerState(userId: number, username: string, index: number, totalPlayers: number): MultiplayerPlayerState {
+  const spacing = totalPlayers <= 1 ? 0 : (GAME_WIDTH - PLAYER_WIDTH) / Math.max(1, totalPlayers - 1);
+  return {
+    userId,
+    username,
+    width: PLAYER_WIDTH,
+    height: PLAYER_HEIGHT,
+    x: Math.round(index * spacing),
+    y: GAME_HEIGHT - 56,
+    direction: 0,
+    lives: PLAYER_LIVES,
+    status: 'alive',
+    disconnectDeadlineAt: null
+  };
+}
+
+function createHazard(id: number, round: number, phase: MultiplayerGameState['phase']): MultiplayerHazardState {
+  const size = phase === 'boss' ? 28 : 20;
+  const lane = id % 6;
+  return {
+    id,
+    owner: phase === 'boss' ? 'boss' : 'wave',
+    width: size,
+    height: size,
+    x: Math.min(GAME_WIDTH - size, lane * 56),
+    y: -size,
+    speed: phase === 'boss' ? 220 + round * 8 : 160 + round * 6
+  };
+}
+
+function shouldEnterBoss(round: number) {
+  return round >= 3 && round % 3 === 0
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}

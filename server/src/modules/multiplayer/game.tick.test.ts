@@ -1,0 +1,77 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {MultiplayerGameService} from './game.service.js';
+
+const service = new MultiplayerGameService();
+
+function createRoomSummary() {
+  return {
+    roomCode: 'ROOM42',
+    hostUserId: 1,
+    status: 'waiting' as const,
+    maxPlayers: 8 as const,
+    playerCount: 2,
+    players: [
+      {userId: 1, username: 'alpha', isHost: true, ready: true},
+      {userId: 2, username: 'beta', isHost: false, ready: true}
+    ],
+    options: {
+      bodyBlock: false,
+      debuffTier: 2 as const
+    }
+  };
+}
+
+test('creates shared map state for multiple players', () => {
+  const game = service.createGame(createRoomSummary());
+
+  assert.equal(game.players.length, 2);
+  assert.equal(game.players[0]?.status, 'alive');
+  assert.equal(game.players[1]?.status, 'alive');
+  assert.notEqual(game.players[0]?.x, game.players[1]?.x);
+  assert.equal(game.players[0]?.y, game.players[1]?.y);
+});
+
+test('last alive player wins', () => {
+  const game = service.createGame(createRoomSummary());
+
+  service.applyPlayerHit(game, 2, 3);
+
+  assert.equal(game.phase, 'complete');
+  assert.equal(game.winnerUserId, 1);
+});
+
+test('dead players become spectators', () => {
+  const game = service.createGame(createRoomSummary());
+
+  service.applyPlayerHit(game, 2, 3);
+
+  const player = game.players.find((entry) => entry.userId === 2);
+  assert.equal(player?.status, 'spectator');
+  assert.equal(player?.lives, 0);
+});
+
+test('reconnect within grace period preserves the player slot', () => {
+  const game = service.createGame(createRoomSummary(), 1_000);
+  const before = game.players.find((entry) => entry.userId === 2);
+  const originalX = before?.x;
+
+  assert.equal(service.disconnectPlayer(game, 2, 5_000), true);
+  assert.equal(service.reconnectPlayer(game, 2, 10_000), true);
+
+  const after = game.players.find((entry) => entry.userId === 2);
+  assert.equal(after?.status, 'alive');
+  assert.equal(after?.x, originalX);
+});
+
+test('wave phase transitions into boss phase on boss rounds', () => {
+  const game = service.createGame(createRoomSummary());
+  game.round = 2;
+  game.elapsedInPhase = 8.9;
+
+  service.tick(game, 0.2, 2_000);
+
+  assert.equal(game.round, 3);
+  assert.equal(game.phase, 'boss');
+});
