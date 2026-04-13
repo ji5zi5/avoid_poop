@@ -31,6 +31,7 @@ export function renderMultiplayerGame(
 
   for (const player of snapshot.players) {
     const isSelf = player.userId === currentUserId;
+    const drawY = player.airborneUntil ? player.y - 18 : player.y;
     if (player.status === 'spectator') {
       ctx.globalAlpha = 0.45;
     } else if (player.status === 'disconnected') {
@@ -39,10 +40,15 @@ export function renderMultiplayerGame(
       ctx.globalAlpha = 1;
     }
 
+    if (player.airborneUntil) {
+      ctx.fillStyle = 'rgba(70, 63, 26, 0.16)';
+      ctx.fillRect(player.x + 4, player.y + player.height, player.width - 8, 4);
+    }
+
     ctx.fillStyle = isSelf ? '#ce7a63' : '#60492c';
-    ctx.fillRect(player.x, player.y, player.width, player.height);
+    ctx.fillRect(player.x, drawY, player.width, player.height);
     ctx.fillStyle = '#463f1a';
-    ctx.fillText(player.username, player.x + player.width / 2, player.y - 8);
+    ctx.fillText(player.username, player.x + player.width / 2, drawY - 8);
   }
 
   ctx.globalAlpha = 1;

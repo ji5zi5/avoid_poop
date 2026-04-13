@@ -1,17 +1,18 @@
-import {useEffect, useRef} from "react";
+import { useEffect, useRef } from "react";
 
-import {copy} from "../content/copy";
-import type {MultiplayerGameSnapshot} from "../lib/multiplayerClient";
-import {renderMultiplayerGame} from "../game/multiplayer/renderMultiplayerGame";
+import { copy } from "../content/copy";
+import type { MultiplayerGameSnapshot } from "../lib/multiplayerClient";
+import { renderMultiplayerGame } from "../game/multiplayer/renderMultiplayerGame";
 
 type Props = {
   currentUserId: number;
   game: MultiplayerGameSnapshot;
   onDirectionChange: (direction: -1 | 0 | 1) => void;
+  onJump: () => void;
   onLeave: () => void;
 };
 
-export function MultiplayerGamePage({currentUserId, game, onDirectionChange, onLeave}: Props) {
+export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, onJump, onLeave }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const me = game.players.find((player) => player.userId === currentUserId) ?? null;
   const remaining = game.players.filter((player) => player.status === "alive").length;
@@ -36,6 +37,10 @@ export function MultiplayerGamePage({currentUserId, game, onDirectionChange, onL
       if (event.key === "ArrowRight") {
         onDirectionChange(1);
       }
+      if (event.key === " " || event.key === "ArrowUp") {
+        event.preventDefault();
+        onJump();
+      }
     }
 
     function onKeyUp(event: KeyboardEvent) {
@@ -50,7 +55,7 @@ export function MultiplayerGamePage({currentUserId, game, onDirectionChange, onL
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
-  }, [onDirectionChange]);
+  }, [onDirectionChange, onJump]);
 
   return (
     <section className="game-screen multiplayer-game-screen">
@@ -66,10 +71,10 @@ export function MultiplayerGamePage({currentUserId, game, onDirectionChange, onL
             {me?.status === "spectator" ? <div className="spectator-banner">{copy.multiplayer.spectator}</div> : null}
             {me?.status === "disconnected" ? <div className="spectator-banner">{copy.multiplayer.reconnecting}</div> : null}
           </div>
-          {game.phase === 'complete' ? <div className="spectator-banner">{game.winnerUserId === currentUserId ? 'WIN' : '게임 종료'}</div> : null}
+          {game.phase === "complete" ? <div className="spectator-banner">{game.winnerUserId === currentUserId ? "WIN" : "게임 종료"}</div> : null}
           <div className="multiplayer-player-strip">
             {game.players.map((player) => (
-              <div key={player.userId} className={`effect-pill ${player.userId === currentUserId ? 'is-self' : ''}`}>
+              <div key={player.userId} className={`effect-pill ${player.userId === currentUserId ? "is-self" : ""}`}>
                 <span>{player.username}</span>
                 <strong>{player.status}</strong>
               </div>
@@ -77,8 +82,10 @@ export function MultiplayerGamePage({currentUserId, game, onDirectionChange, onL
           </div>
           <div className="mobile-controls">
             <button className="control-button" onPointerDown={() => onDirectionChange(-1)} onPointerUp={() => onDirectionChange(0)} onPointerLeave={() => onDirectionChange(0)} onPointerCancel={() => onDirectionChange(0)}>◀</button>
+            {game.options.bodyBlock ? <button className="control-button" onPointerDown={onJump}>▲</button> : <span className="control-button control-button--ghost">·</span>}
             <button className="control-button" onPointerDown={() => onDirectionChange(1)} onPointerUp={() => onDirectionChange(0)} onPointerLeave={() => onDirectionChange(0)} onPointerCancel={() => onDirectionChange(0)}>▶</button>
           </div>
+          {game.options.bodyBlock ? <p className="home-card__meta">{copy.multiplayer.jumpHint}</p> : null}
           <button className="ghost-button subtle-button" onClick={onLeave}>{copy.multiplayer.leave}</button>
         </div>
       </div>

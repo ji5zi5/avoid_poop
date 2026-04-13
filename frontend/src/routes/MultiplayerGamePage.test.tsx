@@ -9,10 +9,10 @@ const game = {
   phase: 'wave' as const,
   round: 2,
   elapsedInPhase: 1,
-  options: {bodyBlock: false, debuffTier: 2 as const},
+  options: {difficulty: 'normal' as const, bodyBlock: false, debuffTier: 2 as const},
   players: [
-    {userId: 1, username: 'alpha', x: 0, y: 0, width: 36, height: 24, direction: 0 as const, lives: 3, status: 'alive' as const, disconnectDeadlineAt: null, activeDebuffs: []},
-    {userId: 2, username: 'beta', x: 20, y: 0, width: 36, height: 24, direction: 0 as const, lives: 0, status: 'spectator' as const, disconnectDeadlineAt: null, activeDebuffs: []},
+    {userId: 1, username: 'alpha', x: 0, y: 0, width: 36, height: 24, direction: 0 as const, lives: 3, status: 'alive' as const, disconnectDeadlineAt: null, airborneUntil: null, activeDebuffs: []},
+    {userId: 2, username: 'beta', x: 20, y: 0, width: 36, height: 24, direction: 0 as const, lives: 0, status: 'spectator' as const, disconnectDeadlineAt: null, airborneUntil: null, activeDebuffs: []},
   ],
   hazards: [],
   items: [],
@@ -21,33 +21,19 @@ const game = {
 
 describe('MultiplayerGamePage', () => {
   window.HTMLCanvasElement.prototype.getContext = vi.fn(() => ({ clearRect: vi.fn(), fillRect: vi.fn(), beginPath: vi.fn(), ellipse: vi.fn(), fill: vi.fn(), arc: vi.fn(), stroke: vi.fn(), save: vi.fn(), restore: vi.fn(), translate: vi.fn(), fillText: vi.fn() })) as any;
+
   it('shows spectator banner for spectator player', () => {
-    render(<MultiplayerGamePage currentUserId={2} game={game} onDirectionChange={vi.fn()} onLeave={vi.fn()} />);
+    render(<MultiplayerGamePage currentUserId={2} game={game} onDirectionChange={vi.fn()} onJump={vi.fn()} onLeave={vi.fn()} />);
     expect(screen.getByText('관전 중').textContent).toBe('관전 중');
   });
 
-  it('shows reconnecting banner for disconnected player', () => {
-    render(
-      <MultiplayerGamePage
-        currentUserId={1}
-        game={{
-          ...game,
-          players: [
-            {...game.players[0]!, status: 'disconnected', disconnectDeadlineAt: 12_000},
-            game.players[1]!
-          ]
-        }}
-        onDirectionChange={vi.fn()}
-        onLeave={vi.fn()}
-      />
-    );
+  it('shows win banner when the current player wins', () => {
+    render(<MultiplayerGamePage currentUserId={1} game={{...game, phase: 'complete', winnerUserId: 1}} onDirectionChange={vi.fn()} onJump={vi.fn()} onLeave={vi.fn()} />);
+    expect(screen.getByText('WIN').textContent).toBe('WIN');
+  });
 
+  it('shows reconnect banner for disconnected player', () => {
+    render(<MultiplayerGamePage currentUserId={1} game={{...game, players: [{...game.players[0], status: 'disconnected', disconnectDeadlineAt: Date.now() + 1000}, game.players[1]]}} onDirectionChange={vi.fn()} onJump={vi.fn()} onLeave={vi.fn()} />);
     expect(screen.getByText('재접속 대기').textContent).toBe('재접속 대기');
   });
-});
-
-
-it('shows win banner when the current player wins', () => {
-  render(<MultiplayerGamePage currentUserId={1} game={{...game, phase: 'complete', winnerUserId: 1}} onDirectionChange={vi.fn()} onLeave={vi.fn()} />);
-  expect(screen.getByText('WIN').textContent).toBe('WIN');
 });

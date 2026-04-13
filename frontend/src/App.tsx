@@ -43,6 +43,19 @@ export default function App() {
             }
             return;
           }
+          if (event.type === "chat_message") {
+            setRoom((current) => {
+              if (!current || current.roomCode !== event.roomCode) {
+                return current;
+              }
+              const nextMessages = [...current.chatMessages.filter((entry) => entry.id !== event.chatMessage.id), event.chatMessage].slice(-80);
+              return {
+                ...current,
+                chatMessages: nextMessages,
+              };
+            });
+            return;
+          }
           if (event.type === "game_snapshot") {
             setGame(event.game);
             setScreen("multiplayer-game");
@@ -154,8 +167,8 @@ export default function App() {
           {screen === "multiplayer-home" ? (
             <MultiplayerHomePage
               onBack={() => setScreen("menu")}
-              onCreateRoom={() => enterRoom(api.createRoom())}
-              onQuickJoin={() => enterRoom(api.quickJoin())}
+              onCreateRoom={(payload) => enterRoom(api.createRoom(payload))}
+              onQuickJoin={(payload) => enterRoom(api.quickJoin(payload))}
               onJoinByCode={(roomCode) => enterRoom(api.joinRoom({ roomCode }))}
             />
           ) : null}
@@ -166,6 +179,7 @@ export default function App() {
               room={room}
               userId={user.id}
               onLeave={handleLeaveMultiplayer}
+              onSendChat={(message) => multiplayerClient.send({ type: "send_chat", message })}
               onSetReady={(ready) => multiplayerClient.send({ type: "set_ready", ready })}
               onStart={() => multiplayerClient.send({ type: "start_game" })}
             />
@@ -175,6 +189,7 @@ export default function App() {
               currentUserId={user.id}
               game={game}
               onDirectionChange={(direction) => multiplayerClient.send({ type: "player_input", direction })}
+              onJump={() => multiplayerClient.send({ type: "jump" })}
               onLeave={handleLeaveMultiplayer}
             />
           ) : null}

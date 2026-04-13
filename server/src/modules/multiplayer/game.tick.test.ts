@@ -5,7 +5,7 @@ import {MultiplayerGameService} from './game.service.js';
 
 const service = new MultiplayerGameService();
 
-function createRoomSummary(bodyBlock = false, debuffTier: 2 | 3 = 2) {
+function createRoomSummary(difficulty: 'normal' | 'hard' = 'normal', bodyBlock = false, debuffTier: 2 | 3 = 2) {
   return {
     roomCode: 'ROOM42',
     hostUserId: 1,
@@ -18,9 +18,11 @@ function createRoomSummary(bodyBlock = false, debuffTier: 2 | 3 = 2) {
       {userId: 3, username: 'gamma', isHost: false, ready: true}
     ],
     options: {
+      difficulty,
       bodyBlock,
       debuffTier
-    }
+    },
+    chatMessages: []
   };
 }
 
@@ -92,7 +94,7 @@ test('wave phase transitions into boss phase on boss rounds', () => {
 });
 
 test('body block option separates overlapping alive players', () => {
-  const game = service.createGame(createRoomSummary(true));
+  const game = service.createGame(createRoomSummary('normal', true));
   game.players[0]!.x = 120;
   game.players[1]!.x = 130;
 
@@ -103,8 +105,33 @@ test('body block option separates overlapping alive players', () => {
   assert.ok(first.x + first.width <= second.x || second.x + second.width <= first.x);
 });
 
+test('jump skips body-block separation while airborne', () => {
+  const game = service.createGame(createRoomSummary('normal', true));
+  game.players[0]!.x = 120;
+  game.players[1]!.x = 130;
+
+  assert.equal(service.jumpPlayer(game, 1, 1_000), true);
+  service.tick(game, 0, 1_100);
+
+  const first = game.players[0]!;
+  const second = game.players[1]!;
+  assert.ok(first.x + first.width > second.x);
+  assert.ok(first.airborneUntil && first.airborneUntil > 1_100);
+});
+
+test('hard rooms spawn hazards sooner than normal rooms', () => {
+  const normalGame = service.createGame(createRoomSummary('normal'));
+  const hardGame = service.createGame(createRoomSummary('hard'));
+
+  service.tick(normalGame, 0.75, 1_000);
+  service.tick(hardGame, 0.75, 1_000);
+
+  assert.equal(normalGame.hazards.length, 0);
+  assert.equal(hardGame.hazards.length, 1);
+});
+
 test('debuff item spawn and collect targets a random alive opponent', () => {
-  const game = service.createGame(createRoomSummary(false, 2));
+  const game = service.createGame(createRoomSummary('normal', false, 2));
   service.applyPlayerHit(game, 3, 3);
   const item = service.spawnDebuffItem(game, 160, 200);
 

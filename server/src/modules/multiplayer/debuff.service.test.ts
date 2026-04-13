@@ -18,6 +18,7 @@ function createPlayer(userId: number, status: MultiplayerPlayerState['status'] =
     lives: 3,
     status,
     disconnectDeadlineAt: null,
+    airborneUntil: null,
     activeDebuffs: []
   };
 }

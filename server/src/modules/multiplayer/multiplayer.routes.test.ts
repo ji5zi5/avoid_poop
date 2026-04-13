@@ -46,6 +46,7 @@ test('creating a room returns the room code and host assignment', async () => {
     },
     payload: {
       options: {
+        difficulty: 'hard',
         bodyBlock: true,
         debuffTier: 3
       }
@@ -58,7 +59,7 @@ test('creating a room returns the room code and host assignment', async () => {
   assert.equal(room.hostUserId, host.user.id);
   assert.equal(room.status, 'waiting');
   assert.equal(room.playerCount, 1);
-  assert.deepEqual(room.options, {bodyBlock: true, debuffTier: 3});
+  assert.deepEqual(room.options, {difficulty: 'hard', bodyBlock: true, debuffTier: 3});
   assert.deepEqual(room.players, [
     {
       userId: host.user.id,
@@ -67,6 +68,7 @@ test('creating a room returns the room code and host assignment', async () => {
       ready: false
     }
   ]);
+  assert.deepEqual(room.chatMessages, []);
 
   const getRoom = await app.inject({
     method: 'GET',
@@ -200,6 +202,7 @@ test('quick join reuses a waiting room and creates one when none exist', async (
   const matchedRoom = secondJoin.json();
   assert.equal(matchedRoom.roomCode, createdRoom.roomCode);
   assert.equal(matchedRoom.playerCount, 2);
+  assert.deepEqual(matchedRoom.options, {difficulty: 'normal', bodyBlock: false, debuffTier: 2});
   assert.deepEqual(matchedRoom.players, [
     {
       userId: firstPlayer.user.id,

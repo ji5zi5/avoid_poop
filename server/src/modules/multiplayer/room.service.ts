@@ -1,7 +1,10 @@
+import {randomUUID} from 'node:crypto';
+
 import {
   ROOM_MAX_PLAYERS,
   defaultRoomOptions,
   type LobbyPlayer,
+  type RoomChatMessage,
   type RoomOptions,
   type RoomOptionsPatch,
   type RoomSummary,
@@ -9,6 +12,7 @@ import {
 } from './multiplayer.schemas.js';
 
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const MAX_CHAT_MESSAGES = 80;
 
 export type RoomUser = {
   id: number;
@@ -27,6 +31,7 @@ type RoomRecord = {
     ready: boolean;
   }>;
   options: RoomOptions;
+  chatMessages: RoomChatMessage[];
 };
 
 export class RoomNotFoundError extends Error {}
@@ -56,7 +61,8 @@ export class RoomService {
       options: {
         ...defaultRoomOptions,
         ...options
-      }
+      },
+      chatMessages: []
     };
 
     this.rooms.set(room.roomCode, room);
@@ -121,6 +127,34 @@ export class RoomService {
       id: player.userId,
       username: player.username
     }));
+  }
+
+  appendChatMessage(roomCode: string, user: RoomUser, message: string) {
+    const normalizedRoomCode = normalizeRoomCode(roomCode);
+    const room = this.rooms.get(normalizedRoomCode);
+
+    if (!room) {
+      throw new RoomNotFoundError('Room not found.');
+    }
+
+    if (!room.players.some((player) => player.userId === user.id)) {
+      throw new RoomAccessError('You are not a member of this room.');
+    }
+
+    const chatMessage: RoomChatMessage = {
+      id: randomUUID(),
+      userId: user.id,
+      username: user.username,
+      message: message.trim(),
+      createdAt: new Date().toISOString()
+    };
+
+    room.chatMessages.push(chatMessage);
+    if (room.chatMessages.length > MAX_CHAT_MESSAGES) {
+      room.chatMessages = room.chatMessages.slice(-MAX_CHAT_MESSAGES);
+    }
+
+    return chatMessage;
   }
 
   leaveCurrentRoom(userId: number) {
@@ -259,7 +293,8 @@ export class RoomService {
       maxPlayers: ROOM_MAX_PLAYERS,
       playerCount: players.length,
       players,
-      options: room.options
+      options: room.options,
+      chatMessages: room.chatMessages
     });
   }
 

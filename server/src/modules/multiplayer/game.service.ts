@@ -16,11 +16,9 @@ const PLAYER_WIDTH = 36;
 const PLAYER_HEIGHT = 24;
 const PLAYER_SPEED = 210;
 const PLAYER_LIVES = 3;
-const ROUND_DURATION = 9;
-const BOSS_DURATION = 12;
-const SPAWN_INTERVAL = 0.85;
 const DEBUFF_ITEM_SIZE = 18;
 const DEBUFF_DURATION_MS = 4000;
+const JUMP_DURATION_MS = 650;
 
 export class MultiplayerGameService {
   constructor(private readonly debuffService = new MultiplayerDebuffService()) {}
@@ -53,6 +51,24 @@ export class MultiplayerGameService {
     player.direction = direction;
   }
 
+  jumpPlayer(game: MultiplayerGameState, userId: number, now = Date.now()) {
+    if (!game.options.bodyBlock) {
+      return false;
+    }
+
+    const player = game.players.find((entry) => entry.userId === userId);
+    if (!player || player.status !== 'alive') {
+      return false;
+    }
+
+    if (player.airborneUntil && player.airborneUntil > now) {
+      return false;
+    }
+
+    player.airborneUntil = now + JUMP_DURATION_MS;
+    return true;
+  }
+
   disconnectPlayer(game: MultiplayerGameState, userId: number, now = Date.now()) {
     const player = game.players.find((entry) => entry.userId === userId);
     if (!player || player.status === 'spectator') {
@@ -62,6 +78,7 @@ export class MultiplayerGameService {
     player.status = 'disconnected';
     player.direction = 0;
     player.disconnectDeadlineAt = now + config.multiplayerReconnectGraceMs;
+    player.airborneUntil = null;
     return true;
   }
 
@@ -87,6 +104,7 @@ export class MultiplayerGameService {
       player.status = 'spectator';
       player.direction = 0;
       player.disconnectDeadlineAt = null;
+      player.airborneUntil = null;
       recordPlacement(game, player.userId);
       this.resolveWinner(game);
     }
@@ -143,6 +161,9 @@ export class MultiplayerGameService {
 
     for (const player of game.players) {
       player.activeDebuffs = player.activeDebuffs.filter((debuff) => debuff.expiresAt > now);
+      if (player.airborneUntil && player.airborneUntil <= now) {
+        player.airborneUntil = null;
+      }
       if (player.status === 'alive') {
         const direction = getEffectiveDirection(player);
         const speed = getEffectiveSpeed(player);
@@ -156,18 +177,18 @@ export class MultiplayerGameService {
     }
 
     if (game.options.bodyBlock) {
-      resolveBodyBlock(game.players);
+      resolveBodyBlock(game.players, now);
     }
 
-    if (game.phase !== 'boss' && game.spawnTimer >= SPAWN_INTERVAL) {
+    if (game.phase !== 'boss' && game.spawnTimer >= getSpawnInterval(game)) {
       game.spawnTimer = 0;
-      game.hazards.push(createHazard(game.nextHazardId, game.round, game.phase));
+      game.hazards.push(createHazard(game.nextHazardId, game.round, game.phase, game.options.difficulty));
       game.nextHazardId += 1;
     }
 
     if (game.winnerUserId === null && game.itemSpawnTimer >= 4) {
       game.itemSpawnTimer = 0;
-      this.spawnDebuffItem(game);
+      this.spawnDebuffItem(game, getItemSpawnX(game.nextItemId), GAME_HEIGHT / 2 - 24);
     }
 
     for (const hazard of game.hazards) {
@@ -183,7 +204,7 @@ export class MultiplayerGameService {
       return game;
     }
 
-    if (game.phase === 'wave' && game.elapsedInPhase >= ROUND_DURATION) {
+    if (game.phase === 'wave' && game.elapsedInPhase >= getRoundDuration(game)) {
       const nextRound = game.round + 1;
       game.round = nextRound;
       game.elapsedInPhase = 0;
@@ -191,7 +212,7 @@ export class MultiplayerGameService {
       return game;
     }
 
-    if (game.phase === 'boss' && game.elapsedInPhase >= BOSS_DURATION) {
+    if (game.phase === 'boss' && game.elapsedInPhase >= getBossDuration(game)) {
       game.elapsedInPhase = 0;
       game.phase = 'wave';
       return game;
@@ -230,7 +251,7 @@ export class MultiplayerGameService {
           continue;
         }
         if (overlaps(item.x, item.y, item.width, item.height, player.x, player.y, player.width, player.height)) {
-          this.collectItem(game, player.userId, item.id, now, 0);
+          this.collectItem(game, player.userId, item.id, now);
           consumed = true;
           break;
         }
@@ -294,21 +315,24 @@ function createPlayerState(userId: number, username: string, index: number, tota
     lives: PLAYER_LIVES,
     status: 'alive',
     disconnectDeadlineAt: null,
+    airborneUntil: null,
     activeDebuffs: []
   };
 }
 
-function createHazard(id: number, round: number, phase: MultiplayerGameState['phase']): MultiplayerHazardState {
-  const size = phase === 'boss' ? 28 : 20;
-  const lane = id % 6;
+function createHazard(id: number, round: number, phase: MultiplayerGameState['phase'], difficulty: 'normal' | 'hard'): MultiplayerHazardState {
+  const size = phase === 'boss' ? 28 : difficulty === 'hard' ? 22 : 20;
+  const laneCount = difficulty === 'hard' ? 7 : 6;
+  const laneWidth = Math.max(1, Math.floor((GAME_WIDTH - size) / Math.max(1, laneCount - 1)));
+  const lane = id % laneCount;
   return {
     id,
     owner: phase === 'boss' ? 'boss' : 'wave',
     width: size,
     height: size,
-    x: Math.min(GAME_WIDTH - size, lane * 56),
+    x: Math.min(GAME_WIDTH - size, lane * laneWidth),
     y: -size,
-    speed: phase === 'boss' ? 220 + round * 8 : 160 + round * 6
+    speed: phase === 'boss' ? 220 + round * 8 + (difficulty === 'hard' ? 22 : 0) : 160 + round * 6 + (difficulty === 'hard' ? 16 : 0)
   };
 }
 
@@ -330,12 +354,32 @@ function getEffectiveSpeed(player: MultiplayerPlayerState) {
   return hasDebuff(player, 'slow') ? PLAYER_SPEED * 0.6 : PLAYER_SPEED;
 }
 
+function getRoundDuration(game: MultiplayerGameState) {
+  return game.options.difficulty === 'hard' ? 8 : 9;
+}
+
+function getBossDuration(game: MultiplayerGameState) {
+  return game.options.difficulty === 'hard' ? 13 : 11;
+}
+
+function getSpawnInterval(game: MultiplayerGameState) {
+  const base = game.options.difficulty === 'hard' ? 0.72 : 0.85;
+  return Math.max(0.38, base - (game.round - 1) * 0.025);
+}
+
+function getItemSpawnX(itemId: number) {
+  const safePadding = 40;
+  const lanes = 5;
+  const laneWidth = (GAME_WIDTH - safePadding * 2) / (lanes - 1);
+  return safePadding + (itemId % lanes) * laneWidth - DEBUFF_ITEM_SIZE / 2;
+}
+
 function hasDebuff(player: MultiplayerPlayerState, debuffType: MultiplayerDebuffType) {
   return player.activeDebuffs.some((debuff) => debuff.type === debuffType);
 }
 
-function resolveBodyBlock(players: MultiplayerPlayerState[]) {
-  const alivePlayers = players.filter((player) => player.status === 'alive');
+function resolveBodyBlock(players: MultiplayerPlayerState[], now: number) {
+  const alivePlayers = players.filter((player) => player.status === 'alive' && (!player.airborneUntil || player.airborneUntil <= now));
   for (let index = 0; index < alivePlayers.length; index += 1) {
     for (let otherIndex = index + 1; otherIndex < alivePlayers.length; otherIndex += 1) {
       const left = alivePlayers[index]!;

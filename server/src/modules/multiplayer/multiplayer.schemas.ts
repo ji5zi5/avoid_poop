@@ -10,8 +10,10 @@ export const roomCodeValueSchema = z
   .regex(/^[a-zA-Z0-9]+$/, 'Room code must contain only letters and numbers.');
 
 export const roomStatusSchema = z.enum(['waiting', 'in_progress']);
+export const roomDifficultySchema = z.enum(['normal', 'hard']);
 
 export const roomOptionsSchema = z.object({
+  difficulty: roomDifficultySchema,
   bodyBlock: z.boolean(),
   debuffTier: z.union([z.literal(2), z.literal(3)])
 });
@@ -41,6 +43,14 @@ export const lobbyPlayerSchema = z.object({
   ready: z.boolean()
 });
 
+export const roomChatMessageSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.number().int().positive(),
+  username: z.string().min(1),
+  message: z.string().trim().min(1).max(240),
+  createdAt: z.string().datetime()
+});
+
 export const roomSummarySchema = z.object({
   roomCode: z.string().length(ROOM_CODE_LENGTH).regex(/^[A-Z0-9]+$/),
   hostUserId: z.number().int().positive(),
@@ -48,7 +58,8 @@ export const roomSummarySchema = z.object({
   maxPlayers: z.literal(ROOM_MAX_PLAYERS),
   playerCount: z.number().int().min(0).max(ROOM_MAX_PLAYERS),
   players: z.array(lobbyPlayerSchema).max(ROOM_MAX_PLAYERS),
-  options: roomOptionsSchema
+  options: roomOptionsSchema,
+  chatMessages: z.array(roomChatMessageSchema).max(80)
 });
 
 export const multiplayerActiveDebuffSchema = z.object({
@@ -67,6 +78,7 @@ export const multiplayerPlayerSnapshotSchema = z.object({
   lives: z.number().int().nonnegative(),
   status: z.enum(['alive', 'spectator', 'disconnected']),
   disconnectDeadlineAt: z.number().int().nonnegative().nullable(),
+  airborneUntil: z.number().int().nonnegative().nullable(),
   activeDebuffs: z.array(multiplayerActiveDebuffSchema)
 });
 
@@ -121,7 +133,14 @@ export const multiplayerClientEventSchema = z.discriminatedUnion('type', [
     direction: z.union([z.literal(-1), z.literal(0), z.literal(1)])
   }),
   z.object({
+    type: z.literal('jump')
+  }),
+  z.object({
     type: z.literal('leave_room')
+  }),
+  z.object({
+    type: z.literal('send_chat'),
+    message: z.string().trim().min(1).max(240)
   })
 ]);
 
@@ -145,6 +164,11 @@ export const multiplayerServerEventSchema = z.discriminatedUnion('type', [
     game: multiplayerGameSnapshotSchema
   }),
   z.object({
+    type: z.literal('chat_message'),
+    roomCode: z.string().length(ROOM_CODE_LENGTH).regex(/^[A-Z0-9]+$/),
+    chatMessage: roomChatMessageSchema
+  }),
+  z.object({
     type: z.literal('pong')
   }),
   z.object({
@@ -154,6 +178,7 @@ export const multiplayerServerEventSchema = z.discriminatedUnion('type', [
 ]);
 
 export const defaultRoomOptions = roomOptionsSchema.parse({
+  difficulty: 'normal',
   bodyBlock: false,
   debuffTier: 2
 });
@@ -161,6 +186,7 @@ export const defaultRoomOptions = roomOptionsSchema.parse({
 export type RoomOptions = z.infer<typeof roomOptionsSchema>;
 export type RoomOptionsPatch = z.infer<typeof roomOptionsPatchSchema>;
 export type LobbyPlayer = z.infer<typeof lobbyPlayerSchema>;
+export type RoomChatMessage = z.infer<typeof roomChatMessageSchema>;
 export type RoomSummary = z.infer<typeof roomSummarySchema>;
 export type MultiplayerClientEvent = z.infer<typeof multiplayerClientEventSchema>;
 export type MultiplayerServerEvent = z.infer<typeof multiplayerServerEventSchema>;

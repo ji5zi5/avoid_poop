@@ -1,9 +1,11 @@
 export type RoomStatus = "waiting" | "in_progress";
+export type RoomDifficulty = "normal" | "hard";
 export type MultiplayerPhase = "wave" | "boss" | "complete";
 export type MultiplayerPlayerStatus = "alive" | "spectator" | "disconnected";
 export type MultiplayerDebuffType = "slow" | "reverse" | "input_delay" | "vision_jam" | "item_lock";
 
 export type RoomOptions = {
+  difficulty: RoomDifficulty;
   bodyBlock: boolean;
   debuffTier: 2 | 3;
 };
@@ -15,6 +17,14 @@ export type LobbyPlayer = {
   ready: boolean;
 };
 
+export type RoomChatMessage = {
+  id: string;
+  userId: number;
+  username: string;
+  message: string;
+  createdAt: string;
+};
+
 export type RoomSummary = {
   roomCode: string;
   hostUserId: number;
@@ -23,6 +33,7 @@ export type RoomSummary = {
   playerCount: number;
   players: LobbyPlayer[];
   options: RoomOptions;
+  chatMessages: RoomChatMessage[];
 };
 
 export type CreateRoomPayload = {
@@ -53,6 +64,7 @@ export type MultiplayerPlayerSnapshot = {
   lives: number;
   status: MultiplayerPlayerStatus;
   disconnectDeadlineAt: number | null;
+  airborneUntil: number | null;
   activeDebuffs: MultiplayerActiveDebuff[];
 };
 
@@ -93,7 +105,9 @@ export type ClientSocketEvent =
   | { type: "set_ready"; ready: boolean }
   | { type: "start_game" }
   | { type: "player_input"; direction: -1 | 0 | 1 }
-  | { type: "leave_room" };
+  | { type: "jump" }
+  | { type: "leave_room" }
+  | { type: "send_chat"; message: string };
 
 export type ServerSocketEvent =
   | {
@@ -108,6 +122,7 @@ export type ServerSocketEvent =
     }
   | { type: "room_snapshot"; room: RoomSummary }
   | { type: "game_snapshot"; game: MultiplayerGameSnapshot }
+  | { type: "chat_message"; roomCode: string; chatMessage: RoomChatMessage }
   | { type: "pong" }
   | { type: "error"; error: string };
 
@@ -186,7 +201,6 @@ export function createMultiplayerClient({
     if (!socket) {
       return;
     }
-
     socket.removeEventListener("open", flushPendingMessages);
     socket.removeEventListener("message", handleMessage);
     socket.removeEventListener("close", handleClose);
@@ -207,9 +221,7 @@ export function createMultiplayerClient({
     send,
     subscribe(listener: (event: ServerSocketEvent) => void) {
       listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
+      return () => listeners.delete(listener);
     },
     subscribeRoom(roomCode: string) {
       send({ type: "subscribe_room", roomCode });
@@ -225,13 +237,10 @@ export function createMultiplayerClient({
 
 function buildSocketUrl(url: string | undefined, reconnectToken: string | null | undefined) {
   const socketUrl =
-    url ??
-    `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/api/multiplayer/ws`;
+    url ?? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/api/multiplayer/ws`;
   const nextUrl = new URL(socketUrl);
-
   if (reconnectToken) {
     nextUrl.searchParams.set("reconnectToken", reconnectToken);
   }
-
   return nextUrl.toString();
 }

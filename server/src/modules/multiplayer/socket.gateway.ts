@@ -248,6 +248,29 @@ export class MultiplayerSocketGateway {
       return;
     }
 
+    if (event.type === 'send_chat') {
+      try {
+        const chatMessage = this.options.roomService.appendChatMessage(context.roomCode, context.user, event.message);
+        this.broadcastRoomSnapshot(context.roomCode);
+        for (const connection of this.connections.values()) {
+          if (connection.roomCode === context.roomCode) {
+            this.send(connection.socket, {
+              type: 'chat_message',
+              roomCode: context.roomCode,
+              chatMessage
+            });
+          }
+        }
+      } catch (error) {
+        if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
+          this.send(context.socket, {type: 'error', error: error.message});
+          return;
+        }
+        throw error;
+      }
+      return;
+    }
+
     if (event.type === 'start_game') {
       try {
         this.options.roomService.ensureRoomCanStart(context.roomCode, context.user.id);
@@ -272,13 +295,20 @@ export class MultiplayerSocketGateway {
       return;
     }
 
+    const game = this.activeGames.get(context.roomCode);
+    if (!game) {
+      this.send(context.socket, {type: 'error', error: 'Game has not started.'});
+      return;
+    }
+
     if (event.type === 'player_input') {
-      const game = this.activeGames.get(context.roomCode);
-      if (!game) {
-        this.send(context.socket, {type: 'error', error: 'Game has not started.'});
-        return;
-      }
       this.gameService.setPlayerDirection(game, context.user.id, event.direction);
+      this.broadcastGameSnapshot(context.roomCode);
+      return;
+    }
+
+    if (event.type === 'jump') {
+      this.gameService.jumpPlayer(game, context.user.id);
       this.broadcastGameSnapshot(context.roomCode);
     }
   }

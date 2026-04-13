@@ -2106,3 +2106,146 @@ input {
   color: #f9ebe0;
   font-weight: 700;
 }
+
+.simple-menu-screen,
+.multiplayer-home-screen,
+.multiplayer-lobby-screen {
+  display: grid;
+  place-items: center;
+}
+
+.simple-home-card {
+  width: min(100%, 540px);
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+  padding: 1.4rem 1.2rem 1.1rem;
+  text-align: center;
+}
+
+.home-hero__headline {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: center;
+}
+
+.simple-mode-chooser {
+  width: min(100%, 320px);
+}
+
+.home-mode-summary {
+  font-size: 0.92rem;
+  color: rgba(70, 63, 26, 0.84);
+}
+
+.multiplayer-home-card,
+.multiplayer-lobby-card {
+  width: min(100%, 720px);
+  padding: 1.1rem;
+}
+
+.multiplayer-home-options,
+.multiplayer-lobby-options {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.multiplayer-home-options label,
+.multiplayer-lobby-options span,
+.multiplayer-chat-panel {
+  border-radius: 18px;
+  border: 1px solid rgba(96, 73, 44, 0.18);
+  background: rgba(249, 235, 224, 0.72);
+}
+
+.multiplayer-home-options label {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem 0.85rem;
+}
+
+.multiplayer-home-options select,
+.multiplayer-chat-form input {
+  width: 100%;
+  padding: 0.72rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(96, 73, 44, 0.28);
+  background: rgba(255, 252, 248, 0.92);
+}
+
+.multiplayer-home-toggle {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.multiplayer-lobby-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.multiplayer-lobby-options {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.multiplayer-lobby-options span {
+  display: block;
+  padding: 0.75rem 0.85rem;
+}
+
+.multiplayer-chat-panel {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.85rem;
+}
+
+.multiplayer-chat-panel h2 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #463f1a;
+}
+
+.multiplayer-chat-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.multiplayer-chat-log li {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 12px;
+  background: rgba(255, 252, 248, 0.9);
+}
+
+.multiplayer-chat-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+}
+
+.control-button--ghost {
+  opacity: 0.42;
+}
+
+@media (max-width: 760px) {
+  .simple-home-card {
+    width: min(100%, 420px);
+    padding: 1.05rem 0.9rem 0.95rem;
+  }
+
+  .multiplayer-lobby-header {
+    display: grid;
+  }
+
+  .multiplayer-chat-form {
+    grid-template-columns: 1fr;
+  }
+}

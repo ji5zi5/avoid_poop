@@ -443,3 +443,70 @@ test('socket leave_room uses the same cleanup path as REST leave', async () => {
   guestSocket.close();
   await app.close();
 });
+
+test('chat messages broadcast into the lobby stream', async () => {
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+  const hostCookie = await signup(app, 'chat_host');
+  const guestCookie = await signup(app, 'chat_guest');
+  const created = await app.inject({method: 'POST', url: '/api/multiplayer/rooms', cookies: {avoid_poop_session: hostCookie}});
+  const roomCode = created.json().roomCode as string;
+  await app.inject({method: 'POST', url: '/api/multiplayer/join', cookies: {avoid_poop_session: guestCookie}, payload: {roomCode}});
+
+  const {socket: hostSocket} = await connectSocketAndWaitForConnected(port, hostCookie);
+  const {socket: guestSocket} = await connectSocketAndWaitForConnected(port, guestCookie);
+  const guestEvents: Array<any> = [];
+  guestSocket.on('message', (payload: RawData) => guestEvents.push(JSON.parse(payload.toString())));
+
+  hostSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+  guestSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+
+  await waitFor(() => guestEvents.some((event) => event.type === 'room_snapshot'));
+
+  hostSocket.send(JSON.stringify({type: 'send_chat', message: '안녕'}));
+
+  await waitFor(() => guestEvents.some((event) => event.type === 'chat_message' && event.chatMessage.message === '안녕'));
+  await waitFor(() => guestEvents.some((event) => event.type === 'room_snapshot' && event.room.chatMessages.some((entry: {message: string}) => entry.message === '안녕')));
+
+  hostSocket.close();
+  guestSocket.close();
+  await app.close();
+});
+
+test('jump event marks the player airborne when body block is enabled', async () => {
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+  const hostCookie = await signup(app, 'jump_host');
+  const guestCookie = await signup(app, 'jump_guest');
+  const created = await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/rooms',
+    cookies: {avoid_poop_session: hostCookie},
+    payload: {options: {difficulty: 'normal', bodyBlock: true, debuffTier: 2}}
+  });
+  const roomCode = created.json().roomCode as string;
+  await app.inject({method: 'POST', url: '/api/multiplayer/join', cookies: {avoid_poop_session: guestCookie}, payload: {roomCode}});
+
+  const {socket: hostSocket} = await connectSocketAndWaitForConnected(port, hostCookie);
+  const {socket: guestSocket} = await connectSocketAndWaitForConnected(port, guestCookie);
+  const hostEvents: Array<any> = [];
+  hostSocket.on('message', (payload: RawData) => hostEvents.push(JSON.parse(payload.toString())));
+
+  hostSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+  guestSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+  hostSocket.send(JSON.stringify({type: 'set_ready', ready: true}));
+  guestSocket.send(JSON.stringify({type: 'set_ready', ready: true}));
+  await waitFor(() => hostEvents.some((event) => event.type === 'room_snapshot' && event.room.players.every((player: {ready: boolean}) => player.ready)));
+  hostSocket.send(JSON.stringify({type: 'start_game'}));
+  await waitFor(() => hostEvents.some((event) => event.type === 'game_snapshot'));
+
+  hostSocket.send(JSON.stringify({type: 'jump'}));
+
+  await waitFor(() => hostEvents.some((event) => event.type === 'game_snapshot' && event.game.players.some((player: {userId: number; airborneUntil: number | null}) => player.userId === 1 && typeof player.airborneUntil === 'number')));
+
+  hostSocket.close();
+  guestSocket.close();
+  await app.close();
+});
