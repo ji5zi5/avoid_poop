@@ -5,7 +5,7 @@ import type { GameState } from "./state";
 import { resolveCollisions } from "./systems/collision";
 import { runBossPattern } from "./systems/bossPatterns";
 import { updateRounds } from "./systems/rounds";
-import { maybeSpawnItem, spawnHazard } from "./systems/spawn";
+import { createCustomHazard, maybeSpawnItem, spawnWavePattern } from "./systems/spawn";
 
 function wavePressure(state: GameState) {
   return Math.min(state.mode === "hard" ? 14 : 13, Math.max(0, state.round - 1));
@@ -69,7 +69,7 @@ export function updateGame(state: GameState, delta: number, direction: number) {
     const spawnThreshold = Math.max(waveSpawnFloor, waveSpawnBase - pressure * waveDecay);
     if (state.spawnTimer >= spawnThreshold) {
       state.spawnTimer = 0;
-      spawnHazard(state);
+      spawnWavePattern(state);
     }
   }
 
@@ -78,9 +78,68 @@ export function updateGame(state: GameState, delta: number, direction: number) {
   }
 
   const hazardMultiplier = state.slowMotionTimer > 0 ? 0.5 : 1;
+  const groundY = state.height - 32;
+
   state.hazards.forEach((hazard) => {
-    hazard.y += hazard.speed * hazardMultiplier * delta;
+    const motionDelta = delta * hazardMultiplier;
+    hazard.x += (hazard.velocityX ?? 0) * motionDelta;
+    hazard.y += hazard.speed * motionDelta;
+    if (hazard.gravity) {
+      hazard.speed += hazard.gravity * motionDelta;
+    }
+
+    if (hazard.behavior === "split" && !hazard.triggered && hazard.splitAtY !== undefined && hazard.y >= hazard.splitAtY) {
+      hazard.triggered = true;
+      hazard.pendingRemoval = true;
+      hazard.awardOnExit = false;
+
+      const childSize = hazard.splitChildSize ?? 14;
+      const childSpeed = hazard.splitChildSpeed ?? Math.max(150, hazard.speed * 0.84);
+      const childSpread = hazard.splitChildSpread ?? 64;
+      const childY = Math.max(0, hazard.y - childSize * 0.4);
+
+      const leftChild = createCustomHazard(state, {
+        x: hazard.x - childSize * 0.2,
+        size: childSize,
+        speed: childSpeed,
+        owner: hazard.owner,
+        variant: childSize >= 20 ? "medium" : "small",
+        velocityX: -childSpread,
+        gravity: 220,
+      });
+      leftChild.y = childY;
+
+      const rightChild = createCustomHazard(state, {
+        x: hazard.x + hazard.width - childSize * 0.8,
+        size: childSize,
+        speed: childSpeed,
+        owner: hazard.owner,
+        variant: childSize >= 20 ? "medium" : "small",
+        velocityX: childSpread,
+        gravity: 220,
+      });
+      rightChild.y = childY;
+      return;
+    }
+
+    if (hazard.behavior === "bounce") {
+      const floorContactY = groundY - hazard.height;
+      if ((hazard.bouncesRemaining ?? 0) > 0 && hazard.y >= floorContactY) {
+        hazard.y = floorContactY;
+        hazard.bouncesRemaining = (hazard.bouncesRemaining ?? 1) - 1;
+        hazard.triggered = true;
+        hazard.speed = -Math.max(120, Math.abs(hazard.speed) * 0.52);
+        hazard.gravity = 860;
+        return;
+      }
+
+      if ((hazard.bouncesRemaining ?? 0) === 0 && hazard.triggered && hazard.speed > 0 && hazard.y >= floorContactY) {
+        hazard.pendingRemoval = true;
+        hazard.awardOnExit = false;
+      }
+    }
   });
+
   state.items.forEach((item) => {
     item.y += item.speed * delta;
   });

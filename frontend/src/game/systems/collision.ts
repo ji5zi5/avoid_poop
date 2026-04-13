@@ -56,8 +56,21 @@ export function resolveCollisions(state: GameState) {
   });
 
   state.hazards = state.hazards.filter((hazard) => {
+    if (hazard.pendingRemoval) {
+      return false;
+    }
+
+    if (hazard.x > state.width + hazard.width || hazard.x + hazard.width < -hazard.width) {
+      if (hazard.awardOnExit !== false) {
+        state.score += 5;
+      }
+      return false;
+    }
+
     if (hazard.y >= state.height + hazard.height) {
-      state.score += 5;
+      if (hazard.awardOnExit !== false) {
+        state.score += 5;
+      }
       return false;
     }
 

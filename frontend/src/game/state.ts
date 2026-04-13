@@ -4,6 +4,7 @@ export type ItemType = "invincibility" | "speed" | "heal" | "slow" | "clear";
 export type ToastTone = "neutral" | "danger" | "reward" | "boss";
 export type HazardOwner = "wave" | "boss";
 export type HazardVariant = "small" | "medium" | "large" | "boss" | "giant";
+export type HazardBehavior = "none" | "split" | "bounce";
 export type BossPatternFamily = "pressure" | "lane" | "trap";
 export type BossPatternId =
   | "half_stomp_alternating"
@@ -50,6 +51,17 @@ export type Hazard = {
   speed: number;
   owner: HazardOwner;
   variant: HazardVariant;
+  behavior?: HazardBehavior;
+  velocityX?: number;
+  gravity?: number;
+  splitAtY?: number;
+  splitChildSize?: number;
+  splitChildSpeed?: number;
+  splitChildSpread?: number;
+  bouncesRemaining?: number;
+  triggered?: boolean;
+  awardOnExit?: boolean;
+  pendingRemoval?: boolean;
 };
 
 export type Item = {

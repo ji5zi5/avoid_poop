@@ -139,6 +139,18 @@ function drawHazard(ctx: CanvasRenderingContext2D, hazard: Hazard) {
   const sprite = getHazardSprite(hazard.size);
   const color = hazard.variant === "boss" ? palette.boss : palette.poop;
   drawPixelShape(ctx, sprite.pattern, hazard.x, hazard.y, sprite.pixelSize, color);
+
+  if (hazard.behavior === "split") {
+    ctx.fillStyle = "rgba(255, 248, 241, 0.92)";
+    ctx.fillRect(hazard.x + hazard.width / 2 - 2, hazard.y + 2, 4, 6);
+    ctx.fillRect(hazard.x + hazard.width / 2 - 6, hazard.y + 6, 12, 2);
+  } else if (hazard.behavior === "bounce") {
+    ctx.strokeStyle = "rgba(70, 63, 26, 0.5)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(hazard.x + hazard.width / 2, hazard.y + hazard.height + 4, Math.max(8, hazard.width * 0.36), 0, Math.PI);
+    ctx.stroke();
+  }
 }
 
 function drawItem(ctx: CanvasRenderingContext2D, type: keyof typeof itemColorMap, x: number, y: number) {

@@ -1,9 +1,20 @@
-import type { Hazard, HazardOwner, HazardVariant } from "../state";
+import type { Hazard, HazardBehavior, HazardOwner, HazardVariant } from "../state";
 
 type CreateHazardOptions = {
+  awardOnExit?: boolean;
+  behavior?: HazardBehavior;
+  bouncesRemaining?: number;
+  gravity?: number;
   height?: number;
   owner?: HazardOwner;
+  pendingRemoval?: boolean;
+  splitAtY?: number;
+  splitChildSize?: number;
+  splitChildSpeed?: number;
+  splitChildSpread?: number;
+  triggered?: boolean;
   variant?: HazardVariant;
+  velocityX?: number;
   width?: number;
 };
 
@@ -36,5 +47,16 @@ export function createHazard(id: number, x: number, speed: number, size = 18, op
     speed,
     owner: options.owner ?? "wave",
     variant: options.variant ?? inferVariant(width, height, size),
+    behavior: options.behavior,
+    velocityX: options.velocityX,
+    gravity: options.gravity,
+    splitAtY: options.splitAtY,
+    splitChildSize: options.splitChildSize,
+    splitChildSpeed: options.splitChildSpeed,
+    splitChildSpread: options.splitChildSpread,
+    bouncesRemaining: options.bouncesRemaining,
+    triggered: options.triggered,
+    awardOnExit: options.awardOnExit,
+    pendingRemoval: options.pendingRemoval,
   };
 }

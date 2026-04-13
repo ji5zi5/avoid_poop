@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { copy } from "../content/copy";
 import { createGameEngine, updateGame } from "./engine";
 import { buildBossPatternQueue, getAvailableBossPatternIds, getBossLanePositions, isHardOnlyPattern } from "./systems/bossPatterns";
+import { spawnWavePattern } from "./systems/spawn";
 import { getHazardHitbox, getPlayerHitbox } from "./systems/collision";
 
 describe("game engine", () => {
@@ -58,6 +59,71 @@ describe("game engine", () => {
     }
 
     expect(late.nextHazardId).toBeGreaterThan(early.nextHazardId);
+  });
+
+  it("unlocks multi-drop wave patterns in later rounds", () => {
+    const state = createGameEngine("hard");
+    state.round = 6;
+    state.nextHazardId = 6;
+
+    const pattern = spawnWavePattern(state);
+
+    expect(pattern).toBe("cluster");
+    expect(state.hazards.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("splits special wave hazards into two children midair", () => {
+    const state = createGameEngine("hard");
+    state.hazards.push({
+      id: 1,
+      x: 120,
+      y: 140,
+      size: 24,
+      width: 24,
+      height: 24,
+      speed: 180,
+      owner: "wave",
+      variant: "large",
+      behavior: "split",
+      splitAtY: 150,
+      splitChildSize: 14,
+      splitChildSpeed: 170,
+      splitChildSpread: 72,
+    });
+    state.nextHazardId = 2;
+
+    updateGame(state, 0.1, 0);
+
+    const childHazards = state.hazards.filter((hazard) => hazard.size === 14);
+    expect(childHazards).toHaveLength(2);
+    expect(childHazards.some((hazard) => (hazard.velocityX ?? 0) < 0)).toBe(true);
+    expect(childHazards.some((hazard) => (hazard.velocityX ?? 0) > 0)).toBe(true);
+  });
+
+  it("lets bounce hazards hop once before disappearing", () => {
+    const state = createGameEngine("normal");
+    state.hazards.push({
+      id: 1,
+      x: 80,
+      y: state.height - 64,
+      size: 18,
+      width: 18,
+      height: 18,
+      speed: 180,
+      owner: "wave",
+      variant: "small",
+      behavior: "bounce",
+      bouncesRemaining: 1,
+    });
+
+    updateGame(state, 0.2, 0);
+    expect(state.hazards[0]?.speed).toBeLessThan(0);
+
+    for (let step = 0; step < 20 && state.hazards.length > 0; step += 1) {
+      updateGame(state, 0.1, 0);
+    }
+
+    expect(state.hazards).toHaveLength(0);
   });
 
   it("builds a boss queue when entering boss phase", () => {
