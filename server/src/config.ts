@@ -2,6 +2,8 @@ import path from 'node:path';
 
 export type DatabaseProvider = 'sqlite' | 'postgres';
 
+const defaultSqlitePath = path.join(process.cwd(), 'server', 'data', 'avoid-poop.sqlite');
+
 function readDatabaseProvider(): DatabaseProvider {
   const provider = process.env.DB_PROVIDER?.trim();
 

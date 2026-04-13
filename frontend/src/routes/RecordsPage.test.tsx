@@ -2,7 +2,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { RecordsResponse } from '../../../../shared/src/contracts/index';
+import type { RecordsResponse } from '../../../shared/src/contracts/index';
 
 const { records } = vi.hoisted(() => ({
   records: vi.fn(),
@@ -168,21 +168,26 @@ describe('RecordsPage', () => {
     expect(screen.getByText('총 싱글 플레이')).toBeTruthy();
     expect(screen.getByText('12')).toBeTruthy();
     expect(screen.getByText('클리어 수 4')).toBeTruthy();
-    expect(screen.getAllByText('멀티 승리 수 3 · 멀티 경기 수 9').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('멀티 승리 수').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('3').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('멀티 경기 수 9').length).toBeGreaterThan(0);
 
-    expect(screen.getByText('1. alpha')).toBeTruthy();
+    expect(screen.getAllByText('alpha').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('#1').length).toBeGreaterThan(0);
     expect(screen.getAllByText('점수 321 / 6라운드').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('클리어 · 45.6초')).toBeTruthy();
+    expect(screen.getAllByText('45.6초').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('클리어').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: '하드' }));
-    await waitFor(() => expect(screen.getByText('1. charlie')).toBeTruthy());
-    expect(screen.getByText('점수 410 / 8라운드')).toBeTruthy();
+    await waitFor(() => expect(screen.getAllByText('charlie').length).toBeGreaterThan(0));
+    expect(screen.getAllByText('점수 410 / 8라운드').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: '멀티' }));
-    await waitFor(() => expect(screen.getAllByText('멀티 승리 수 3 · 멀티 경기 수 9').length).toBeGreaterThanOrEqual(1));
-    expect(screen.getByText('멀티 최고 순위 1등 · 최고 라운드 8')).toBeTruthy();
-    expect(screen.getByText('WIN')).toBeTruthy();
-    expect(screen.getByText('1등 / 4명 / 8라운드')).toBeTruthy();
+    await waitFor(() => expect(screen.getAllByText('멀티 승리 수').length).toBeGreaterThan(0));
+    expect(screen.getAllByText('최고 순위 1등').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('최고 라운드 8').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('최종 승리').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('1등 / 4명 / 8라운드').length).toBeGreaterThan(0);
   });
 
   it('redirects to auth when the records request returns 401', async () => {

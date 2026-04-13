@@ -3,6 +3,7 @@ import path from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
 
 import {config} from '../config.js';
+import {resolveDatabaseRuntimeConfig} from './provider.js';
 import {postgresSchemaSql, schemaSql} from './schema.js';
 
 let dbInstance: DatabaseSync | null = null;
@@ -95,13 +96,13 @@ export function getPostgresSchemaSql() {
 }
 
 export function resetDbForTests() {
-  const runtime = assertSupportedDatabaseRuntime();
-
   if (dbInstance) {
     dbInstance.close();
     dbInstance = null;
   }
-  if (fs.existsSync(runtime.dbPath)) {
+
+  const runtime = resolveDatabaseRuntimeConfig();
+  if (runtime.provider === 'sqlite' && fs.existsSync(runtime.dbPath)) {
     fs.unlinkSync(runtime.dbPath);
   }
 }
