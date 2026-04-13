@@ -113,5 +113,7 @@ test('records endpoints require auth and return best plus recent runs', async ()
   assert.equal(body.best.normal.score, 120);
   assert.equal(body.best.hard.score, 180);
   assert.equal(body.recent.length, 2);
+  assert.equal(body.multiplayer.stats.matchesPlayed, 0);
+  assert.equal(body.multiplayer.recent.length, 0);
   await app.close();
 });

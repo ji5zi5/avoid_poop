@@ -7,6 +7,7 @@ import {WebSocketServer, type RawData, type WebSocket} from 'ws';
 import {config} from '../../config.js';
 import {resolveSessionUserFromSignedCookie} from '../auth/auth.service.js';
 import {MultiplayerGameService} from './game.service.js';
+import {saveCompletedMultiplayerGame} from './results.service.js';
 import type {MultiplayerGameState} from './game.types.js';
 import {
   multiplayerClientEventSchema,
@@ -270,6 +271,7 @@ export class MultiplayerSocketGateway {
       this.gameService.tick(game, 0.1, Date.now());
       this.broadcastGameSnapshot(roomCode);
       if (game.phase === 'complete') {
+        saveCompletedMultiplayerGame(game);
         clearInterval(interval);
         this.gameIntervals.delete(roomCode);
       }

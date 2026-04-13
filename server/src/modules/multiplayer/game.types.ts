@@ -51,6 +51,7 @@ export type MultiplayerGameState = {
   options: RoomOptions;
   phase: MultiplayerPhase;
   players: MultiplayerPlayerState[];
+  placementOrder: number[];
   roomCode: string;
   round: number;
   spawnTimer: number;

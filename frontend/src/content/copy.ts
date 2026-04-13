@@ -152,6 +152,11 @@ export const copy = {
     normalBest: "일반 최고 점수",
     hardBest: "하드 최고 점수",
     recentLog: "최근 로그",
+    multiplayerBest: "멀티 최고 순위",
+    multiplayerWins: "멀티 승리 수",
+    multiplayerMatches: "멀티 경기 수",
+    multiplayerRecent: "멀티 최근 전적",
+    placementEntry: (placement: number, totalPlayers: number, reachedRound: number) => `${placement}등 / ${totalPlayers}명 / ${reachedRound}라운드`,
   },
   multiplayer: {
     entry: '멀티',

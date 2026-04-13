@@ -39,6 +39,7 @@ export class MultiplayerGameService {
       hazards: [],
       items: [],
       players: room.players.map((player, index, players) => createPlayerState(player.userId, player.username, index, players.length)),
+      placementOrder: [],
       winnerUserId: null
     };
   }
@@ -85,6 +86,7 @@ export class MultiplayerGameService {
       player.status = 'spectator';
       player.direction = 0;
       player.disconnectDeadlineAt = null;
+      recordPlacement(game, player.userId);
       this.resolveWinner(game);
     }
     return true;
@@ -147,6 +149,7 @@ export class MultiplayerGameService {
       if (player.status === 'disconnected' && player.disconnectDeadlineAt && player.disconnectDeadlineAt <= now) {
         player.status = 'spectator';
         player.disconnectDeadlineAt = null;
+        recordPlacement(game, player.userId);
       }
     }
 
@@ -211,6 +214,9 @@ export class MultiplayerGameService {
       return;
     }
 
+    if (alivePlayers[0]) {
+      recordPlacement(game, alivePlayers[0].userId);
+    }
     game.phase = 'complete';
     game.winnerUserId = alivePlayers[0]?.userId ?? null;
   }
@@ -245,6 +251,12 @@ function createHazard(id: number, round: number, phase: MultiplayerGameState['ph
     y: -size,
     speed: phase === 'boss' ? 220 + round * 8 : 160 + round * 6
   };
+}
+
+function recordPlacement(game: MultiplayerGameState, userId: number) {
+  if (!game.placementOrder.includes(userId)) {
+    game.placementOrder.push(userId);
+  }
 }
 
 function shouldEnterBoss(round: number) {

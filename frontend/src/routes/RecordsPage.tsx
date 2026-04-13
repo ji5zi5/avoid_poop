@@ -39,38 +39,51 @@ export function RecordsPage({ onBack, onSessionExpired }: Props) {
 
         {error ? <p className="error-text">{error}</p> : null}
         {records ? (
-          <div className="records-board">
-            <div className="score-board">
-              <span className="score-board__label">{copy.records.normalBest}</span>
-              <strong>{records.best.normal ? records.best.normal.score : "--"}</strong>
-              <span>{records.best.normal ? copy.records.roundEntry(records.best.normal.score, records.best.normal.reachedRound) : copy.records.none}</span>
+          <>
+            <div className="records-board">
+              <div className="score-board">
+                <span className="score-board__label">{copy.records.normalBest}</span>
+                <strong>{records.best.normal ? records.best.normal.score : "--"}</strong>
+                <span>{records.best.normal ? copy.records.roundEntry(records.best.normal.score, records.best.normal.reachedRound) : copy.records.none}</span>
+              </div>
+              <div className="score-board">
+                <span className="score-board__label">{copy.records.hardBest}</span>
+                <strong>{records.best.hard ? records.best.hard.score : "--"}</strong>
+                <span>{records.best.hard ? copy.records.roundEntry(records.best.hard.score, records.best.hard.reachedRound) : copy.records.none}</span>
+              </div>
+              <div className="score-board">
+                <span className="score-board__label">{copy.records.multiplayerBest}</span>
+                <strong>{records.multiplayer.stats.bestPlacement ? `${records.multiplayer.stats.bestPlacement}등` : "--"}</strong>
+                <span>{copy.records.multiplayerWins} {records.multiplayer.stats.wins} · {copy.records.multiplayerMatches} {records.multiplayer.stats.matchesPlayed}</span>
+              </div>
             </div>
-            <div className="score-board">
-              <span className="score-board__label">{copy.records.hardBest}</span>
-              <strong>{records.best.hard ? records.best.hard.score : "--"}</strong>
-              <span>
-                {records.best.hard
-                  ? copy.records.roundEntry(records.best.hard.score, records.best.hard.reachedRound)
-                  : copy.records.none}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <p>{copy.records.loading}</p>
-        )}
-        {records ? (
-          records.recent.length > 0 ? (
-            <ul className="log-list">
-              {records.recent.map((entry) => (
-                <li key={entry.id} className="log-list__item">
-                  <strong>{entry.mode === "normal" ? copy.records.normal : copy.records.hard}</strong>
-                  <span>{copy.records.roundEntry(entry.score, entry.reachedRound)}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>{copy.records.none}</p>
-          )
+
+            {records.recent.length > 0 ? (
+              <ul className="log-list">
+                {records.recent.map((entry) => (
+                  <li key={entry.id} className="log-list__item">
+                    <strong>{entry.mode === "normal" ? copy.records.normal : copy.records.hard}</strong>
+                    <span>{copy.records.roundEntry(entry.score, entry.reachedRound)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>{copy.records.none}</p>
+            )}
+
+            {records.multiplayer.recent.length > 0 ? (
+              <ul className="log-list">
+                {records.multiplayer.recent.map((entry) => (
+                  <li key={`${entry.matchId}-${entry.createdAt}`} className="log-list__item">
+                    <strong>{entry.won ? 'WIN' : 'RANK'}</strong>
+                    <span>{copy.records.placementEntry(entry.placement, entry.totalPlayers, entry.reachedRound)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>{copy.records.none}</p>
+            )}
+          </>
         ) : (
           <p>{copy.records.loading}</p>
         )}

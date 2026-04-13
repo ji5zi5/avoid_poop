@@ -1,4 +1,5 @@
 import {RecordsResponse, RunResultPayload} from '../../../../shared/src/contracts/records.js';
+import {getMultiplayerRecordsForUser} from '../multiplayer/results.service.js';
 import {createRecord, findBestRecordByMode, listRecentRecords} from './records.repository.js';
 
 export function saveRunResult(userId: number, payload: RunResultPayload) {
@@ -18,6 +19,7 @@ export function getRecordsForUser(userId: number): RecordsResponse {
       normal: findBestRecordByMode(userId, 'normal') ?? undefined,
       hard: findBestRecordByMode(userId, 'hard') ?? undefined
     },
-    recent: listRecentRecords(userId)
+    recent: listRecentRecords(userId),
+    multiplayer: getMultiplayerRecordsForUser(userId)
   };
 }
