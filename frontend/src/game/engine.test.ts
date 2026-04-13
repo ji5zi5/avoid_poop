@@ -170,6 +170,21 @@ describe("game engine", () => {
     expect(giantHitbox.height).toBeGreaterThan(40);
   });
 
+  it("late hard bosses outscale the midgame wave pace", () => {
+    const state = createGameEngine("hard");
+    state.round = 12;
+    state.currentPhase = "boss";
+    state.bossPatternQueue = ["shifting_corridor"];
+    state.bossPatternActiveId = null;
+    state.bossPatternIndex = 0;
+
+    updateGame(state, 0.4, 0);
+    updateGame(state, 0.4, 0);
+
+    expect(state.hazards.length).toBeGreaterThan(3);
+    expect(state.hazards.some((hazard) => hazard.speed >= 320)).toBe(true);
+  });
+
   it("shows a reward toast and burst when an item is collected", () => {
     const state = createGameEngine("normal");
     state.items.push({

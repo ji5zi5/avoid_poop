@@ -81,6 +81,7 @@ export type GameState = {
   bossPatternSeed: number;
   bossPatternFamilyStreak: BossPatternFamily | null;
   bossPatternFamilyStreakCount: number;
+  bossRecentPatterns: BossPatternId[];
   bossTelegraphTimer: number;
   bossTelegraphText: string;
   invincibilityTimer: number;
@@ -141,6 +142,7 @@ export function createInitialState(mode: GameMode): GameState {
     bossPatternSeed: mode === "hard" ? 17 : 11,
     bossPatternFamilyStreak: null,
     bossPatternFamilyStreakCount: 0,
+    bossRecentPatterns: [],
     bossTelegraphTimer: 0,
     bossTelegraphText: "",
     invincibilityTimer: 0,

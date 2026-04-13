@@ -40,4 +40,25 @@ describe("boss patterns", () => {
 
     expect(getBossPatternFamily(queue[0])).not.toBe("pressure");
   });
+
+  it("increases queue length for late hard bosses", () => {
+    const early = createGameEngine("hard");
+    early.round = 4;
+    const late = createGameEngine("hard");
+    late.round = 12;
+
+    expect(buildBossPatternQueue(late).length).toBeGreaterThan(buildBossPatternQueue(early).length);
+  });
+
+  it("avoids recently used pattern ids when enough choices remain", () => {
+    const state = createGameEngine("hard");
+    state.round = 12;
+    state.bossRecentPatterns = ["half_stomp_alternating", "closing_doors", "center_crush"];
+
+    const queue = buildBossPatternQueue(state);
+
+    expect(queue[0]).not.toBe("half_stomp_alternating");
+    expect(queue[0]).not.toBe("closing_doors");
+    expect(queue[0]).not.toBe("center_crush");
+  });
 });
