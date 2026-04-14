@@ -172,7 +172,7 @@ describe("game engine", () => {
   });
 
   it("cycles through multiple hazard sizes in normal waves", () => {
-    const state = createGameEngine("normal");
+    const state = createGameEngine("normal", { waveSeed: 23, bossSeed: 11 });
     state.invincibilityTimer = Number.POSITIVE_INFINITY;
 
     for (let step = 0; step < 6; step += 1) {
@@ -183,8 +183,8 @@ describe("game engine", () => {
   });
 
   it("spawns more hazards each round in normal mode", () => {
-    const early = createGameEngine("normal");
-    const late = createGameEngine("normal");
+    const early = createGameEngine("normal", { waveSeed: 23, bossSeed: 11 });
+    const late = createGameEngine("normal", { waveSeed: 23, bossSeed: 11 });
     early.invincibilityTimer = Number.POSITIVE_INFINITY;
     late.invincibilityTimer = Number.POSITIVE_INFINITY;
     late.round = 6;
