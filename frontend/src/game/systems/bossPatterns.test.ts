@@ -182,4 +182,22 @@ describe("boss patterns", () => {
 
     expect(seenThemes.size).toBeGreaterThan(3);
   });
+
+  it("keeps residue_fakeout queues varied across seeds", () => {
+    const queues = new Set(
+      [29659, 31234, 38133, 39545].map((queueSeed) =>
+        buildBossEncounterPlan({
+          mode: "hard",
+          round: 12,
+          previousFamilyStreak: null,
+          previousFamilyStreakCount: 0,
+          recentPatterns: [],
+          recentThemes: [],
+          queueSeed,
+        }).queue.join("|"),
+      ),
+    );
+
+    expect(queues.size).toBeGreaterThanOrEqual(3);
+  });
 });
