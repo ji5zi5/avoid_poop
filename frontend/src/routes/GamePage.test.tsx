@@ -57,7 +57,7 @@ function makeState() {
     bossPatternFamilyStreakCount: 0,
     bossRecentPatterns: [],
     bossTelegraphTimer: 1,
-    bossTelegraphText: '통로 뒤집기',
+    bossTelegraphText: '왼쪽 유도, 반대로 회피',
     invincibilityTimer: 0,
     speedBoostTimer: 0,
     slowMotionTimer: 0,
@@ -105,7 +105,7 @@ describe('GamePage', () => {
     );
 
     expect(screen.getByText('보스 공격')).toBeTruthy();
-    expect(screen.getByText('통로 뒤집기')).toBeTruthy();
+    expect(screen.getByText('왼쪽 유도, 반대로 회피')).toBeTruthy();
   });
 
   it('renders the boss-entry banner with the theme label', () => {

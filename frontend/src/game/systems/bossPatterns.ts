@@ -595,14 +595,14 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
   fake_safe_lane: {
     archetype: "trap_bait",
     family: "trap",
-    label: (state) => (pickSide(state) === "left" ? "왼쪽이 안전해 보임" : "오른쪽이 안전해 보임"),
+    label: (state) => (pickSide(state) === "left" ? "왼쪽 유도, 반대로 회피" : "오른쪽 유도, 반대로 회피"),
     normalAllowed: false,
-    telegraphHardMs: 500,
-    telegraphNormalMs: 820,
+    telegraphHardMs: 580,
+    telegraphNormalMs: 900,
     run(state, delta) {
       const baitSide = pickSide(state);
-      return tickPattern(state, delta, scaledInterval(state, 0.52, 0.62, 0.3, 0.4), 1 + (state.round >= 12 ? 1 : 0), () => {
-        spawnHalfHazard(state, baitSide, giantSpeed(state, 8), 0.4, 68);
+      return tickPattern(state, delta, scaledInterval(state, 0.58, 0.7, 0.34, 0.44), 1, () => {
+        spawnHalfHazard(state, baitSide, giantSpeed(state, -4), 0.36, 64);
       });
     },
   },
@@ -668,7 +668,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
   residue_zone: {
     archetype: "trap_residue",
     family: "trap",
-    label: () => "잔류 함정",
+    label: () => "가운데 잔류 후 측면 압박",
     normalAllowed: false,
     telegraphHardMs: 430,
     telegraphNormalMs: 760,
@@ -691,7 +691,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
   residue_switch: {
     archetype: "trap_residue_switch",
     family: "trap",
-    label: () => "잔류 스위치",
+    label: () => "한쪽 잔류 후 반대 전환",
     normalAllowed: false,
     telegraphHardMs: 420,
     telegraphNormalMs: 760,
@@ -713,7 +713,7 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
   residue_crossfire: {
     archetype: "trap_residue_crossfire",
     family: "trap",
-    label: () => "잔류 교차 화망",
+    label: () => "잔류 후 교차 압박",
     normalAllowed: false,
     telegraphHardMs: 420,
     telegraphNormalMs: 760,
@@ -1046,7 +1046,7 @@ function beginPattern(state: GameState, id: BossPatternId) {
   state.bossPatternStepTimer = 0;
   state.bossPatternShots = 0;
   state.bossPatternTimer = 0;
-  state.bossTelegraphText = state.bossThemeId ? themeDefinitions[state.bossThemeId].label : definition.label(state);
+  state.bossTelegraphText = definition.label(state);
   state.bossTelegraphTimer = telegraphSeconds(state, definition);
 }
 
