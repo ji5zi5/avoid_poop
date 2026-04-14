@@ -5,7 +5,16 @@ export type ToastTone = "neutral" | "danger" | "reward" | "boss";
 export type HazardOwner = "wave" | "boss";
 export type HazardVariant = "small" | "medium" | "large" | "boss" | "giant";
 export type HazardBehavior = "none" | "split" | "bounce";
+export type WavePattern = "single" | "cluster_2" | "cluster_3" | "splitter" | "bouncer";
 export type BossPatternFamily = "pressure" | "lane" | "trap";
+export type BossThemeId =
+  | "pressure_intro"
+  | "lane_intro"
+  | "corridor_intro"
+  | "trap_intro"
+  | "corridor_switch"
+  | "trap_weave"
+  | "residue_fakeout";
 export type BossPatternId =
   | "half_stomp_alternating"
   | "closing_doors"
@@ -73,6 +82,20 @@ export type Item = {
   type: ItemType;
 };
 
+export type WaveDirector = {
+  seed: number;
+  patternCursor: number;
+  recentPatterns: WavePattern[];
+  specialCooldown: number;
+  roundBudget: number;
+  clusterQuota: number;
+  tripleQuota: number;
+  splitterQuota: number;
+  bounceQuota: number;
+  roundBand: number;
+  round: number;
+};
+
 export type GameState = {
   mode: GameMode;
   width: number;
@@ -93,6 +116,7 @@ export type GameState = {
   itemTimer: number;
   bossPatternTimer: number;
   bossEncounterDuration: number;
+  bossThemeId: BossThemeId | null;
   bossPatternQueue: BossPatternId[];
   bossPatternIndex: number;
   bossPatternActiveId: BossPatternId | null;
@@ -115,6 +139,7 @@ export type GameState = {
   itemToastTone: ToastTone;
   effectBurstTimer: number;
   effectBurstType: ItemType | null;
+  waveDirector: WaveDirector;
   screenShakeTimer: number;
   damageFlashTimer: number;
   gameOver: boolean;
@@ -125,6 +150,49 @@ export const GAME_WIDTH = 360;
 export const GAME_HEIGHT = 520;
 export const ROUND_DURATION = 9;
 export const BOSS_DURATION = 12;
+
+function getWaveRoundBand(mode: GameMode, round: number) {
+  if (mode === "hard") {
+    if (round >= 10) {
+      return 3;
+    }
+    if (round >= 7) {
+      return 2;
+    }
+    if (round >= 4) {
+      return 1;
+    }
+    return 0;
+  }
+
+  if (round >= 10) {
+    return 3;
+  }
+  if (round >= 7) {
+    return 2;
+  }
+  if (round >= 4) {
+    return 1;
+  }
+  return 0;
+}
+
+export function createWaveDirector(mode: GameMode, round: number): WaveDirector {
+  const roundBand = getWaveRoundBand(mode, round);
+  return {
+    seed: mode === "hard" ? 37 : 23,
+    patternCursor: 0,
+    recentPatterns: [],
+    specialCooldown: 0,
+    roundBudget: roundBand >= 2 ? 2 : 1,
+    clusterQuota: roundBand >= 1 ? 2 : 1,
+    tripleQuota: mode === "hard" && roundBand >= 3 ? 1 : 0,
+    splitterQuota: roundBand >= 1 ? 1 : 0,
+    bounceQuota: roundBand >= 2 ? 1 : 0,
+    roundBand,
+    round,
+  };
+}
 
 export function createInitialState(mode: GameMode): GameState {
   return {
@@ -154,6 +222,7 @@ export function createInitialState(mode: GameMode): GameState {
     itemTimer: 0,
     bossPatternTimer: 0,
     bossEncounterDuration: BOSS_DURATION,
+    bossThemeId: null,
     bossPatternQueue: [],
     bossPatternIndex: 0,
     bossPatternActiveId: null,
@@ -176,6 +245,7 @@ export function createInitialState(mode: GameMode): GameState {
     itemToastTone: "neutral",
     effectBurstTimer: 0,
     effectBurstType: null,
+    waveDirector: createWaveDirector(mode, 1),
     screenShakeTimer: 0,
     damageFlashTimer: 0,
     gameOver: false,

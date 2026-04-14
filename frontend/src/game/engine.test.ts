@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { copy } from "../content/copy";
+import { createWaveDirector } from "./state";
 import { createGameEngine, updateGame } from "./engine";
-import { buildBossPatternQueue, getAvailableBossPatternIds, getBossLanePositions, isHardOnlyPattern } from "./systems/bossPatterns";
-import { spawnWavePattern } from "./systems/spawn";
+import { buildBossPatternQueue, getAvailableBossPatternIds, getBossLanePositions, getBossThemeLabel, isHardOnlyPattern } from "./systems/bossPatterns";
+import { selectWavePattern, spawnWavePattern } from "./systems/spawn";
 import { getHazardHitbox, getPlayerHitbox } from "./systems/collision";
 
 describe("game engine", () => {
@@ -64,12 +65,66 @@ describe("game engine", () => {
   it("unlocks multi-drop wave patterns in later rounds", () => {
     const state = createGameEngine("hard");
     state.round = 6;
-    state.nextHazardId = 6;
+    state.waveDirector.seed = 300001;
+    state.waveDirector.specialCooldown = 0;
+    state.waveDirector.roundBudget = 2;
+    state.waveDirector.clusterQuota = 2;
+    state.waveDirector.bounceQuota = 0;
+    state.waveDirector.splitterQuota = 0;
 
     const pattern = spawnWavePattern(state);
 
-    expect(pattern).toBe("cluster");
-    expect(state.hazards.length).toBeGreaterThanOrEqual(3);
+    expect(pattern).toBe("cluster_2");
+    expect(state.hazards.length).toBe(2);
+  });
+
+  it("does not let nextHazardId change the selected wave pattern when director state is fixed", () => {
+    const state = createGameEngine("hard");
+    state.round = 10;
+    state.waveDirector.seed = 1777;
+    state.waveDirector.specialCooldown = 0;
+    state.waveDirector.roundBudget = 3;
+    state.waveDirector.clusterQuota = 2;
+    state.waveDirector.tripleQuota = 1;
+    state.waveDirector.splitterQuota = 1;
+    state.waveDirector.bounceQuota = 1;
+
+    const first = selectWavePattern({ ...state.waveDirector, recentPatterns: [...state.waveDirector.recentPatterns] }, state.mode, state.round);
+    state.nextHazardId = 99;
+    const second = selectWavePattern({ ...state.waveDirector, recentPatterns: [...state.waveDirector.recentPatterns] }, state.mode, state.round);
+
+    expect(second.pattern).toBe(first.pattern);
+  });
+
+  it("keeps triple clusters rarer than singles and doubles in the deterministic late sample window", () => {
+    let director = createWaveDirector("hard", 8);
+    director.seed = 17;
+    const counts = {
+      single: 0,
+      cluster_2: 0,
+      cluster_3: 0,
+      splitter: 0,
+      bouncer: 0,
+    };
+
+    for (let round = 8; round <= 12; round += 1) {
+      director = {
+        ...createWaveDirector("hard", round),
+        seed: director.seed,
+        patternCursor: director.patternCursor,
+        recentPatterns: director.recentPatterns,
+        specialCooldown: director.specialCooldown,
+      };
+
+      for (let step = 0; step < 40; step += 1) {
+        const selected = selectWavePattern(director, "hard", round);
+        counts[selected.pattern] += 1;
+        director = selected.nextDirector;
+      }
+    }
+
+    expect(counts.cluster_3).toBeLessThan(counts.single);
+    expect(counts.cluster_3).toBeLessThan(counts.cluster_2);
   });
 
   it("splits special wave hazards into two children midair", () => {
@@ -102,6 +157,7 @@ describe("game engine", () => {
 
   it("lets bounce hazards hop once before disappearing", () => {
     const state = createGameEngine("normal");
+    state.spawnTimer = -999;
     state.hazards.push({
       id: 1,
       x: 80,
@@ -118,12 +174,52 @@ describe("game engine", () => {
 
     updateGame(state, 0.2, 0);
     expect(state.hazards[0]?.speed).toBeLessThan(0);
+    const startX = state.hazards[0]?.x ?? 0;
+    let activeBounceTime = 0;
+    let maxTravel = 0;
 
     for (let step = 0; step < 20 && state.hazards.length > 0; step += 1) {
       updateGame(state, 0.1, 0);
+      activeBounceTime += 0.1;
+      if (state.hazards[0]) {
+        maxTravel = Math.max(maxTravel, Math.abs(state.hazards[0].x - startX));
+      }
     }
 
+    expect(activeBounceTime).toBeGreaterThanOrEqual(0.35);
+    expect(maxTravel).toBeGreaterThanOrEqual(18);
     expect(state.hazards).toHaveLength(0);
+  });
+
+  it("gives hard bounce hazards a stronger lateral rebound path", () => {
+    const state = createGameEngine("hard");
+    state.spawnTimer = -999;
+    state.hazards.push({
+      id: 1,
+      x: 80,
+      y: state.height - 64,
+      size: 20,
+      width: 20,
+      height: 20,
+      speed: 190,
+      owner: "wave",
+      variant: "medium",
+      behavior: "bounce",
+      bouncesRemaining: 1,
+    });
+
+    updateGame(state, 0.2, 0);
+    const startX = state.hazards[0]?.x ?? 0;
+    let maxTravel = 0;
+
+    for (let step = 0; step < 20 && state.hazards.length > 0; step += 1) {
+      updateGame(state, 0.1, 0);
+      if (state.hazards[0]) {
+        maxTravel = Math.max(maxTravel, Math.abs(state.hazards[0].x - startX));
+      }
+    }
+
+    expect(maxTravel).toBeGreaterThanOrEqual(24);
   });
 
   it("builds a boss queue when entering boss phase", () => {
@@ -133,8 +229,10 @@ describe("game engine", () => {
     updateGame(state, 0.016, 0);
 
     expect(state.currentPhase).toBe("boss");
+    expect(state.bossThemeId).not.toBeNull();
     expect(state.bossPatternQueue.length).toBeGreaterThan(0);
     expect(state.phaseAnnouncementText.length).toBeGreaterThan(0);
+    expect(state.phaseAnnouncementText).toContain(getBossThemeLabel(state.bossThemeId));
     expect(state.phaseAnnouncementTimer).toBeGreaterThan(0);
     expect(state.screenShakeTimer).toBeGreaterThan(0);
     expect(state.itemToastText).toBe("보스 경고");

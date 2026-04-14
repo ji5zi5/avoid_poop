@@ -128,8 +128,11 @@ export function updateGame(state: GameState, delta: number, direction: number) {
         hazard.y = floorContactY;
         hazard.bouncesRemaining = (hazard.bouncesRemaining ?? 1) - 1;
         hazard.triggered = true;
-        hazard.speed = -Math.max(120, Math.abs(hazard.speed) * 0.52);
-        hazard.gravity = 860;
+        hazard.speed = -Math.max(165, Math.abs(hazard.speed) * 0.78);
+        hazard.gravity = 520;
+        hazard.velocityX = hazard.x + hazard.width / 2 < state.width / 2
+          ? state.mode === "hard" ? 70 : 52
+          : state.mode === "hard" ? -70 : -52;
         return;
       }
 

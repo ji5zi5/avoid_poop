@@ -1,8 +1,9 @@
 import { copy } from "../../content/copy";
 import { BOSS_DURATION, ROUND_DURATION } from "../state";
 import type { GameState } from "../state";
-import { hasBossSequenceRemaining, initializeBossEncounter } from "./bossPatterns";
+import { getBossThemeLabel, hasBossSequenceRemaining, initializeBossEncounter } from "./bossPatterns";
 import { showToast, triggerScreenShake } from "./items";
+import { syncWaveDirectorForRound } from "./spawn";
 
 const PHASE_ANNOUNCEMENT_DURATION = 1.4;
 
@@ -23,6 +24,7 @@ function hasActiveBossHazards(state: GameState) {
 }
 
 function resetBossRuntime(state: GameState) {
+  state.bossThemeId = null;
   state.bossPatternQueue = [];
   state.bossPatternIndex = 0;
   state.bossPatternActiveId = null;
@@ -65,12 +67,13 @@ export function updateRounds(state: GameState) {
     state.elapsedInPhase = 0;
     state.spawnTimer = 0;
     state.pendingBossClearAnnouncement = false;
+    syncWaveDirectorForRound(state, nextRound);
 
     if (shouldEnterBoss(state, nextRound)) {
       state.currentPhase = "boss";
       initializeBossEncounter(state);
       state.phaseAnnouncementTimer = PHASE_ANNOUNCEMENT_DURATION;
-      state.phaseAnnouncementText = copy.transitions.bossIncoming;
+      state.phaseAnnouncementText = `${copy.transitions.bossIncoming} · ${getBossThemeLabel(state.bossThemeId)}`;
       showToast(state, copy.game.alerts.bossIncoming, "boss", 1.15);
       triggerScreenShake(state, 0.5);
     } else {

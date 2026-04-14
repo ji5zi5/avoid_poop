@@ -1,6 +1,7 @@
 import { createItem } from "../entities/item";
 import { createHazard } from "../entities/poop";
-import type { GameState, Hazard, ItemType } from "../state";
+import { createWaveDirector } from "../state";
+import type { GameState, Hazard, ItemType, WaveDirector, WavePattern } from "../state";
 
 const ITEM_TYPES: ItemType[] = ["invincibility", "speed", "heal", "slow", "clear"];
 const NORMAL_HAZARD_SIZES = [16, 20, 24] as const;
@@ -26,8 +27,6 @@ type CustomHazardOptions = {
   x: number;
 };
 
-type WavePattern = "single" | "cluster" | "splitter" | "bouncer";
-
 function randomX(width: number, size: number) {
   return Math.floor(Math.random() * Math.max(1, width - size));
 }
@@ -40,9 +39,97 @@ function roundPressure(state: GameState) {
   return Math.min(state.mode === "hard" ? 18 : 16, Math.max(0, state.round - 1));
 }
 
+function advanceWaveSeed(seed: number) {
+  const nextSeed = (seed * 48271) % 2147483647;
+  return {
+    nextSeed,
+    value: nextSeed / 2147483647,
+  };
+}
+
 function getNormalHazardSize(state: GameState) {
   const offset = state.mode === "hard" ? 1 : 0;
   return NORMAL_HAZARD_SIZES[(state.nextHazardId + state.round + offset) % NORMAL_HAZARD_SIZES.length];
+}
+
+function buildRoundDirector(mode: GameState["mode"], round: number, current?: WaveDirector): WaveDirector {
+  const base = createWaveDirector(mode, round);
+  return {
+    ...base,
+    seed: current?.seed ?? base.seed,
+    patternCursor: current?.patternCursor ?? 0,
+    recentPatterns: current?.recentPatterns ?? [],
+    specialCooldown: Math.max(0, (current?.specialCooldown ?? 0) - 1),
+  };
+}
+
+export function syncWaveDirectorForRound(state: GameState, round = state.round) {
+  state.waveDirector = buildRoundDirector(state.mode, round, state.waveDirector);
+}
+
+function pickWeightedPattern(seed: number, choices: Array<{ pattern: WavePattern; weight: number }>) {
+  const rolled = advanceWaveSeed(seed);
+  const totalWeight = choices.reduce((sum, choice) => sum + choice.weight, 0);
+  let cursor = rolled.value * totalWeight;
+
+  for (const choice of choices) {
+    cursor -= choice.weight;
+    if (cursor <= 0) {
+      return { pattern: choice.pattern, nextSeed: rolled.nextSeed };
+    }
+  }
+
+  return { pattern: choices[choices.length - 1].pattern, nextSeed: rolled.nextSeed };
+}
+
+export function selectWavePattern(director: WaveDirector, mode: GameState["mode"], round: number) {
+  const current = director.round === round ? director : buildRoundDirector(mode, round, director);
+  const choices: Array<{ pattern: WavePattern; weight: number }> = [{ pattern: "single", weight: 7 }];
+  const recentLast = current.recentPatterns[current.recentPatterns.length - 1] ?? null;
+
+  if (current.roundBudget > 0 && current.specialCooldown === 0) {
+    if (current.clusterQuota > 0 && recentLast !== "cluster_2") {
+      choices.push({ pattern: "cluster_2", weight: 3 });
+    }
+    if (current.tripleQuota > 0 && round >= (mode === "hard" ? 10 : 12) && recentLast !== "cluster_3") {
+      choices.push({ pattern: "cluster_3", weight: 0.35 });
+    }
+    if (current.splitterQuota > 0 && recentLast !== "splitter") {
+      choices.push({ pattern: "splitter", weight: 2 });
+    }
+    if (current.bounceQuota > 0 && recentLast !== "bouncer") {
+      choices.push({ pattern: "bouncer", weight: mode === "hard" ? 3 : 2 });
+    }
+  }
+
+  const picked = pickWeightedPattern(current.seed, choices);
+  const nextDirector: WaveDirector = {
+    ...current,
+    seed: picked.nextSeed,
+    patternCursor: current.patternCursor + 1,
+    recentPatterns: [...current.recentPatterns, picked.pattern].slice(-4),
+  };
+
+  if (picked.pattern === "single") {
+    nextDirector.specialCooldown = Math.max(0, current.specialCooldown - 1);
+    return { pattern: picked.pattern, nextDirector };
+  }
+
+  nextDirector.roundBudget = Math.max(0, current.roundBudget - (picked.pattern === "cluster_3" ? 2 : 1));
+  nextDirector.specialCooldown = picked.pattern === "cluster_3" ? 2 : 1;
+
+  if (picked.pattern === "cluster_2") {
+    nextDirector.clusterQuota = Math.max(0, current.clusterQuota - 1);
+  } else if (picked.pattern === "cluster_3") {
+    nextDirector.clusterQuota = Math.max(0, current.clusterQuota - 1);
+    nextDirector.tripleQuota = Math.max(0, current.tripleQuota - 1);
+  } else if (picked.pattern === "splitter") {
+    nextDirector.splitterQuota = Math.max(0, current.splitterQuota - 1);
+  } else if (picked.pattern === "bouncer") {
+    nextDirector.bounceQuota = Math.max(0, current.bounceQuota - 1);
+  }
+
+  return { pattern: picked.pattern, nextDirector };
 }
 
 export function createCustomHazard(state: GameState, options: CustomHazardOptions) {
@@ -86,24 +173,7 @@ export function spawnHazard(state: GameState, boss = false, forcedX?: number) {
   });
 }
 
-function getWavePattern(state: GameState): WavePattern {
-  const token = state.nextHazardId + state.round * (state.mode === "hard" ? 3 : 2);
-
-  if (state.round >= (state.mode === "hard" ? 7 : 9) && token % 11 === 0) {
-    return "bouncer";
-  }
-  if (state.round >= (state.mode === "hard" ? 5 : 7) && token % 7 === 0) {
-    return "splitter";
-  }
-  if (state.round >= (state.mode === "hard" ? 4 : 6) && token % 4 === 0) {
-    return "cluster";
-  }
-
-  return "single";
-}
-
-function spawnClusterHazards(state: GameState) {
-  const count = state.mode === "hard" || state.round >= 10 ? 3 : 2;
+function spawnClusterHazards(state: GameState, count: 2 | 3) {
   const size = getNormalHazardSize(state);
   const gap = size + 18;
   const totalWidth = size + gap * (count - 1);
@@ -158,10 +228,16 @@ function spawnBounceHazard(state: GameState) {
 }
 
 export function spawnWavePattern(state: GameState) {
-  const pattern = getWavePattern(state);
+  const selection = selectWavePattern(state.waveDirector, state.mode, state.round);
+  state.waveDirector = selection.nextDirector;
+  const { pattern } = selection;
 
-  if (pattern === "cluster") {
-    spawnClusterHazards(state);
+  if (pattern === "cluster_2") {
+    spawnClusterHazards(state, 2);
+    return pattern;
+  }
+  if (pattern === "cluster_3") {
+    spawnClusterHazards(state, 3);
     return pattern;
   }
   if (pattern === "splitter") {

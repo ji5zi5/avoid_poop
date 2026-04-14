@@ -148,7 +148,8 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
               {state.damageFlashTimer > 0 ? <div className="damage-flash" aria-hidden="true" /> : null}
               {state.bossTelegraphText && !result ? (
                 <div className="boss-telegraph" role="status" aria-live="polite">
-                  <strong>{copy.game.bossAttack}</strong>
+                  <span>{copy.game.bossAttack}</span>
+                  <strong>{state.bossTelegraphText}</strong>
                 </div>
               ) : null}
             </div>

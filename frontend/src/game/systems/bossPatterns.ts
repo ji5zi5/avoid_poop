@@ -1,15 +1,51 @@
-import type { BossPatternFamily, BossPatternId, GameState } from "../state";
+import { BOSS_DURATION } from "../state";
+import type { BossPatternFamily, BossPatternId, BossThemeId, GameState } from "../state";
 
 import { createCustomHazard, spawnCenterHazard, spawnEdgeHazards, spawnGiantHazard, spawnHalfHazard, spawnLaneBarrage } from "./spawn";
 
 type BossPatternDefinition = {
   archetype: string;
   family: BossPatternFamily;
+  isHeavySetPiece?: boolean;
   label: (state: GameState) => string;
+  minEncounterContributionMs?: number;
   normalAllowed: boolean;
   telegraphHardMs: number;
   telegraphNormalMs: number;
   run: (state: GameState, delta: number) => boolean;
+};
+
+type BossThemeDefinition = {
+  durationFloorMs: number;
+  finisher: BossPatternId[];
+  id: BossThemeId;
+  label: string;
+  maxHeavySetPieces: number;
+  maxQueueLength: number;
+  minQueueLength: number;
+  mode: GameState["mode"] | "both";
+  opener: BossPatternId[];
+  optionalSetPiece?: BossPatternId[];
+  roundEnd?: number;
+  roundStart: number;
+  themeFamilies: BossPatternFamily[];
+  core: BossPatternId[];
+};
+
+export type BossEncounterBuilderInput = {
+  mode: GameState["mode"];
+  previousFamilyStreak: BossPatternFamily | null;
+  previousFamilyStreakCount: number;
+  queueSeed: number;
+  recentPatterns: readonly BossPatternId[];
+  round: number;
+};
+
+export type BossEncounterPlan = {
+  minEncounterDuration: number;
+  nextQueueSeed: number;
+  queue: BossPatternId[];
+  themeId: BossThemeId;
 };
 
 const HARD_ONLY_PATTERNS: BossPatternId[] = [
@@ -24,6 +60,16 @@ const HARD_ONLY_PATTERNS: BossPatternId[] = [
   "shoulder_crush",
   "delayed_burst",
 ];
+
+const HEAVY_SET_PIECE_IDS = new Set<BossPatternId>([
+  "three_gate_shuffle",
+  "pillar_press",
+  "residue_zone",
+  "residue_switch",
+  "center_collapse",
+  "shoulder_crush",
+  "delayed_burst",
+]);
 
 function clampRoundPressure(state: GameState) {
   return Math.max(0, state.round - 1);
@@ -69,22 +115,12 @@ function scaledInterval(state: GameState, hardBase: number, normalBase: number, 
   return Math.max(floor, base - reduction);
 }
 
-function nextSeed(state: GameState) {
-  state.bossPatternSeed = (state.bossPatternSeed * 48271) % 2147483647;
-  return state.bossPatternSeed / 2147483647;
-}
-
-function desiredQueueLength(state: GameState) {
-  if (state.mode === "hard") {
-    if (state.round >= 10) {
-      return 6;
-    }
-    return state.round >= 6 ? 5 : 4;
-  }
-  if (state.round >= 12) {
-    return 5;
-  }
-  return state.round >= 7 ? 4 : 3;
+function advanceSeed(seed: number) {
+  const nextQueueSeed = (seed * 48271) % 2147483647;
+  return {
+    nextQueueSeed,
+    value: nextQueueSeed / 2147483647,
+  };
 }
 
 function getLaneCount(state: GameState) {
@@ -105,20 +141,6 @@ export function getBossPatternFamily(id: BossPatternId) {
 
 function getBossPatternArchetype(id: BossPatternId) {
   return definitions[id].archetype;
-}
-
-function recentFamiliesWithStreak(state: GameState, queue: BossPatternId[]) {
-  const seedFamilies = state.bossPatternFamilyStreak === null ? [] : Array.from({ length: Math.min(2, state.bossPatternFamilyStreakCount) }, () => state.bossPatternFamilyStreak as BossPatternFamily);
-  return [...seedFamilies, ...queue.map((id) => getBossPatternFamily(id))].slice(-2);
-}
-
-function recentPatternIds(state: GameState, queue: BossPatternId[]) {
-  return new Set([...state.bossRecentPatterns.slice(-4), ...queue.slice(-2)]);
-}
-
-function recentArchetypes(state: GameState, queue: BossPatternId[]) {
-  const recent = [...state.bossRecentPatterns.slice(-2), ...queue.slice(-1)];
-  return new Set(recent.map((id) => getBossPatternArchetype(id)));
 }
 
 function tickPattern(state: GameState, delta: number, interval: number, shots: number, fire: (shotIndex: number) => void) {
@@ -181,7 +203,11 @@ function pushRecentPattern(state: GameState, id: BossPatternId) {
   state.bossRecentPatterns = [...state.bossRecentPatterns, id].slice(-6);
 }
 
-function pickReplacementPattern(state: GameState, queue: BossPatternId[], replaceIndex: number, candidates: BossPatternId[]) {
+function isHeavySetPiece(id: BossPatternId) {
+  return HEAVY_SET_PIECE_IDS.has(id);
+}
+
+function pickReplacementPattern(seed: number, queue: BossPatternId[], replaceIndex: number, candidates: BossPatternId[]) {
   const previous = replaceIndex > 0 ? queue[replaceIndex - 1] : null;
   const next = replaceIndex < queue.length - 1 ? queue[replaceIndex + 1] : null;
 
@@ -202,20 +228,26 @@ function pickReplacementPattern(state: GameState, queue: BossPatternId[], replac
   });
 
   const pool = filtered.length > 0 ? filtered : candidates;
-  return pool[Math.floor(nextSeed(state) * pool.length)];
+  const rolled = advanceSeed(seed);
+  return {
+    id: pool[Math.floor(rolled.value * pool.length)],
+    nextQueueSeed: rolled.nextQueueSeed,
+  };
 }
 
-function ensureQueueIncludes(state: GameState, queue: BossPatternId[], candidates: BossPatternId[]) {
+function ensureQueueIncludes(seed: number, queue: BossPatternId[], candidates: BossPatternId[]) {
   if (candidates.length === 0 || queue.some((id) => candidates.includes(id))) {
-    return;
+    return seed;
   }
 
   const replaceIndex = [...queue.keys()].reverse().find((index) => !candidates.includes(queue[index]));
   if (replaceIndex === undefined) {
-    return;
+    return seed;
   }
 
-  queue[replaceIndex] = pickReplacementPattern(state, queue, replaceIndex, candidates);
+  const replacement = pickReplacementPattern(seed, queue, replaceIndex, candidates);
+  queue[replaceIndex] = replacement.id;
+  return replacement.nextQueueSeed;
 }
 
 const definitions: Record<BossPatternId, BossPatternDefinition> = {
@@ -628,6 +660,137 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
   },
 };
 
+const PATTERN_TIMING_MS: Record<BossPatternId, number> = {
+  half_stomp_alternating: 1650,
+  closing_doors: 1700,
+  center_crush: 1580,
+  edge_crush: 1580,
+  double_side_stomp: 1680,
+  center_swing: 1760,
+  three_gate_shuffle: 1900,
+  pillar_press: 1960,
+  shifting_corridor: 1540,
+  zigzag_corridor: 1560,
+  staircase_corridor: 1600,
+  center_break: 1580,
+  switch_press: 1500,
+  crossfall_mix: 1740,
+  fake_safe_lane: 1760,
+  funnel_switch: 1820,
+  residue_zone: 2060,
+  residue_switch: 1980,
+  fake_warning: 1680,
+  center_collapse: 1920,
+  shoulder_crush: 1880,
+  delayed_burst: 1780,
+  last_hit_followup: 1640,
+};
+
+const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
+  pressure_intro: {
+    id: "pressure_intro",
+    label: "측면 압박",
+    mode: "both",
+    roundStart: 2,
+    opener: ["half_stomp_alternating", "closing_doors"],
+    core: ["center_crush", "edge_crush", "double_side_stomp", "center_swing"],
+    finisher: ["closing_doors", "center_swing", "double_side_stomp"],
+    optionalSetPiece: ["three_gate_shuffle", "pillar_press"],
+    minQueueLength: 3,
+    maxQueueLength: 4,
+    maxHeavySetPieces: 1,
+    durationFloorMs: 5200,
+    themeFamilies: ["pressure"],
+  },
+  lane_intro: {
+    id: "lane_intro",
+    label: "통로 러시",
+    mode: "both",
+    roundStart: 2,
+    opener: ["shifting_corridor", "zigzag_corridor"],
+    core: ["staircase_corridor", "center_break", "switch_press"],
+    finisher: ["crossfall_mix", "staircase_corridor", "center_break"],
+    minQueueLength: 3,
+    maxQueueLength: 4,
+    maxHeavySetPieces: 0,
+    durationFloorMs: 5000,
+    themeFamilies: ["lane"],
+  },
+  corridor_intro: {
+    id: "corridor_intro",
+    label: "통로 비틀기",
+    mode: "normal",
+    roundStart: 6,
+    opener: ["shifting_corridor", "staircase_corridor"],
+    core: ["center_break", "switch_press", "zigzag_corridor"],
+    finisher: ["crossfall_mix", "last_hit_followup"],
+    minQueueLength: 3,
+    maxQueueLength: 4,
+    maxHeavySetPieces: 0,
+    durationFloorMs: 5200,
+    themeFamilies: ["lane", "trap"],
+  },
+  trap_intro: {
+    id: "trap_intro",
+    label: "가짜 안전지대",
+    mode: "normal",
+    roundStart: 9,
+    opener: ["center_swing", "switch_press"],
+    core: ["last_hit_followup", "crossfall_mix"],
+    finisher: ["last_hit_followup", "center_swing"],
+    minQueueLength: 3,
+    maxQueueLength: 4,
+    maxHeavySetPieces: 0,
+    durationFloorMs: 5400,
+    themeFamilies: ["trap", "lane"],
+  },
+  corridor_switch: {
+    id: "corridor_switch",
+    label: "통로 뒤집기",
+    mode: "hard",
+    roundStart: 5,
+    opener: ["shifting_corridor", "staircase_corridor"],
+    core: ["center_break", "switch_press", "funnel_switch"],
+    finisher: ["crossfall_mix", "three_gate_shuffle", "switch_press"],
+    optionalSetPiece: ["three_gate_shuffle"],
+    minQueueLength: 4,
+    maxQueueLength: 5,
+    maxHeavySetPieces: 1,
+    durationFloorMs: 6400,
+    themeFamilies: ["lane", "trap"],
+  },
+  trap_weave: {
+    id: "trap_weave",
+    label: "함정 직조",
+    mode: "hard",
+    roundStart: 7,
+    opener: ["fake_safe_lane", "fake_warning", "last_hit_followup"],
+    core: ["funnel_switch", "center_collapse", "shoulder_crush"],
+    finisher: ["last_hit_followup", "center_collapse", "delayed_burst"],
+    optionalSetPiece: ["pillar_press", "shoulder_crush"],
+    minQueueLength: 4,
+    maxQueueLength: 5,
+    maxHeavySetPieces: 1,
+    durationFloorMs: 6800,
+    themeFamilies: ["trap", "pressure"],
+  },
+  residue_fakeout: {
+    id: "residue_fakeout",
+    label: "잔류 속임수",
+    mode: "hard",
+    roundStart: 10,
+    opener: ["fake_warning", "fake_safe_lane"],
+    core: ["residue_zone", "residue_switch"],
+    finisher: ["last_hit_followup", "center_collapse"],
+    optionalSetPiece: ["residue_switch"],
+    minQueueLength: 4,
+    maxQueueLength: 5,
+    maxHeavySetPieces: 1,
+    durationFloorMs: 7200,
+    themeFamilies: ["trap"],
+  },
+};
+
 function updateFamilyStreak(state: GameState, family: BossPatternFamily) {
   if (state.bossPatternFamilyStreak === family) {
     state.bossPatternFamilyStreakCount += 1;
@@ -644,7 +807,7 @@ function beginPattern(state: GameState, id: BossPatternId) {
   state.bossPatternStepTimer = 0;
   state.bossPatternShots = 0;
   state.bossPatternTimer = 0;
-  state.bossTelegraphText = "incoming";
+  state.bossTelegraphText = state.bossThemeId ? themeDefinitions[state.bossThemeId].label : definition.label(state);
   state.bossTelegraphTimer = telegraphSeconds(state, definition);
 }
 
@@ -667,53 +830,191 @@ export function getAvailableBossPatternIds(mode: GameState["mode"]) {
   return (Object.keys(definitions) as BossPatternId[]).filter((id) => mode === "hard" || definitions[id].normalAllowed);
 }
 
-export function buildBossPatternQueue(state: GameState) {
-  const available = getAvailableBossPatternIds(state.mode);
+export function getBossThemeLabel(themeId: BossThemeId | null) {
+  return themeId ? themeDefinitions[themeId].label : "";
+}
+
+function toBossEncounterBuilderInput(state: GameState): BossEncounterBuilderInput {
+  return {
+    mode: state.mode,
+    round: state.round,
+    previousFamilyStreak: state.bossPatternFamilyStreak,
+    previousFamilyStreakCount: state.bossPatternFamilyStreakCount,
+    recentPatterns: state.bossRecentPatterns,
+    queueSeed: state.bossPatternSeed,
+  };
+}
+
+function getUnlockedThemes(mode: GameState["mode"], round: number) {
+  return Object.values(themeDefinitions).filter((theme) => {
+    if (theme.mode !== "both" && theme.mode !== mode) {
+      return false;
+    }
+    if (round < theme.roundStart) {
+      return false;
+    }
+    if (theme.roundEnd && round > theme.roundEnd) {
+      return false;
+    }
+    if (mode === "normal") {
+      return [...theme.opener, ...theme.core, ...theme.finisher].every((id) => definitions[id].normalAllowed);
+    }
+    return true;
+  });
+}
+
+function getQueueTargetLength(theme: BossThemeDefinition, mode: GameState["mode"], round: number) {
+  const base = mode === "hard" ? (round >= 10 ? 5 : 4) : round >= 9 ? 4 : 3;
+  return Math.max(theme.minQueueLength, Math.min(theme.maxQueueLength, base));
+}
+
+function buildRecentFamilies(previousFamilyStreak: BossPatternFamily | null, previousFamilyStreakCount: number, queue: BossPatternId[]) {
+  const seedFamilies = previousFamilyStreak === null ? [] : Array.from({ length: Math.min(2, previousFamilyStreakCount) }, () => previousFamilyStreak as BossPatternFamily);
+  return [...seedFamilies, ...queue.map((id) => getBossPatternFamily(id))].slice(-2);
+}
+
+function buildRecentIds(recentPatterns: readonly BossPatternId[], queue: BossPatternId[]) {
+  return new Set([...recentPatterns.slice(-4), ...queue.slice(-2)]);
+}
+
+function buildRecentArchetypes(recentPatterns: readonly BossPatternId[], queue: BossPatternId[]) {
+  const recent = [...recentPatterns.slice(-2), ...queue.slice(-1)];
+  return new Set(recent.map((id) => getBossPatternArchetype(id)));
+}
+
+function pickTheme(seed: number, availableThemes: BossThemeDefinition[]) {
+  const rolled = advanceSeed(seed);
+  return {
+    nextQueueSeed: rolled.nextQueueSeed,
+    theme: availableThemes[Math.floor(rolled.value * availableThemes.length)],
+  };
+}
+
+function pickPatternForSlot(input: BossEncounterBuilderInput, seed: number, queue: BossPatternId[], pool: BossPatternId[], maxHeavySetPieces: number) {
+  const recentFamilies = buildRecentFamilies(input.previousFamilyStreak, input.previousFamilyStreakCount, queue);
+  const recentIds = buildRecentIds(input.recentPatterns, queue);
+  const recentArchetypeSet = buildRecentArchetypes(input.recentPatterns, queue);
+  const heavySetPieceCount = queue.filter((id) => isHeavySetPiece(id)).length;
+  const lastPattern = queue[queue.length - 1] ?? null;
+  const filtered = pool.filter((id) => {
+    if (input.mode === "normal" && !definitions[id].normalAllowed) {
+      return false;
+    }
+    if (lastPattern === id && pool.length > 1) {
+      return false;
+    }
+    if (recentIds.has(id) && pool.some((candidate) => !recentIds.has(candidate))) {
+      return false;
+    }
+    if (recentArchetypeSet.has(getBossPatternArchetype(id)) && pool.some((candidate) => !recentArchetypeSet.has(getBossPatternArchetype(candidate)))) {
+      return false;
+    }
+    if (recentFamilies.length === 2 && recentFamilies[0] === recentFamilies[1] && recentFamilies[0] === getBossPatternFamily(id) && pool.some((candidate) => getBossPatternFamily(candidate) !== recentFamilies[0])) {
+      return false;
+    }
+    if (heavySetPieceCount >= maxHeavySetPieces && isHeavySetPiece(id)) {
+      return false;
+    }
+    if (lastPattern && isHeavySetPiece(lastPattern) && isHeavySetPiece(id)) {
+      return false;
+    }
+    return true;
+  });
+
+  const selectionPool = filtered.length > 0 ? filtered : pool;
+  const rolled = advanceSeed(seed);
+  return {
+    id: selectionPool[Math.floor(rolled.value * selectionPool.length)],
+    nextQueueSeed: rolled.nextQueueSeed,
+  };
+}
+
+function buildSlotOrder(theme: BossThemeDefinition, targetLength: number, mode: GameState["mode"], round: number, seed: number) {
+  let nextQueueSeed = seed;
+  let includeSetPiece = false;
+  if (theme.optionalSetPiece && targetLength >= 4 && mode === "hard" && round >= 5) {
+    const rolled = advanceSeed(nextQueueSeed);
+    nextQueueSeed = rolled.nextQueueSeed;
+    includeSetPiece = rolled.value > 0.42;
+  }
+
+  const slots: Array<"opener" | "core" | "setPiece" | "finisher"> = ["opener"];
+  const coreSlots = Math.max(1, targetLength - 2 - (includeSetPiece ? 1 : 0));
+  for (let index = 0; index < coreSlots; index += 1) {
+    if (includeSetPiece && index === 1) {
+      slots.push("setPiece");
+    }
+    slots.push("core");
+  }
+  if (includeSetPiece && !slots.includes("setPiece")) {
+    slots.push("setPiece");
+  }
+  slots.push("finisher");
+  return { slots, nextQueueSeed };
+}
+
+function getThemePool(theme: BossThemeDefinition, slot: "opener" | "core" | "setPiece" | "finisher") {
+  if (slot === "setPiece") {
+    return theme.optionalSetPiece ?? [];
+  }
+  return theme[slot];
+}
+
+export function buildBossEncounterPlan(input: BossEncounterBuilderInput): BossEncounterPlan {
+  const availableThemes = getUnlockedThemes(input.mode, input.round);
+  if (availableThemes.length === 0) {
+    throw new Error(`No boss themes available for ${input.mode} round ${input.round}`);
+  }
+
+  let seed = input.queueSeed;
+  const themePick = pickTheme(seed, availableThemes);
+  seed = themePick.nextQueueSeed;
+  const theme = themePick.theme;
+  const targetLength = getQueueTargetLength(theme, input.mode, input.round);
+  const slotOrder = buildSlotOrder(theme, targetLength, input.mode, input.round, seed);
+  seed = slotOrder.nextQueueSeed;
+
   const queue: BossPatternId[] = [];
-
-  while (queue.length < desiredQueueLength(state)) {
-    const lastPattern = queue[queue.length - 1] ?? null;
-    const recentFamilies = recentFamiliesWithStreak(state, queue);
-    const recentIds = recentPatternIds(state, queue);
-    const recentArchetypeSet = recentArchetypes(state, queue);
-    const filtered = available.filter((id) => {
-      if (lastPattern === id && available.length > 1) {
-        return false;
-      }
-      if (recentIds.has(id) && available.length - recentIds.size > 0) {
-        return false;
-      }
-      if (recentArchetypeSet.has(getBossPatternArchetype(id)) && available.some((candidate) => !recentArchetypeSet.has(getBossPatternArchetype(candidate)))) {
-        return false;
-      }
-      if (recentFamilies.length === 2 && recentFamilies[0] === recentFamilies[1] && recentFamilies[0] === getBossPatternFamily(id)) {
-        return false;
-      }
-      return true;
-    });
-    const pool = filtered.length > 0 ? filtered : available;
-    const index = Math.floor(nextSeed(state) * pool.length);
-    queue.push(pool[index]);
+  for (const slot of slotOrder.slots) {
+    const pool = getThemePool(theme, slot);
+    if (pool.length === 0) {
+      continue;
+    }
+    const picked = pickPatternForSlot(input, seed, queue, pool, theme.maxHeavySetPieces);
+    queue.push(picked.id);
+    seed = picked.nextQueueSeed;
   }
 
-  if (state.mode === "hard" && state.round >= 5) {
-    ensureQueueIncludes(state, queue, available.filter((id) => getBossPatternFamily(id) === "trap"));
-    ensureQueueIncludes(state, queue, available.filter((id) => getBossPatternFamily(id) === "lane"));
+  const themePatternPool = [...theme.opener, ...theme.core, ...theme.finisher, ...(theme.optionalSetPiece ?? [])];
+  if (theme.themeFamilies.includes("lane")) {
+    seed = ensureQueueIncludes(seed, queue, themePatternPool.filter((id) => getBossPatternFamily(id) === "lane"));
+  }
+  if (theme.themeFamilies.includes("trap")) {
+    seed = ensureQueueIncludes(seed, queue, themePatternPool.filter((id) => getBossPatternFamily(id) === "trap"));
   }
 
-  if (state.mode === "hard" && state.round >= 6) {
-    ensureQueueIncludes(state, queue, ["three_gate_shuffle", "pillar_press", "funnel_switch", "shoulder_crush"]);
-  }
+  const durationMs = Math.max(
+    theme.durationFloorMs,
+    queue.reduce((total, id) => total + (definitions[id].minEncounterContributionMs ?? PATTERN_TIMING_MS[id]), 0) + Math.max(0, queue.length - 1) * 180,
+  );
 
-  if (state.mode === "hard" && state.round >= 10) {
-    ensureQueueIncludes(state, queue, ["residue_zone", "residue_switch"]);
-  }
+  return {
+    themeId: theme.id,
+    queue,
+    nextQueueSeed: seed,
+    minEncounterDuration: durationMs / 1000,
+  };
+}
 
-  return queue;
+export function buildBossPatternQueue(state: GameState) {
+  return buildBossEncounterPlan(toBossEncounterBuilderInput(state)).queue;
 }
 
 export function initializeBossEncounter(state: GameState) {
-  state.bossPatternQueue = buildBossPatternQueue(state);
+  const plan = buildBossEncounterPlan(toBossEncounterBuilderInput(state));
+  state.bossThemeId = plan.themeId;
+  state.bossPatternSeed = plan.nextQueueSeed;
+  state.bossPatternQueue = plan.queue;
   state.bossPatternIndex = 0;
   state.bossPatternActiveId = null;
   state.bossPatternPhase = "idle";
@@ -722,7 +1023,7 @@ export function initializeBossEncounter(state: GameState) {
   state.bossPatternTimer = 0;
   state.bossTelegraphText = "";
   state.bossTelegraphTimer = 0;
-  state.bossEncounterDuration = state.bossPatternQueue.length * (state.mode === "hard" ? 2.8 : 3.2) + 1.8;
+  state.bossEncounterDuration = Math.max(BOSS_DURATION, plan.minEncounterDuration);
 }
 
 export function hasBossSequenceRemaining(state: GameState) {
