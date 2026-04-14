@@ -95,6 +95,34 @@ function hasReachableSafePath(state: ReturnType<typeof createGameEngine>) {
   return true;
 }
 
+function createBossEncounterState(round: number, seed: number) {
+  const state = createGameEngine("hard");
+  state.round = round;
+  state.reachedRound = round;
+  state.currentPhase = "boss";
+  state.bossPatternSeed = seed;
+  initializeBossEncounter(state);
+  return state;
+}
+
+function runPassiveBossEncounter(state: ReturnType<typeof createGameEngine>, maxSteps = 500) {
+  const initialTheme = state.bossThemeId;
+  const startLives = state.player.lives;
+
+  for (
+    let step = 0;
+    step < maxSteps && state.player.lives === startLives && (state.currentPhase === "boss" || state.pendingBossClearAnnouncement || state.hazards.length > 0);
+    step += 1
+  ) {
+    updateGame(state, 0.05, 0);
+  }
+
+  return {
+    initialTheme,
+    lostLife: state.player.lives < startLives,
+  };
+}
+
 describe("game engine", () => {
   it("moves the player only within bounds", () => {
     const state = createGameEngine("normal");
@@ -461,22 +489,60 @@ describe("game engine", () => {
     expect(failures).toEqual([]);
   });
 
+  it("keeps representative late hard-only themes dodgeable across their theme seeds", () => {
+    const cases = [
+      { round: 12, seed: 25422, themeId: "corridor_switch" },
+      { round: 12, seed: 31778, themeId: "trap_weave" },
+      { round: 12, seed: 38133, themeId: "residue_fakeout" },
+      { round: 14, seed: 25422, themeId: "corridor_switch" },
+      { round: 14, seed: 31778, themeId: "trap_weave" },
+      { round: 14, seed: 38133, themeId: "residue_fakeout" },
+    ] as const;
+    const failures: string[] = [];
+
+    for (const { round, seed, themeId } of cases) {
+      const state = createBossEncounterState(round, seed);
+      if (state.bossThemeId !== themeId) {
+        failures.push(`round ${round} seed ${seed} expected ${themeId} got ${state.bossThemeId ?? "unknown"}`);
+        continue;
+      }
+      if (!hasReachableSafePath(state)) {
+        failures.push(`round ${round} seed ${seed} theme ${themeId} lost all reachable lanes`);
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
   it("makes lane_intro punish standing still in the center", () => {
-    const state = createGameEngine("hard");
-    state.round = 2;
-    state.reachedRound = 2;
-    state.currentPhase = "boss";
-    state.bossPatternSeed = 6356;
-    initializeBossEncounter(state);
-    const startLives = state.player.lives;
+    const state = createBossEncounterState(2, 6356);
 
     expect(state.bossThemeId).toBe("lane_intro");
 
-    for (let step = 0; step < 400 && state.player.lives === startLives && (state.currentPhase === "boss" || state.pendingBossClearAnnouncement || state.hazards.length > 0); step += 1) {
-      updateGame(state, 0.05, 0);
+    expect(runPassiveBossEncounter(state, 400).lostLife).toBe(true);
+  });
+
+  it("keeps movement-heavy boss themes from allowing passive center play", () => {
+    const cases = [
+      { round: 2, seed: 12711, themeId: "corridor_intro" },
+      { round: 12, seed: 25422, themeId: "corridor_switch" },
+      { round: 12, seed: 31778, themeId: "trap_weave" },
+      { round: 12, seed: 38133, themeId: "residue_fakeout" },
+    ] as const;
+    const failures: string[] = [];
+
+    for (const { round, seed, themeId } of cases) {
+      const result = runPassiveBossEncounter(createBossEncounterState(round, seed));
+      if (result.initialTheme !== themeId) {
+        failures.push(`round ${round} seed ${seed} expected ${themeId} got ${result.initialTheme ?? "unknown"}`);
+        continue;
+      }
+      if (!result.lostLife) {
+        failures.push(`round ${round} seed ${seed} theme ${themeId} let center camping survive`);
+      }
     }
 
-    expect(state.player.lives).toBeLessThan(startLives);
+    expect(failures).toEqual([]);
   });
 
   it("remembers recently finished boss patterns to avoid repetition next time", () => {
