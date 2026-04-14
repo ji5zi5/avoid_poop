@@ -16,7 +16,7 @@ test.afterEach(() => {
   }
 });
 
-test('signup creates a session and me returns the authenticated user', async () => {
+test('signup creates a session and me returns the authenticated user', { concurrency: false }, async () => {
   const app = await createApp();
   const signup = await app.inject({
     method: 'POST',
@@ -45,7 +45,215 @@ test('signup creates a session and me returns the authenticated user', async () 
   await app.close();
 });
 
-test('records endpoints require auth and return best plus recent runs', async () => {
+test('health responses ship security headers', { concurrency: false }, async () => {
+  const app = await createApp();
+  const health = await app.inject({
+    method: 'GET',
+    url: '/api/health'
+  });
+
+  assert.equal(health.statusCode, 200);
+  assert.equal(health.headers['x-content-type-options'], 'nosniff');
+  assert.equal(health.headers['x-frame-options'], 'DENY');
+  assert.equal(health.headers['referrer-policy'], 'no-referrer');
+  assert.equal(health.headers['cross-origin-opener-policy'], 'same-origin');
+  await app.close();
+});
+
+test('auth endpoints are rate limited when the auth bucket is exhausted', { concurrency: false }, async () => {
+  const app = await createApp({
+    rateLimits: {
+      auth: { max: 1, windowMs: 60_000 },
+    } as never,
+  });
+
+  try {
+    const firstSignup = await app.inject({
+      method: 'POST',
+      url: '/api/auth/signup',
+      payload: {
+        username: 'limited_one',
+        password: 'secret123'
+      }
+    });
+    assert.equal(firstSignup.statusCode, 200);
+
+    const secondSignup = await app.inject({
+      method: 'POST',
+      url: '/api/auth/signup?next=1',
+      payload: {
+        username: 'limited_two',
+        password: 'secret123'
+      }
+    });
+    assert.equal(secondSignup.statusCode, 429);
+    assert.equal(secondSignup.json().error, 'Too many requests. Try again later.');
+    assert.ok(secondSignup.headers['retry-after']);
+  } finally {
+    await app.close();
+  }
+});
+
+test('write-heavy endpoints are rate limited when the write bucket is exhausted', { concurrency: false }, async () => {
+  const app = await createApp({
+    rateLimits: {
+      writes: { max: 1, windowMs: 60_000 },
+    } as never,
+  });
+
+  try {
+    const signup = await app.inject({
+      method: 'POST',
+      url: '/api/auth/signup',
+      payload: {
+        username: 'write_limit_user',
+        password: 'secret123'
+      }
+    });
+    const cookie = signup.cookies[0];
+
+    const firstSave = await app.inject({
+      method: 'POST',
+      url: '/api/records',
+      cookies: {
+        avoid_poop_session: cookie.value
+      },
+      payload: {
+        mode: 'normal',
+        score: 120,
+        reachedRound: 3,
+        survivalTime: 22.4,
+        clear: false
+      }
+    });
+    assert.equal(firstSave.statusCode, 201);
+
+    const secondSave = await app.inject({
+      method: 'POST',
+      url: '/api/records?attempt=2',
+      cookies: {
+        avoid_poop_session: cookie.value
+      },
+      payload: {
+        mode: 'hard',
+        score: 180,
+        reachedRound: 4,
+        survivalTime: 30.5,
+        clear: false
+      }
+    });
+    assert.equal(secondSave.statusCode, 429);
+    assert.equal(secondSave.json().error, 'Too many requests. Try again later.');
+    assert.ok(secondSave.headers['retry-after']);
+  } finally {
+    await app.close();
+  }
+});
+
+test('auth rate limiting ignores spoofed forwarded IPs unless trust proxy is enabled', { concurrency: false }, async () => {
+  const app = await createApp({
+    trustProxy: false,
+    rateLimits: {
+      auth: { max: 1, windowMs: 60_000 },
+    } as never,
+  });
+
+  try {
+    const firstSignup = await app.inject({
+      method: 'POST',
+      url: '/api/auth/signup',
+      headers: {
+        'x-forwarded-for': '1.1.1.1'
+      },
+      payload: {
+        username: 'spoofed_limit_one',
+        password: 'secret123'
+      }
+    });
+    assert.equal(firstSignup.statusCode, 200);
+
+    const secondSignup = await app.inject({
+      method: 'POST',
+      url: '/api/auth/signup',
+      headers: {
+        'x-forwarded-for': '2.2.2.2'
+      },
+      payload: {
+        username: 'spoofed_limit_two',
+        password: 'secret123'
+      }
+    });
+    assert.equal(secondSignup.statusCode, 429);
+  } finally {
+    await app.close();
+  }
+});
+
+test('auth rate limiting honors forwarded IPs when trust proxy is enabled', { concurrency: false }, async () => {
+  const app = await createApp({
+    trustProxy: true,
+    rateLimits: {
+      auth: { max: 1, windowMs: 60_000 },
+    } as never,
+  });
+
+  try {
+    const firstSignup = await app.inject({
+      method: 'POST',
+      url: '/api/auth/signup',
+      headers: {
+        'x-forwarded-for': '1.1.1.1'
+      },
+      payload: {
+        username: 'trusted_proxy_one',
+        password: 'secret123'
+      }
+    });
+    assert.equal(firstSignup.statusCode, 200);
+
+    const secondSignup = await app.inject({
+      method: 'POST',
+      url: '/api/auth/signup',
+      headers: {
+        'x-forwarded-for': '2.2.2.2'
+      },
+      payload: {
+        username: 'trusted_proxy_two',
+        password: 'secret123'
+      }
+    });
+    assert.equal(secondSignup.statusCode, 200);
+  } finally {
+    await app.close();
+  }
+});
+
+test('state-changing requests reject unexpected origins when APP_ORIGIN is configured', { concurrency: false }, async () => {
+  const app = await createApp({
+    appOrigin: 'https://avoid-poop.example',
+  });
+
+  try {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/signup',
+      headers: {
+        origin: 'https://evil.example',
+      },
+      payload: {
+        username: 'blocked_origin_user',
+        password: 'secret123'
+      }
+    });
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().error, 'Origin not allowed.');
+  } finally {
+    await app.close();
+  }
+});
+
+test('records endpoints require auth and return best plus recent runs', { concurrency: false }, async () => {
   const app = await createApp();
 
   const unauth = await app.inject({
@@ -123,7 +331,7 @@ test('records endpoints require auth and return best plus recent runs', async ()
 });
 
 
-test('records endpoint exposes real cross-user leaderboards', async () => {
+test('records endpoint exposes real cross-user leaderboards', { concurrency: false }, async () => {
   const app = await createApp();
 
   const firstSignup = await app.inject({

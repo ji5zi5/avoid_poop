@@ -4,7 +4,8 @@ import {randomUUID} from 'node:crypto';
 import type {FastifyInstance} from 'fastify';
 import {WebSocketServer, type RawData, type WebSocket} from 'ws';
 
-import {config} from '../../config.js';
+import {config, type RuntimeConfig} from '../../config.js';
+import {FixedWindowRateLimiter, identifySocketRequester} from '../../middleware/rateLimit.js';
 import {resolveSessionUserFromSignedCookie} from '../auth/auth.service.js';
 import {MultiplayerGameService} from './game.service.js';
 import {saveCompletedMultiplayerGame} from './results.service.js';
@@ -19,6 +20,8 @@ import {RoomAccessError, RoomNotFoundError, RoomStartError, type RoomService} fr
 
 type SocketGatewayOptions = {
   roomService: RoomService;
+  rateLimiter: FixedWindowRateLimiter;
+  runtimeConfig: RuntimeConfig;
 };
 
 type ConnectedUser = {
@@ -54,8 +57,10 @@ export class MultiplayerSocketGateway {
   private readonly activeGames = new Map<string, MultiplayerGameState>();
   private readonly gameService = new MultiplayerGameService();
   private readonly server = new WebSocketServer({noServer: true});
+  private readonly messageLimiter: FixedWindowRateLimiter;
 
   constructor(private readonly app: FastifyInstance, private readonly options: SocketGatewayOptions) {
+    this.messageLimiter = new FixedWindowRateLimiter(options.runtimeConfig.rateLimits.writes);
     this.server.on('connection', (_socket: WebSocket, _request: IncomingMessage, _metadata: ConnectionMetadata) => {});
     this.server.on('connection', (socket: WebSocket, request: IncomingMessage, metadata: ConnectionMetadata) => {
       const context: ConnectionContext = {
@@ -66,10 +71,17 @@ export class MultiplayerSocketGateway {
         suppressDisconnect: false
       };
       this.connections.set(socket, context);
+      this.app.log.info(
+        {
+          event: metadata.reconnected ? 'multiplayer_socket_reconnected' : 'multiplayer_socket_connected',
+          userId: context.user.id,
+        },
+        'Multiplayer socket connected',
+      );
       this.send(socket, {
         type: 'connected',
         reconnectToken: context.reconnectToken,
-        reconnectGraceMs: config.multiplayerReconnectGraceMs,
+        reconnectGraceMs: this.options.runtimeConfig.multiplayerReconnectGraceMs,
         user: context.user,
         reconnected: metadata.reconnected
       });
@@ -91,6 +103,13 @@ export class MultiplayerSocketGateway {
         if (context.suppressDisconnect) {
           return;
         }
+        this.app.log.info(
+          {
+            event: 'multiplayer_socket_closed',
+            userId: context.user.id,
+          },
+          'Multiplayer socket closed',
+        );
         if (context.roomCode) {
           const game = this.activeGames.get(context.roomCode);
           if (game) {
@@ -101,7 +120,7 @@ export class MultiplayerSocketGateway {
         this.reconnectRecords.set(context.reconnectToken, {
           user: context.user,
           roomCode: context.roomCode,
-          expiresAt: Date.now() + config.multiplayerReconnectGraceMs
+          expiresAt: Date.now() + this.options.runtimeConfig.multiplayerReconnectGraceMs
         });
       });
     });
@@ -110,7 +129,41 @@ export class MultiplayerSocketGateway {
   register() {
     this.app.server.on('upgrade', (request, socket, head) => {
       const upgradeUrl = new URL(request.url ?? '/', 'http://localhost');
-      if (upgradeUrl.pathname !== config.multiplayerWebSocketPath) {
+      if (upgradeUrl.pathname !== this.options.runtimeConfig.multiplayerWebSocketPath) {
+        return;
+      }
+
+      const requestOrigin = request.headers.origin?.trim();
+      if (this.options.runtimeConfig.appOrigin && requestOrigin && requestOrigin !== this.options.runtimeConfig.appOrigin) {
+        this.app.log.warn(
+          {
+            event: 'multiplayer_ws_origin_rejected',
+            origin: requestOrigin,
+            expectedOrigin: this.options.runtimeConfig.appOrigin,
+          },
+          'Rejected websocket upgrade from unexpected origin',
+        );
+        socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+
+      const socketRequester = identifySocketRequester(
+        request.socket.remoteAddress,
+        request.headers['x-forwarded-for'],
+        this.options.runtimeConfig.trustProxy,
+      );
+      const rateLimitResult = this.options.rateLimiter.consume(`ws:${socketRequester}`);
+      if (!rateLimitResult.allowed) {
+        this.app.log.warn(
+          {
+            event: 'multiplayer_ws_rate_limited',
+            ip: socketRequester,
+          },
+          'Rejected websocket upgrade due to rate limiting',
+        );
+        socket.write('HTTP/1.1 429 Too Many Requests\r\nConnection: close\r\nRetry-After: 60\r\n\r\n');
+        socket.destroy();
         return;
       }
 
@@ -201,7 +254,15 @@ export class MultiplayerSocketGateway {
   }
 
   private handleMessage(context: ConnectionContext, raw: string) {
-    const parsed = multiplayerClientEventSchema.safeParse(JSON.parse(raw));
+    let payload: unknown;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      this.send(context.socket, {type: 'error', error: 'Invalid socket payload.'});
+      return;
+    }
+
+    const parsed = multiplayerClientEventSchema.safeParse(payload);
     if (!parsed.success) {
       this.send(context.socket, {type: 'error', error: parsed.error.issues[0]?.message ?? 'Invalid socket payload.'});
       return;
@@ -213,10 +274,33 @@ export class MultiplayerSocketGateway {
       return;
     }
 
+    if (event.type !== 'player_input' && event.type !== 'jump') {
+      const rateLimitResult = this.messageLimiter.consume(`ws-message:${context.user.id}`);
+      if (!rateLimitResult.allowed) {
+        this.app.log.warn(
+          {
+            event: 'multiplayer_ws_message_rate_limited',
+            userId: context.user.id,
+            messageType: event.type,
+          },
+          'Rejected websocket message due to rate limiting',
+        );
+        this.send(context.socket, {type: 'error', error: 'Too many requests. Try again later.'});
+        return;
+      }
+    }
+
     if (event.type === 'subscribe_room') {
       try {
         const room = this.options.roomService.getRoomForUser(context.user.id, event.roomCode);
         context.roomCode = room.roomCode;
+        this.app.log.info(
+          {
+            event: 'multiplayer_room_subscribe',
+            userId: context.user.id,
+          },
+          'Subscribed socket to room',
+        );
         this.broadcastRoomSnapshot(room.roomCode);
         this.broadcastGameSnapshot(room.roomCode);
       } catch (error) {
@@ -278,6 +362,14 @@ export class MultiplayerSocketGateway {
         const game = this.gameService.createGame(startedRoom);
         this.activeGames.set(context.roomCode, game);
         this.ensureGameLoop(context.roomCode);
+        this.app.log.info(
+          {
+            event: 'multiplayer_game_started',
+            hostUserId: context.user.id,
+            playerCount: startedRoom.playerCount,
+          },
+          'Multiplayer game started',
+        );
         this.broadcastRoomSnapshot(context.roomCode);
         this.broadcastGameSnapshot(context.roomCode);
       } catch (error) {
@@ -291,6 +383,13 @@ export class MultiplayerSocketGateway {
     }
 
     if (event.type === 'leave_room') {
+      this.app.log.info(
+        {
+          event: 'multiplayer_room_leave',
+          userId: context.user.id,
+        },
+        'Player left multiplayer room',
+      );
       this.leaveUser(context.user.id);
       return;
     }

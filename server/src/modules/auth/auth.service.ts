@@ -51,6 +51,7 @@ export function establishSession(reply: FastifyReply, userId: number) {
     path: '/',
     httpOnly: true,
     sameSite: 'lax',
+    secure: config.cookieSecure,
     signed: true,
     expires: expiresAt
   });

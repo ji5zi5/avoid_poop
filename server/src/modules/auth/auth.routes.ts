@@ -25,9 +25,11 @@ export async function authRoutes(app: FastifyInstance) {
     try {
       const user = signup(parsed.data.username, parsed.data.password);
       establishSession(reply, user.id);
+      request.log.info({event: 'auth_signup', userId: user.id, username: user.username}, 'User signed up');
       return authResponseSchema.parse({user: toPublicUser(user)});
     } catch (error) {
       if (error instanceof AuthConflictError) {
+        request.log.warn({event: 'auth_signup_conflict', username: parsed.data.username}, 'Signup rejected because username exists');
         return reply.status(409).send({error: error.message});
       }
       throw error;
@@ -43,9 +45,11 @@ export async function authRoutes(app: FastifyInstance) {
     try {
       const user = login(parsed.data.username, parsed.data.password);
       establishSession(reply, user.id);
+      request.log.info({event: 'auth_login', userId: user.id, username: user.username}, 'User logged in');
       return authResponseSchema.parse({user: toPublicUser(user)});
     } catch (error) {
       if (error instanceof AuthUnauthorizedError) {
+        request.log.warn({event: 'auth_login_denied', username: parsed.data.username}, 'Login rejected');
         return reply.status(401).send({error: error.message});
       }
       throw error;
@@ -56,6 +60,7 @@ export async function authRoutes(app: FastifyInstance) {
     const rawCookie = request.cookies[config.sessionCookieName];
     const unsigned = rawCookie ? request.unsignCookie(rawCookie) : null;
     clearSession(reply, unsigned?.valid ? unsigned.value : undefined);
+    request.log.info({event: 'auth_logout', userId: request.user?.id ?? null}, 'User logged out');
     return reply.send({ok: true});
   });
 

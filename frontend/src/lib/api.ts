@@ -10,6 +10,7 @@ import type {
   CreateRoomPayload,
   JoinRoomPayload,
   QuickJoinPayload,
+  RoomListEntry,
   RoomSummary,
 } from "./multiplayerClient";
 
@@ -60,7 +61,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload ?? {}),
     }),
-  listRooms: () => request<RoomSummary[]>("/api/multiplayer/rooms"),
+  listRooms: () => request<RoomListEntry[]>("/api/multiplayer/rooms"),
   joinRoom: (payload: JoinRoomPayload) =>
     request<RoomSummary>("/api/multiplayer/join", {
       method: "POST",

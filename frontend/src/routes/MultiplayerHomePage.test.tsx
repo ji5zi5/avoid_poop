@@ -6,29 +6,20 @@ import { MultiplayerHomePage } from "./MultiplayerHomePage";
 
 const listedRooms = [
   {
-    roomCode: "ROOM42",
-    hostUserId: 1,
+    roomId: "7f9fb622-2b24-4271-b086-b8484ccd7f16",
     status: "waiting" as const,
+    hostUsername: "alpha",
     maxPlayers: 8,
     playerCount: 2,
-    players: [
-      { userId: 1, username: "alpha", isHost: true, ready: false },
-      { userId: 2, username: "beta", isHost: false, ready: false },
-    ],
     options: { difficulty: "normal" as const, visibility: "public" as const, bodyBlock: false, debuffTier: 2 as const },
-    chatMessages: [],
   },
   {
-    roomCode: "ROOM77",
-    hostUserId: 3,
+    roomId: "973ebca7-f10a-4718-88c6-eb501f9c0af0",
     status: "waiting" as const,
+    hostUsername: "gamma",
     maxPlayers: 8,
     playerCount: 1,
-    players: [
-      { userId: 3, username: "gamma", isHost: true, ready: false },
-    ],
     options: { difficulty: "hard" as const, visibility: "private" as const, bodyBlock: true, debuffTier: 3 as const },
-    chatMessages: [],
   },
 ];
 
@@ -61,11 +52,11 @@ describe("MultiplayerHomePage", () => {
     expect(screen.getByText("gamma · HOST")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "바로 입장" }));
-    expect(onJoinRoom).toHaveBeenCalledWith({ roomCode: "ROOM42" });
+    expect(onJoinRoom).toHaveBeenCalledWith({ roomId: "7f9fb622-2b24-4271-b086-b8484ccd7f16" });
 
     const passwordInput = screen.getByLabelText("비밀번호");
     fireEvent.change(passwordInput, { target: { value: "secret-pass" } });
     fireEvent.click(screen.getByRole("button", { name: "비밀번호 입장" }));
-    expect(onJoinRoom).toHaveBeenCalledWith({ roomCode: "ROOM77", privatePassword: "secret-pass" });
+    expect(onJoinRoom).toHaveBeenCalledWith({ roomId: "973ebca7-f10a-4718-88c6-eb501f9c0af0", privatePassword: "secret-pass" });
   });
 });

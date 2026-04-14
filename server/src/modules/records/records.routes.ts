@@ -16,6 +16,16 @@ export async function recordsRoutes(app: FastifyInstance) {
     }
 
     const stored = saveRunResult(request.user!.id, parsed.data);
+    request.log.info(
+      {
+        event: 'record_saved',
+        userId: request.user!.id,
+        mode: parsed.data.mode,
+        score: parsed.data.score,
+        reachedRound: parsed.data.reachedRound,
+      },
+      'Saved run result',
+    );
     return reply.status(201).send(stored);
   });
 }

@@ -5,9 +5,11 @@ import {
   defaultRoomOptions,
   type LobbyPlayer,
   type RoomChatMessage,
+  type RoomListEntry,
   type RoomOptions,
   type RoomOptionsPatch,
   type RoomSummary,
+  roomListEntrySchema,
   roomSummarySchema
 } from './multiplayer.schemas.js';
 
@@ -22,6 +24,7 @@ export type RoomUser = {
 type RoomStatus = 'waiting' | 'in_progress';
 
 type RoomRecord = {
+  browseId: string;
   roomCode: string;
   hostUserId: number;
   status: RoomStatus;
@@ -61,6 +64,7 @@ export class RoomService {
     }
 
     const room: RoomRecord = {
+      browseId: randomUUID(),
       roomCode: this.generateRoomCode(),
       hostUserId: user.id,
       status: 'waiting',
@@ -82,9 +86,8 @@ export class RoomService {
     return this.toSummary(room);
   }
 
-  joinRoom(user: RoomUser, roomCode: string, privatePassword?: string) {
-    const normalizedRoomCode = normalizeRoomCode(roomCode);
-    const room = this.rooms.get(normalizedRoomCode);
+  joinRoom(user: RoomUser, roomIdentifier: string, privatePassword?: string) {
+    const room = this.findRoomByIdentifier(roomIdentifier);
 
     if (!room) {
       throw new RoomNotFoundError('Room not found.');
@@ -290,7 +293,7 @@ export class RoomService {
           || right.players.length - left.players.length
           || left.roomCode.localeCompare(right.roomCode);
       })
-      .map((room) => this.toSummary(room));
+      .map((room) => this.toListEntry(room));
   }
 
   findJoinableRoom(options?: RoomOptionsPatch) {
@@ -317,6 +320,23 @@ export class RoomService {
     this.leaveCurrentRoom(userId);
   }
 
+  private findRoomByIdentifier(roomIdentifier: string) {
+    const normalizedRoomCode = normalizeRoomCode(roomIdentifier);
+    const directRoom = this.rooms.get(normalizedRoomCode);
+    if (directRoom) {
+      return directRoom;
+    }
+
+    const normalizedBrowseId = roomIdentifier.trim();
+    for (const room of this.rooms.values()) {
+      if (room.browseId === normalizedBrowseId) {
+        return room;
+      }
+    }
+
+    return null;
+  }
+
   private toSummary(room: RoomRecord): RoomSummary {
     const players: LobbyPlayer[] = room.players.map((player) => ({
       userId: player.userId,
@@ -334,6 +354,17 @@ export class RoomService {
       players,
       options: room.options,
       chatMessages: room.chatMessages
+    });
+  }
+
+  private toListEntry(room: RoomRecord): RoomListEntry {
+    return roomListEntrySchema.parse({
+      roomId: room.browseId,
+      hostUsername: room.players.find((player) => player.userId === room.hostUserId)?.username ?? room.players[0]?.username ?? 'HOST',
+      status: room.status,
+      maxPlayers: ROOM_MAX_PLAYERS,
+      playerCount: room.players.length,
+      options: room.options,
     });
   }
 

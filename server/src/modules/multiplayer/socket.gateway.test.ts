@@ -20,7 +20,28 @@ test.afterEach(() => {
   }
 });
 
-test('websocket connect requires authentication', async () => {
+function withEnv(overrides: Record<string, string | undefined>) {
+  const previous = new Map<string, string | undefined>();
+  for (const [key, value] of Object.entries(overrides)) {
+    previous.set(key, process.env[key]);
+    if (value === undefined) {
+      delete process.env[key];
+      continue;
+    }
+    process.env[key] = value;
+  }
+  return () => {
+    for (const [key, value] of previous.entries()) {
+      if (value === undefined) {
+        delete process.env[key];
+        continue;
+      }
+      process.env[key] = value;
+    }
+  };
+}
+
+test('websocket connect requires authentication', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
@@ -37,7 +58,94 @@ test('websocket connect requires authentication', async () => {
   await app.close();
 });
 
-test('subscribing to a room broadcasts room snapshots to room members', async () => {
+test('websocket connect rejects unexpected origins when APP_ORIGIN is configured', { concurrency: false }, async () => {
+  const restoreEnv = withEnv({APP_ORIGIN: 'https://avoid-poop.example'});
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+  const cookie = await signup(app, 'socket_origin_user');
+
+  try {
+    const statusCode = await connectSocketExpectStatus(port, {
+      cookie,
+      origin: 'https://evil.example',
+    });
+    assert.equal(statusCode, 403);
+  } finally {
+    restoreEnv();
+    await app.close();
+  }
+});
+
+test('websocket upgrades are rate limited when the handshake bucket is exhausted', { concurrency: false }, async () => {
+  const restoreEnv = withEnv({
+    RATE_LIMIT_WS_MAX: '1',
+    RATE_LIMIT_WS_WINDOW_MS: '60000',
+  });
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+  const cookie = await signup(app, 'socket_rate_limit_user');
+
+  try {
+    const {socket} = await connectSocketAndWaitForConnected(port, cookie);
+    const statusCode = await connectSocketExpectStatus(port, {cookie});
+    assert.equal(statusCode, 429);
+    socket.close();
+  } finally {
+    restoreEnv();
+    await app.close();
+  }
+});
+
+test('websocket rate limiting only honors forwarded IPs when trust proxy is enabled', { concurrency: false }, async () => {
+  const restoreEnv = withEnv({
+    RATE_LIMIT_WS_MAX: '1',
+    RATE_LIMIT_WS_WINDOW_MS: '60000',
+    TRUST_PROXY: 'true',
+  });
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+  const cookie = await signup(app, 'socket_proxy_user');
+
+  try {
+    const {socket} = await connectSocketAndWaitForConnected(port, cookie, undefined, {'X-Forwarded-For': '1.1.1.1'});
+    const {socket: secondSocket} = await connectSocketAndWaitForConnected(port, cookie, undefined, {'X-Forwarded-For': '2.2.2.2'});
+    socket.close();
+    secondSocket.close();
+  } finally {
+    restoreEnv();
+    await app.close();
+  }
+});
+
+test('websocket rate limiting ignores spoofed forwarded IPs when trust proxy is disabled', { concurrency: false }, async () => {
+  const restoreEnv = withEnv({
+    RATE_LIMIT_WS_MAX: '1',
+    RATE_LIMIT_WS_WINDOW_MS: '60000',
+    TRUST_PROXY: 'false',
+  });
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+  const cookie = await signup(app, 'socket_proxy_off');
+
+  try {
+    const {socket} = await connectSocketAndWaitForConnected(port, cookie, undefined, {'X-Forwarded-For': '1.1.1.1'});
+    const statusCode = await connectSocketExpectStatus(port, {
+      cookie,
+      extraHeaders: {'X-Forwarded-For': '2.2.2.2'},
+    });
+    assert.equal(statusCode, 429);
+    socket.close();
+  } finally {
+    restoreEnv();
+    await app.close();
+  }
+});
+
+test('subscribing to a room broadcasts room snapshots to room members', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
@@ -84,7 +192,7 @@ test('subscribing to a room broadcasts room snapshots to room members', async ()
   await app.close();
 });
 
-test('pre-ready start is rejected before room start', async () => {
+test('pre-ready start is rejected before room start', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
@@ -108,7 +216,7 @@ test('pre-ready start is rejected before room start', async () => {
   await app.close();
 });
 
-test('host can start a game and clients receive game snapshots', async () => {
+test('host can start a game and clients receive game snapshots', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
@@ -165,7 +273,7 @@ test('host can start a game and clients receive game snapshots', async () => {
   await app.close();
 });
 
-test('reconnect token can be reused within grace period', async () => {
+test('reconnect token can be reused within grace period', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
@@ -186,7 +294,7 @@ test('reconnect token can be reused within grace period', async () => {
   await app.close();
 });
 
-test('reconnecting to an active game restores the player from disconnected state', async () => {
+test('reconnecting to an active game restores the player from disconnected state', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
@@ -283,12 +391,18 @@ async function signup(app: Awaited<ReturnType<typeof createApp>>, username: stri
   return response.cookies[0]!.value;
 }
 
-async function connectSocketAndWaitForConnected(port: number, cookie: string, reconnectToken?: string) {
+async function connectSocketAndWaitForConnected(
+  port: number,
+  cookie: string,
+  reconnectToken?: string,
+  extraHeaders?: Record<string, string>,
+) {
   return await new Promise<{socket: WebSocket; connected: any}>((resolve, reject) => {
     const suffix = reconnectToken ? `?reconnectToken=${reconnectToken}` : '';
     const ws = new WebSocket(`ws://127.0.0.1:${port}${config.multiplayerWebSocketPath}${suffix}`, {
       headers: {
-        Cookie: `${config.sessionCookieName}=${cookie}`
+        Cookie: `${config.sessionCookieName}=${cookie}`,
+        ...(extraHeaders ?? {})
       }
     });
 
@@ -339,6 +453,48 @@ async function connectSocketAndWaitForConnected(port: number, cookie: string, re
   });
 }
 
+async function connectSocketExpectStatus(
+  port: number,
+  options: {cookie?: string; origin?: string; reconnectToken?: string; extraHeaders?: Record<string, string>},
+) {
+  return await new Promise<number>((resolve, reject) => {
+    const suffix = options.reconnectToken ? `?reconnectToken=${options.reconnectToken}` : '';
+    const ws = new WebSocket(`ws://127.0.0.1:${port}${config.multiplayerWebSocketPath}${suffix}`, {
+      headers: {
+        ...(options.cookie ? {Cookie: `${config.sessionCookieName}=${options.cookie}`} : {}),
+        ...(options.origin ? {Origin: options.origin} : {}),
+        ...(options.extraHeaders ?? {}),
+      }
+    });
+
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('Timed out waiting for websocket rejection'));
+    }, 3000);
+
+    const cleanup = () => {
+      clearTimeout(timeout);
+      ws.removeAllListeners();
+    };
+
+    ws.once('unexpected-response', (_request: IncomingMessage, response: IncomingMessage) => {
+      const statusCode = response.statusCode ?? 0;
+      response.resume();
+      cleanup();
+      resolve(statusCode);
+    });
+    ws.once('error', (error) => {
+      cleanup();
+      reject(error);
+    });
+    ws.once('open', () => {
+      cleanup();
+      ws.close();
+      reject(new Error('Expected websocket upgrade to be rejected.'));
+    });
+  });
+}
+
 async function waitFor(predicate: () => boolean) {
   const startedAt = Date.now();
   while (!predicate()) {
@@ -350,7 +506,7 @@ async function waitFor(predicate: () => boolean) {
 }
 
 
-test('duplicate start after game begins is rejected', async () => {
+test('duplicate start after game begins is rejected', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
@@ -378,7 +534,7 @@ test('duplicate start after game begins is rejected', async () => {
   await app.close();
 });
 
-test('rest leave updates active room and game snapshots', async () => {
+test('rest leave updates active room and game snapshots', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
@@ -409,7 +565,7 @@ test('rest leave updates active room and game snapshots', async () => {
 });
 
 
-test('socket leave_room uses the same cleanup path as REST leave', async () => {
+test('socket leave_room uses the same cleanup path as REST leave', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
@@ -444,7 +600,7 @@ test('socket leave_room uses the same cleanup path as REST leave', async () => {
   await app.close();
 });
 
-test('chat messages broadcast into the lobby stream', async () => {
+test('chat messages broadcast into the lobby stream', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
@@ -474,7 +630,51 @@ test('chat messages broadcast into the lobby stream', async () => {
   await app.close();
 });
 
-test('jump event marks the player airborne when body block is enabled', async () => {
+test('malformed websocket payloads are rejected without crashing the socket', { concurrency: false }, async () => {
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+  const cookie = await signup(app, 'malformed_socket_user');
+  const {socket} = await connectSocketAndWaitForConnected(port, cookie);
+  const events: Array<any> = [];
+  socket.on('message', (payload: RawData) => events.push(JSON.parse(payload.toString())));
+
+  socket.send('{bad json');
+  await waitFor(() => events.some((event) => event.type === 'error' && event.error === 'Invalid socket payload.'));
+
+  socket.close();
+  await app.close();
+});
+
+test('non-gameplay websocket messages are rate limited', { concurrency: false }, async () => {
+  const restoreEnv = withEnv({
+    RATE_LIMIT_WRITES_MAX: '1',
+    RATE_LIMIT_WRITES_WINDOW_MS: '60000',
+  });
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+  const hostCookie = await signup(app, 'message_limit_host');
+  const created = await app.inject({ method: 'POST', url: '/api/multiplayer/rooms', cookies: {avoid_poop_session: hostCookie} });
+  const roomCode = created.json().roomCode as string;
+  const {socket} = await connectSocketAndWaitForConnected(port, hostCookie);
+  const events: Array<any> = [];
+  socket.on('message', (payload: RawData) => events.push(JSON.parse(payload.toString())));
+
+  try {
+    socket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+    await waitFor(() => events.some((event) => event.type === 'room_snapshot'));
+    socket.send(JSON.stringify({type: 'set_ready', ready: true}));
+    socket.send(JSON.stringify({type: 'set_ready', ready: false}));
+    await waitFor(() => events.some((event) => event.type === 'error' && event.error === 'Too many requests. Try again later.'));
+  } finally {
+    socket.close();
+    restoreEnv();
+    await app.close();
+  }
+});
+
+test('jump event marks the player airborne when body block is enabled', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);

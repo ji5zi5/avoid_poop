@@ -9,6 +9,8 @@ export const roomCodeValueSchema = z
   .length(ROOM_CODE_LENGTH, `Room code must be ${ROOM_CODE_LENGTH} characters.`)
   .regex(/^[a-zA-Z0-9]+$/, 'Room code must contain only letters and numbers.');
 
+export const roomBrowseIdSchema = z.string().uuid();
+
 export const privatePasswordValueSchema = z
   .string()
   .trim()
@@ -43,8 +45,24 @@ export const createRoomPayloadSchema = z.object({
 });
 
 export const joinRoomPayloadSchema = z.object({
-  roomCode: roomCodeValueSchema,
+  roomCode: roomCodeValueSchema.optional(),
+  roomId: roomBrowseIdSchema.optional(),
   privatePassword: privatePasswordValueSchema.optional()
+}).superRefine((value, ctx) => {
+  if (!value.roomCode && !value.roomId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Provide a room identifier.',
+      path: ['roomCode']
+    });
+  }
+  if (value.roomCode && value.roomId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Choose either roomCode or roomId, not both.',
+      path: ['roomId']
+    });
+  }
 });
 
 export const quickJoinPayloadSchema = z.object({});
@@ -77,6 +95,15 @@ export const roomSummarySchema = z.object({
   players: z.array(lobbyPlayerSchema).max(ROOM_MAX_PLAYERS),
   options: roomOptionsSchema,
   chatMessages: z.array(roomChatMessageSchema).max(80)
+});
+
+export const roomListEntrySchema = z.object({
+  roomId: roomBrowseIdSchema,
+  hostUsername: z.string().min(1),
+  status: roomStatusSchema,
+  maxPlayers: z.literal(ROOM_MAX_PLAYERS),
+  playerCount: z.number().int().min(0).max(ROOM_MAX_PLAYERS),
+  options: roomOptionsSchema,
 });
 
 export const multiplayerActiveDebuffSchema = z.object({
@@ -206,5 +233,6 @@ export type RoomOptionsPatch = z.infer<typeof roomOptionsPatchSchema>;
 export type LobbyPlayer = z.infer<typeof lobbyPlayerSchema>;
 export type RoomChatMessage = z.infer<typeof roomChatMessageSchema>;
 export type RoomSummary = z.infer<typeof roomSummarySchema>;
+export type RoomListEntry = z.infer<typeof roomListEntrySchema>;
 export type MultiplayerClientEvent = z.infer<typeof multiplayerClientEventSchema>;
 export type MultiplayerServerEvent = z.infer<typeof multiplayerServerEventSchema>;

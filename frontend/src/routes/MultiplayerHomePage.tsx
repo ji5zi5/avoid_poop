@@ -1,13 +1,13 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { copy } from "../content/copy";
-import type { CreateRoomPayload, JoinRoomPayload, QuickJoinPayload, RoomOptions, RoomSummary } from "../lib/multiplayerClient";
+import type { CreateRoomPayload, JoinRoomPayload, QuickJoinPayload, RoomListEntry, RoomOptions } from "../lib/multiplayerClient";
 
 type Props = {
   onCreateRoom: (payload: CreateRoomPayload) => Promise<void> | void;
   onJoinRoom: (payload: JoinRoomPayload) => Promise<void> | void;
   onQuickJoin: (payload: QuickJoinPayload) => Promise<void> | void;
-  loadRooms: () => Promise<RoomSummary[]>;
+  loadRooms: () => Promise<RoomListEntry[]>;
   onBack: () => void;
 };
 
@@ -22,7 +22,7 @@ function debuffTierLabel(debuffTier: RoomOptions["debuffTier"]) {
   return debuffTier === 3 ? copy.multiplayer.debuffTierStrong : copy.multiplayer.debuffTierWeak;
 }
 
-function formatRoomSubtitle(room: RoomSummary) {
+function formatRoomSubtitle(room: RoomListEntry) {
   return `${copy.multiplayer.players} ${room.playerCount}/${room.maxPlayers} · ${
     room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal
   }`;
@@ -30,7 +30,7 @@ function formatRoomSubtitle(room: RoomSummary) {
 
 export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loadRooms, onBack }: Props) {
   const [createPrivatePassword, setCreatePrivatePassword] = useState("");
-  const [rooms, setRooms] = useState<RoomSummary[]>([]);
+  const [rooms, setRooms] = useState<RoomListEntry[]>([]);
   const [roomPasswords, setRoomPasswords] = useState<Record<string, string>>({});
   const [showCreateSetup, setShowCreateSetup] = useState(false);
   const [options, setOptions] = useState<RoomOptions>(defaultOptions);
@@ -54,13 +54,13 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
     privateRooms: rooms.filter((room) => room.options.visibility === "private"),
   }), [rooms]);
 
-  function handlePrivateJoin(event: FormEvent<HTMLFormElement>, roomCode: string) {
+  function handlePrivateJoin(event: FormEvent<HTMLFormElement>, roomId: string) {
     event.preventDefault();
-    const privatePassword = roomPasswords[roomCode]?.trim() ?? "";
+    const privatePassword = roomPasswords[roomId]?.trim() ?? "";
     if (privatePassword.length < 4) {
       return;
     }
-    onJoinRoom({ roomCode, privatePassword });
+    onJoinRoom({ roomId, privatePassword });
   }
 
   return (
@@ -124,10 +124,10 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
               </div>
               <div className="multiplayer-room-list">
                 {roomGroups.publicRooms.map((room) => (
-                  <article key={room.roomCode} className="multiplayer-room-card multiplayer-room-card--public">
+                  <article key={room.roomId} className="multiplayer-room-card multiplayer-room-card--public">
                     <div className="multiplayer-room-card__header">
                       <div>
-                        <strong>{room.players[0]?.username ?? "HOST"} · HOST</strong>
+                        <strong>{room.hostUsername} · HOST</strong>
                         <p>{formatRoomSubtitle(room)}</p>
                       </div>
                       <span className="room-visibility-badge room-visibility-badge--public">{copy.multiplayer.publicRoom}</span>
@@ -139,7 +139,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
                       <span className="home-status-chip">{copy.multiplayer.debuffTier} {debuffTierLabel(room.options.debuffTier)}</span>
                     </div>
 
-                    <button className="ghost-button subtle-button" type="button" onClick={() => onJoinRoom({ roomCode: room.roomCode })}>
+                    <button className="ghost-button subtle-button" type="button" onClick={() => onJoinRoom({ roomId: room.roomId })}>
                       {copy.multiplayer.joinPublic}
                     </button>
                   </article>
@@ -156,12 +156,12 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
               </div>
               <div className="multiplayer-room-list">
                 {roomGroups.privateRooms.map((room) => {
-                  const currentPassword = roomPasswords[room.roomCode] ?? "";
+                  const currentPassword = roomPasswords[room.roomId] ?? "";
                   return (
-                    <article key={room.roomCode} className="multiplayer-room-card multiplayer-room-card--private">
+                    <article key={room.roomId} className="multiplayer-room-card multiplayer-room-card--private">
                       <div className="multiplayer-room-card__header">
                         <div>
-                          <strong>{room.players[0]?.username ?? "HOST"} · HOST</strong>
+                          <strong>{room.hostUsername} · HOST</strong>
                           <p>{formatRoomSubtitle(room)}</p>
                         </div>
                         <span className="room-visibility-badge room-visibility-badge--private">{copy.multiplayer.privateRoom}</span>
@@ -173,12 +173,12 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
                         <span className="home-status-chip">{copy.multiplayer.debuffTier} {debuffTierLabel(room.options.debuffTier)}</span>
                       </div>
 
-                      <form className="multiplayer-room-card__join" onSubmit={(event) => handlePrivateJoin(event, room.roomCode)}>
+                      <form className="multiplayer-room-card__join" onSubmit={(event) => handlePrivateJoin(event, room.roomId)}>
                         <label>
                           <span>{copy.multiplayer.privatePassword}</span>
                           <input
                             value={currentPassword}
-                            onChange={(event) => setRoomPasswords((current) => ({ ...current, [room.roomCode]: event.target.value }))}
+                            onChange={(event) => setRoomPasswords((current) => ({ ...current, [room.roomId]: event.target.value }))}
                             placeholder={copy.multiplayer.passwordPlaceholder}
                           />
                         </label>

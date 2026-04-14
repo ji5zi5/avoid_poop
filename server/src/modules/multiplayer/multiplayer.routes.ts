@@ -36,6 +36,15 @@ export const multiplayerRoutes: FastifyPluginAsync<MultiplayerRoutesOptions> = a
 
     try {
       const room = roomService.createRoom(request.user!, parsed.data.options, parsed.data.privatePassword);
+      request.log.info(
+        {
+          event: 'multiplayer_room_created',
+          hostUserId: request.user!.id,
+          visibility: room.options.visibility,
+          difficulty: room.options.difficulty,
+        },
+        'Created multiplayer room',
+      );
       return reply.status(201).send(room);
     } catch (error) {
       return sendRoomError(reply, error);
@@ -49,7 +58,16 @@ export const multiplayerRoutes: FastifyPluginAsync<MultiplayerRoutesOptions> = a
     }
 
     try {
-      return reply.send(roomService.joinRoom(request.user!, parsed.data.roomCode, parsed.data.privatePassword));
+      const room = roomService.joinRoom(request.user!, parsed.data.roomCode ?? parsed.data.roomId!, parsed.data.privatePassword);
+      request.log.info(
+        {
+          event: 'multiplayer_room_joined',
+          userId: request.user!.id,
+          visibility: room.options.visibility,
+        },
+        'Joined multiplayer room',
+      );
+      return reply.send(room);
     } catch (error) {
       return sendRoomError(reply, error);
     }
@@ -65,11 +83,21 @@ export const multiplayerRoutes: FastifyPluginAsync<MultiplayerRoutesOptions> = a
       return reply.status(400).send({error: getValidationErrorMessage(parsed.error)});
     }
 
-    return reply.send(matchmakingService.quickJoin(request.user!));
+    const room = matchmakingService.quickJoin(request.user!);
+    request.log.info(
+      {
+        event: 'multiplayer_quick_join',
+        userId: request.user!.id,
+        visibility: room.options.visibility,
+      },
+      'Completed multiplayer quick join',
+    );
+    return reply.send(room);
   });
 
   app.post('/leave', {preHandler: requireUser}, async (request, reply) => {
     leaveRoom(request.user!.id);
+    request.log.info({event: 'multiplayer_leave_http', userId: request.user!.id}, 'Left multiplayer room over HTTP');
     return reply.send({ok: true});
   });
 

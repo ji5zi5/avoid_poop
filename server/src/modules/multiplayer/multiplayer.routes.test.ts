@@ -218,6 +218,11 @@ test('room listing returns both public and private waiting rooms with public roo
   assert.equal(rooms.length, 2);
   assert.equal(rooms[0].options.visibility, 'public');
   assert.equal(rooms[1].options.visibility, 'private');
+  assert.equal(rooms[0].hostUsername, 'public_list_host');
+  assert.match(rooms[0].roomId, /^[0-9a-f-]{36}$/);
+  assert.equal('players' in rooms[0], false);
+  assert.equal('roomCode' in rooms[0], false);
+  assert.equal('chatMessages' in rooms[1], false);
   await app.close();
 });
 

@@ -38,13 +38,23 @@ export type RoomSummary = {
   chatMessages: RoomChatMessage[];
 };
 
+export type RoomListEntry = {
+  roomId: string;
+  hostUsername: string;
+  status: RoomStatus;
+  maxPlayers: number;
+  playerCount: number;
+  options: RoomOptions;
+};
+
 export type CreateRoomPayload = {
   options?: Partial<RoomOptions>;
   privatePassword?: string;
 };
 
 export type JoinRoomPayload = {
-  roomCode: string;
+  roomCode?: string;
+  roomId?: string;
   privatePassword?: string;
 };
 
