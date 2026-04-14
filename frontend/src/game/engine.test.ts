@@ -153,12 +153,13 @@ describe("game engine", () => {
   it("unlocks multi-drop wave patterns in later rounds", () => {
     const state = createGameEngine("hard");
     state.round = 6;
-    state.waveDirector.seed = 300001;
+    state.waveDirector.seed = 15953;
     state.waveDirector.specialCooldown = 0;
     state.waveDirector.roundBudget = 2;
     state.waveDirector.clusterQuota = 2;
     state.waveDirector.bounceQuota = 0;
     state.waveDirector.splitterQuota = 0;
+    state.waveDirector.tripleQuota = 0;
 
     const pattern = spawnWavePattern(state);
 

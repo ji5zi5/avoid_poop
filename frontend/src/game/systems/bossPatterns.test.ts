@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { BossThemeId } from "../state";
 import { createGameEngine } from "../engine";
 import { buildBossEncounterPlan, buildBossPatternQueue, getAvailableBossPatternIds, getBossThemeLabel, isHardOnlyPattern } from "./bossPatterns";
 
@@ -25,6 +26,7 @@ describe("boss patterns", () => {
       previousFamilyStreak: "lane" as const,
       previousFamilyStreakCount: 1,
       recentPatterns: ["switch_press", "crossfall_mix"] as const,
+      recentThemes: [],
       queueSeed: 17,
     };
 
@@ -42,6 +44,7 @@ describe("boss patterns", () => {
       previousFamilyStreak: null,
       previousFamilyStreakCount: 0,
       recentPatterns: [],
+      recentThemes: [],
       queueSeed: 39893,
     });
     const afterUnlock = buildBossEncounterPlan({
@@ -50,6 +53,7 @@ describe("boss patterns", () => {
       previousFamilyStreak: null,
       previousFamilyStreakCount: 0,
       recentPatterns: [],
+      recentThemes: [],
       queueSeed: 39893,
     });
 
@@ -65,6 +69,7 @@ describe("boss patterns", () => {
         previousFamilyStreak: null,
         previousFamilyStreakCount: 0,
         recentPatterns: [],
+        recentThemes: [],
         queueSeed: index + 1,
       }),
     );
@@ -82,6 +87,7 @@ describe("boss patterns", () => {
         previousFamilyStreak: null,
         previousFamilyStreakCount: 0,
         recentPatterns: [],
+        recentThemes: [],
         queueSeed,
       }),
     );
@@ -99,6 +105,7 @@ describe("boss patterns", () => {
       previousFamilyStreak: null,
       previousFamilyStreakCount: 0,
       recentPatterns: [],
+      recentThemes: [],
       queueSeed: 1,
     });
     const trapPlan = buildBossEncounterPlan({
@@ -107,6 +114,7 @@ describe("boss patterns", () => {
       previousFamilyStreak: null,
       previousFamilyStreakCount: 0,
       recentPatterns: [],
+      recentThemes: [],
       queueSeed: 39893,
     });
 
@@ -126,6 +134,7 @@ describe("boss patterns", () => {
         previousFamilyStreak: null,
         previousFamilyStreakCount: 0,
         recentPatterns: [],
+        recentThemes: [],
         queueSeed: seed,
       });
 
@@ -136,5 +145,44 @@ describe("boss patterns", () => {
         expect(!(heavyIds.includes(current) && heavyIds.includes(next))).toBe(true);
       }
     }
+  });
+
+  it("avoids repeating the last two boss themes when alternatives exist", () => {
+    const plan = buildBossEncounterPlan({
+      mode: "hard",
+      round: 10,
+      previousFamilyStreak: null,
+      previousFamilyStreakCount: 0,
+      recentPatterns: [],
+      recentThemes: ["pressure_intro", "lane_intro"],
+      queueSeed: 1,
+    });
+
+    expect(plan.themeId).not.toBe("pressure_intro");
+    expect(plan.themeId).not.toBe("lane_intro");
+  });
+
+  it("surfaces more than three boss themes over a representative hard progression", () => {
+    const rounds = [2, 4, 6, 8, 10, 12, 14];
+    let queueSeed = 17;
+    let recentThemes: BossThemeId[] = [];
+    const seenThemes = new Set<string>();
+
+    for (const round of rounds) {
+      const plan = buildBossEncounterPlan({
+        mode: "hard",
+        round,
+        previousFamilyStreak: null,
+        previousFamilyStreakCount: 0,
+        recentPatterns: [],
+        recentThemes,
+        queueSeed,
+      });
+      seenThemes.add(plan.themeId);
+      recentThemes = [...recentThemes, plan.themeId].slice(-3);
+      queueSeed = plan.nextQueueSeed;
+    }
+
+    expect(seenThemes.size).toBeGreaterThan(3);
   });
 });

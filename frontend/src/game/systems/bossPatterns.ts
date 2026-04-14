@@ -38,6 +38,7 @@ export type BossEncounterBuilderInput = {
   previousFamilyStreakCount: number;
   queueSeed: number;
   recentPatterns: readonly BossPatternId[];
+  recentThemes: readonly BossThemeId[];
   round: number;
 };
 
@@ -695,9 +696,9 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     roundStart: 2,
     opener: ["half_stomp_alternating", "closing_doors"],
     core: ["center_crush", "edge_crush"],
-    finisher: ["edge_crush"],
+    finisher: ["closing_doors", "edge_crush"],
     minQueueLength: 3,
-    maxQueueLength: 3,
+    maxQueueLength: 4,
     maxHeavySetPieces: 0,
     durationFloorMs: 5200,
     themeFamilies: ["pressure"],
@@ -708,9 +709,9 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     mode: "both",
     roundStart: 2,
     opener: ["shifting_corridor", "zigzag_corridor"],
-    core: ["staircase_corridor", "center_break", "switch_press"],
-    finisher: ["crossfall_mix", "staircase_corridor", "center_break"],
-    minQueueLength: 3,
+    core: ["staircase_corridor", "center_break", "switch_press", "crossfall_mix"],
+    finisher: ["crossfall_mix", "switch_press"],
+    minQueueLength: 4,
     maxQueueLength: 4,
     maxHeavySetPieces: 0,
     durationFloorMs: 5000,
@@ -749,12 +750,12 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     label: "통로 뒤집기",
     mode: "hard",
     roundStart: 5,
-    opener: ["shifting_corridor", "staircase_corridor"],
-    core: ["center_break", "switch_press"],
+    opener: ["switch_press", "staircase_corridor"],
+    core: ["center_break", "shifting_corridor"],
     finisher: ["crossfall_mix", "switch_press"],
     minQueueLength: 4,
-    maxQueueLength: 4,
-    maxHeavySetPieces: 1,
+    maxQueueLength: 5,
+    maxHeavySetPieces: 0,
     durationFloorMs: 6400,
     themeFamilies: ["lane"],
   },
@@ -763,12 +764,12 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     label: "함정 직조",
     mode: "hard",
     roundStart: 7,
-    opener: ["fake_safe_lane", "fake_warning", "last_hit_followup"],
-    core: ["center_collapse", "last_hit_followup"],
-    finisher: ["last_hit_followup", "delayed_burst"],
+    opener: ["fake_safe_lane", "fake_warning"],
+    core: ["last_hit_followup", "center_collapse", "shoulder_crush"],
+    finisher: ["last_hit_followup", "delayed_burst", "shoulder_crush"],
     minQueueLength: 4,
-    maxQueueLength: 4,
-    maxHeavySetPieces: 0,
+    maxQueueLength: 5,
+    maxHeavySetPieces: 1,
     durationFloorMs: 6800,
     themeFamilies: ["trap"],
   },
@@ -839,6 +840,7 @@ function toBossEncounterBuilderInput(state: GameState): BossEncounterBuilderInpu
     previousFamilyStreak: state.bossPatternFamilyStreak,
     previousFamilyStreakCount: state.bossPatternFamilyStreakCount,
     recentPatterns: state.bossRecentPatterns,
+    recentThemes: state.bossRecentThemes,
     queueSeed: state.bossPatternSeed,
   };
 }
@@ -866,6 +868,10 @@ function getQueueTargetLength(theme: BossThemeDefinition, mode: GameState["mode"
   return Math.max(theme.minQueueLength, Math.min(theme.maxQueueLength, base));
 }
 
+function buildRecentThemeSet(recentThemes: readonly BossThemeId[]) {
+  return new Set(recentThemes.slice(-2));
+}
+
 function buildRecentFamilies(previousFamilyStreak: BossPatternFamily | null, previousFamilyStreakCount: number, queue: BossPatternId[]) {
   const seedFamilies = previousFamilyStreak === null ? [] : Array.from({ length: Math.min(2, previousFamilyStreakCount) }, () => previousFamilyStreak as BossPatternFamily);
   return [...seedFamilies, ...queue.map((id) => getBossPatternFamily(id))].slice(-2);
@@ -880,11 +886,15 @@ function buildRecentArchetypes(recentPatterns: readonly BossPatternId[], queue: 
   return new Set(recent.map((id) => getBossPatternArchetype(id)));
 }
 
-function pickTheme(seed: number, availableThemes: BossThemeDefinition[]) {
+function pickTheme(seed: number, availableThemes: BossThemeDefinition[], recentThemes: readonly BossThemeId[]) {
+  const recentThemeSet = buildRecentThemeSet(recentThemes);
+  const pool = availableThemes.some((theme) => !recentThemeSet.has(theme.id))
+    ? availableThemes.filter((theme) => !recentThemeSet.has(theme.id))
+    : availableThemes;
   const rolled = advanceSeed(seed);
   return {
     nextQueueSeed: rolled.nextQueueSeed,
-    theme: availableThemes[Math.floor(rolled.value * availableThemes.length)],
+    theme: pool[Math.floor(rolled.value * pool.length)],
   };
 }
 
@@ -914,6 +924,16 @@ function pickPatternForSlot(input: BossEncounterBuilderInput, seed: number, queu
       return false;
     }
     if (lastPattern && isHeavySetPiece(lastPattern) && isHeavySetPiece(id)) {
+      return false;
+    }
+    if (
+      lastPattern &&
+      ["half_stomp_alternating", "closing_doors", "center_crush", "edge_crush", "center_swing", "double_side_stomp"].includes(lastPattern) &&
+      ["center_crush", "edge_crush", "center_swing", "double_side_stomp"].includes(id)
+    ) {
+      return false;
+    }
+    if (lastPattern === "funnel_switch" && ["crossfall_mix", "three_gate_shuffle", "pillar_press", "center_collapse", "shoulder_crush", "delayed_burst"].includes(id)) {
       return false;
     }
     return true;
@@ -965,7 +985,7 @@ export function buildBossEncounterPlan(input: BossEncounterBuilderInput): BossEn
   }
 
   let seed = input.queueSeed;
-  const themePick = pickTheme(seed, availableThemes);
+  const themePick = pickTheme(seed, availableThemes, input.recentThemes);
   seed = themePick.nextQueueSeed;
   const theme = themePick.theme;
   const targetLength = getQueueTargetLength(theme, input.mode, input.round);
@@ -1011,6 +1031,7 @@ export function buildBossPatternQueue(state: GameState) {
 export function initializeBossEncounter(state: GameState) {
   const plan = buildBossEncounterPlan(toBossEncounterBuilderInput(state));
   state.bossThemeId = plan.themeId;
+  state.bossRecentThemes = [...state.bossRecentThemes, plan.themeId].slice(-3);
   state.bossPatternSeed = plan.nextQueueSeed;
   state.bossPatternQueue = plan.queue;
   state.bossPatternIndex = 0;

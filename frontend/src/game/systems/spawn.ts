@@ -84,21 +84,21 @@ function pickWeightedPattern(seed: number, choices: Array<{ pattern: WavePattern
 
 export function selectWavePattern(director: WaveDirector, mode: GameState["mode"], round: number) {
   const current = director.round === round ? director : buildRoundDirector(mode, round, director);
-  const choices: Array<{ pattern: WavePattern; weight: number }> = [{ pattern: "single", weight: 7 }];
+  const choices: Array<{ pattern: WavePattern; weight: number }> = [{ pattern: "single", weight: mode === "hard" ? 5.2 : 6.1 }];
   const recentLast = current.recentPatterns[current.recentPatterns.length - 1] ?? null;
 
   if (current.roundBudget > 0 && current.specialCooldown === 0) {
     if (current.clusterQuota > 0 && recentLast !== "cluster_2") {
-      choices.push({ pattern: "cluster_2", weight: 3 });
+      choices.push({ pattern: "cluster_2", weight: mode === "hard" ? 3.8 : 3 });
     }
     if (current.tripleQuota > 0 && round >= (mode === "hard" ? 10 : 12) && recentLast !== "cluster_3") {
-      choices.push({ pattern: "cluster_3", weight: 0.35 });
+      choices.push({ pattern: "cluster_3", weight: mode === "hard" ? 0.7 : 0.45 });
     }
     if (current.splitterQuota > 0 && recentLast !== "splitter") {
-      choices.push({ pattern: "splitter", weight: 2 });
+      choices.push({ pattern: "splitter", weight: mode === "hard" ? 2.6 : 2 });
     }
     if (current.bounceQuota > 0 && recentLast !== "bouncer") {
-      choices.push({ pattern: "bouncer", weight: mode === "hard" ? 3 : 2 });
+      choices.push({ pattern: "bouncer", weight: mode === "hard" ? 3.6 : 2.4 });
     }
   }
 

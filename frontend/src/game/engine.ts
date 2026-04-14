@@ -63,9 +63,9 @@ export function updateGame(state: GameState, delta: number, direction: number) {
     runBossPattern(state, delta);
   } else if (state.pendingBossClearAnnouncement === false) {
     const pressure = wavePressure(state);
-    const waveSpawnBase = state.mode === "hard" ? 0.88 : 0.98;
-    const waveSpawnFloor = state.mode === "hard" ? 0.14 : 0.2;
-    const waveDecay = state.mode === "hard" ? 0.072 : 0.066;
+    const waveSpawnBase = state.mode === "hard" ? 0.82 : 0.93;
+    const waveSpawnFloor = state.mode === "hard" ? 0.12 : 0.17;
+    const waveDecay = state.mode === "hard" ? 0.076 : 0.07;
     const spawnThreshold = Math.max(waveSpawnFloor, waveSpawnBase - pressure * waveDecay);
     if (state.spawnTimer >= spawnThreshold) {
       state.spawnTimer = 0;
@@ -128,11 +128,11 @@ export function updateGame(state: GameState, delta: number, direction: number) {
         hazard.y = floorContactY;
         hazard.bouncesRemaining = (hazard.bouncesRemaining ?? 1) - 1;
         hazard.triggered = true;
-        hazard.speed = -Math.max(165, Math.abs(hazard.speed) * 0.78);
-        hazard.gravity = 520;
+        hazard.speed = -Math.max(230, Math.abs(hazard.speed) * 0.94);
+        hazard.gravity = 390;
         hazard.velocityX = hazard.x + hazard.width / 2 < state.width / 2
-          ? state.mode === "hard" ? 70 : 52
-          : state.mode === "hard" ? -70 : -52;
+          ? state.mode === "hard" ? 110 : 74
+          : state.mode === "hard" ? -110 : -74;
         return;
       }
 

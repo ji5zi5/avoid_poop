@@ -124,6 +124,7 @@ export type GameState = {
   bossPatternStepTimer: number;
   bossPatternShots: number;
   bossPatternSeed: number;
+  bossRecentThemes: BossThemeId[];
   bossPatternFamilyStreak: BossPatternFamily | null;
   bossPatternFamilyStreakCount: number;
   bossRecentPatterns: BossPatternId[];
@@ -184,11 +185,21 @@ export function createWaveDirector(mode: GameMode, round: number): WaveDirector 
     patternCursor: 0,
     recentPatterns: [],
     specialCooldown: 0,
-    roundBudget: roundBand >= 2 ? 2 : 1,
-    clusterQuota: roundBand >= 1 ? 2 : 1,
-    tripleQuota: mode === "hard" && roundBand >= 3 ? 1 : 0,
-    splitterQuota: roundBand >= 1 ? 1 : 0,
-    bounceQuota: roundBand >= 2 ? 1 : 0,
+    roundBudget: mode === "hard"
+      ? roundBand >= 3 ? 4 : roundBand >= 2 ? 3 : roundBand >= 1 ? 2 : 1
+      : roundBand >= 3 ? 3 : roundBand >= 2 ? 2 : 1,
+    clusterQuota: mode === "hard"
+      ? roundBand >= 3 ? 3 : roundBand >= 1 ? 2 : 1
+      : roundBand >= 2 ? 2 : 1,
+    tripleQuota: mode === "hard"
+      ? roundBand >= 2 ? 1 : 0
+      : roundBand >= 3 ? 1 : 0,
+    splitterQuota: mode === "hard"
+      ? roundBand >= 2 ? 2 : roundBand >= 1 ? 1 : 0
+      : roundBand >= 2 ? 1 : 0,
+    bounceQuota: mode === "hard"
+      ? roundBand >= 2 ? 2 : roundBand >= 1 ? 1 : 0
+      : roundBand >= 2 ? 1 : 0,
     roundBand,
     round,
   };
@@ -230,6 +241,7 @@ export function createInitialState(mode: GameMode): GameState {
     bossPatternStepTimer: 0,
     bossPatternShots: 0,
     bossPatternSeed: mode === "hard" ? 17 : 11,
+    bossRecentThemes: [],
     bossPatternFamilyStreak: null,
     bossPatternFamilyStreakCount: 0,
     bossRecentPatterns: [],
