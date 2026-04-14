@@ -200,4 +200,50 @@ describe("boss patterns", () => {
 
     expect(queues.size).toBeGreaterThanOrEqual(3);
   });
+
+  it("keeps lane and intro themes varied across seeds inside the same theme", () => {
+    const laneQueues = new Set(
+      [4944, 4945, 4946].map((queueSeed) =>
+        buildBossEncounterPlan({
+          mode: "hard",
+          round: 12,
+          previousFamilyStreak: null,
+          previousFamilyStreakCount: 0,
+          recentPatterns: [],
+          recentThemes: [],
+          queueSeed,
+        }).queue.join("|"),
+      ),
+    );
+    const corridorQueues = new Set(
+      [9887, 9888, 9889].map((queueSeed) =>
+        buildBossEncounterPlan({
+          mode: "hard",
+          round: 12,
+          previousFamilyStreak: null,
+          previousFamilyStreakCount: 0,
+          recentPatterns: [],
+          recentThemes: [],
+          queueSeed,
+        }).queue.join("|"),
+      ),
+    );
+    const trapIntroQueues = new Set(
+      [14830, 14831, 14832].map((queueSeed) =>
+        buildBossEncounterPlan({
+          mode: "hard",
+          round: 12,
+          previousFamilyStreak: null,
+          previousFamilyStreakCount: 0,
+          recentPatterns: [],
+          recentThemes: [],
+          queueSeed,
+        }).queue.join("|"),
+      ),
+    );
+
+    expect(laneQueues.size).toBeGreaterThanOrEqual(3);
+    expect(corridorQueues.size).toBeGreaterThanOrEqual(3);
+    expect(trapIntroQueues.size).toBeGreaterThanOrEqual(3);
+  });
 });

@@ -207,6 +207,33 @@ function buildCenterBreakOrder(laneCount: number) {
   return order;
 }
 
+function buildInsideOutOrder(laneCount: number) {
+  const center = Math.floor((laneCount - 1) / 2);
+  const order: number[] = [];
+
+  for (let offset = 0; order.length < laneCount; offset += 1) {
+    const left = center - offset;
+    const right = center + offset;
+    if (left >= 0 && !order.includes(left)) {
+      order.push(left);
+    }
+    if (right < laneCount && !order.includes(right)) {
+      order.push(right);
+    }
+  }
+
+  return order;
+}
+
+function getPatternVariant(state: GameState, variantCount: number, salt = 0) {
+  const activeId = state.bossPatternActiveId ?? state.bossPatternQueue[state.bossPatternIndex] ?? "half_stomp_alternating";
+  let hash = salt;
+  for (const character of activeId) {
+    hash = (hash * 31 + character.charCodeAt(0)) % 104729;
+  }
+  return Math.abs(state.bossPatternSeed + state.round * 17 + state.bossPatternIndex * 31 + hash) % variantCount;
+}
+
 function pushUniqueLane(order: number[], lane: number) {
   if (!order.includes(lane)) {
     order.push(lane);
@@ -441,8 +468,17 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
     telegraphNormalMs: 660,
     run(state, delta) {
       const laneCount = getLaneCount(state);
-      return tickPattern(state, delta, scaledInterval(state, 0.33, 0.42, 0.18, 0.24), (state.mode === "hard" ? 5 : 4) + (state.round >= 10 ? 1 : 0), (shot) => {
-        const safeLane = shot % laneCount;
+      const variant = getPatternVariant(state, 4);
+      const order = variant === 0
+        ? Array.from({ length: laneCount }, (_, index) => index)
+        : variant === 1
+          ? Array.from({ length: laneCount }, (_, index) => laneCount - 1 - index)
+          : variant === 2
+            ? buildInsideOutOrder(laneCount)
+            : buildCenterBreakOrder(laneCount);
+      const shots = Math.min(order.length, (state.mode === "hard" ? 5 : 4) + (state.round >= 10 ? 1 : 0));
+      return tickPattern(state, delta, scaledInterval(state, 0.33, 0.42, 0.18, 0.24), shots, (shot) => {
+        const safeLane = order[shot];
         spawnLaneBarrage(state, safeLane, laneCount, laneSpeed(state, 6));
       });
     },
@@ -456,9 +492,12 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
     telegraphNormalMs: 650,
     run(state, delta) {
       const laneCount = getLaneCount(state);
-      const order = state.mode === "hard"
+      const variant = getPatternVariant(state, 3);
+      const order = variant === 0
         ? [0, laneCount - 1, 1, Math.max(0, laneCount - 2), Math.min(2, laneCount - 1)]
-        : [0, laneCount - 1, 1, Math.max(0, laneCount - 2)];
+        : variant === 1
+          ? [laneCount - 1, 0, Math.max(0, laneCount - 2), 1, Math.max(0, laneCount - 3)]
+          : [0, Math.max(0, laneCount - 2), 1, laneCount - 1, Math.min(2, laneCount - 1)];
       return tickPattern(state, delta, scaledInterval(state, 0.31, 0.4, 0.18, 0.24), order.length, (shot) => {
         spawnLaneBarrage(state, order[shot], laneCount, laneSpeed(state, 10));
       });
@@ -473,7 +512,12 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
     telegraphNormalMs: 660,
     run(state, delta) {
       const laneCount = getLaneCount(state);
-      const order = buildSweepOrder(laneCount, pickSide(state));
+      const variant = getPatternVariant(state, 3);
+      const order = variant === 0
+        ? buildSweepOrder(laneCount, pickSide(state))
+        : variant === 1
+          ? buildSweepOrder(laneCount, pickSide(state) === "left" ? "right" : "left")
+          : buildInsideOutOrder(laneCount);
       return tickPattern(state, delta, scaledInterval(state, 0.29, 0.38, 0.18, 0.24), order.length, (shot) => {
         spawnLaneBarrage(state, order[shot], laneCount, laneSpeed(state, 8));
       });
@@ -488,7 +532,12 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
     telegraphNormalMs: 640,
     run(state, delta) {
       const laneCount = getLaneCount(state);
-      const order = buildCenterBreakOrder(laneCount).slice(0, state.mode === "hard" ? laneCount : Math.min(laneCount, 5));
+      const variant = getPatternVariant(state, 3);
+      const order = (variant === 0
+        ? buildCenterBreakOrder(laneCount)
+        : variant === 1
+          ? buildInsideOutOrder(laneCount)
+          : buildSweepOrder(laneCount, pickSide(state))).slice(0, state.mode === "hard" ? laneCount : Math.min(laneCount, 5));
       return tickPattern(state, delta, scaledInterval(state, 0.3, 0.4, 0.18, 0.24), order.length, (shot) => {
         spawnLaneBarrage(state, order[shot], laneCount, laneSpeed(state, 4), shot === 0 ? 24 : 28);
       });
@@ -503,7 +552,8 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
     telegraphNormalMs: 620,
     run(state, delta) {
       const laneCount = getLaneCount(state);
-      const order = buildEdgeTunnelOrder(laneCount, pickSide(state));
+      const variant = getPatternVariant(state, 2);
+      const order = buildEdgeTunnelOrder(laneCount, variant === 0 ? pickSide(state) : oppositeSide(pickSide(state)));
       const shots = Math.min(order.length, state.mode === "hard" ? order.length : Math.min(4, order.length));
       return tickPattern(state, delta, scaledInterval(state, 0.3, 0.4, 0.18, 0.24), shots, (shot) => {
         spawnLaneBarrage(state, order[shot], laneCount, laneSpeed(state, shot < 2 ? 12 : 8), shot < 2 ? 32 : 30);
@@ -535,8 +585,13 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
     run(state, delta) {
       const laneCount = getLaneCount(state);
       const firstSide = pickSide(state);
+      const variant = getPatternVariant(state, 3);
       return tickPattern(state, delta, scaledInterval(state, 0.44, 0.5, 0.24, 0.3), 3 + (state.round >= 11 ? 1 : 0), (shot) => {
-        const safeLane = (shot + 1) % laneCount;
+        const safeLane = variant === 0
+          ? (shot + 1) % laneCount
+          : variant === 1
+            ? (laneCount - 1 - shot + laneCount) % laneCount
+            : [Math.floor((laneCount - 1) / 2), 0, laneCount - 1, Math.max(0, laneCount - 2)][shot] ?? ((shot + 1) % laneCount);
         spawnLaneBarrage(state, safeLane, laneCount, laneSpeed(state, 2), 24);
         if (shot === 1) {
           spawnHalfHazard(state, firstSide, giantSpeed(state, -6), 0.36, 58);
@@ -951,11 +1006,11 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     label: "가짜 안전지대",
     mode: "both",
     roundStart: 2,
-    opener: ["switch_press", "fake_warning"],
-    core: ["last_hit_followup", "fake_safe_lane"],
-    finisher: ["center_swing", "edge_tunnel"],
+    opener: ["switch_press", "fake_warning", "fake_safe_lane"],
+    core: ["last_hit_followup", "fake_safe_lane", "fake_warning"],
+    finisher: ["center_swing", "edge_tunnel", "crossfall_mix"],
     minQueueLength: 3,
-    maxQueueLength: 3,
+    maxQueueLength: 4,
     maxHeavySetPieces: 0,
     durationFloorMs: 5800,
     themeFamilies: ["trap", "lane"],
