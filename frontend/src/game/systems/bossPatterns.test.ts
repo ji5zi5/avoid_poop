@@ -107,7 +107,7 @@ describe("boss patterns", () => {
       previousFamilyStreak: null,
       previousFamilyStreakCount: 0,
       recentPatterns: [],
-      queueSeed: 2147000000,
+      queueSeed: 39893,
     });
 
     expect(pressurePlan.queue.length).toBeGreaterThan(0);

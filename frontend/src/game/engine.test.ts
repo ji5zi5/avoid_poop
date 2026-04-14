@@ -3,9 +3,97 @@ import { describe, expect, it } from "vitest";
 import { copy } from "../content/copy";
 import { createWaveDirector } from "./state";
 import { createGameEngine, updateGame } from "./engine";
-import { buildBossPatternQueue, getAvailableBossPatternIds, getBossLanePositions, getBossThemeLabel, isHardOnlyPattern } from "./systems/bossPatterns";
+import {
+  buildBossPatternQueue,
+  getAvailableBossPatternIds,
+  getBossLanePositions,
+  getBossThemeLabel,
+  hasBossSequenceRemaining,
+  initializeBossEncounter,
+  isHardOnlyPattern,
+  runBossPattern,
+} from "./systems/bossPatterns";
 import { selectWavePattern, spawnWavePattern } from "./systems/spawn";
 import { getHazardHitbox, getPlayerHitbox } from "./systems/collision";
+
+const BOSS_SIM_STEP = 0.05;
+const PLAYER_X_STEP = 2;
+
+function getCandidatePlayerXs(state: ReturnType<typeof createGameEngine>) {
+  const limit = state.width - state.player.width;
+  const xs = new Set<number>([state.player.x, 0, limit]);
+  for (let x = 0; x <= limit; x += PLAYER_X_STEP) {
+    xs.add(x);
+  }
+  return Array.from(xs).sort((a, b) => a - b);
+}
+
+function overlapsRect(a: ReturnType<typeof getPlayerHitbox>, b: ReturnType<typeof getHazardHitbox>) {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+function advanceBossSimulation(state: ReturnType<typeof createGameEngine>, delta: number) {
+  state.elapsedInPhase += delta;
+  runBossPattern(state, delta);
+  state.hazards.forEach((hazard) => {
+    hazard.x += (hazard.velocityX ?? 0) * delta;
+    hazard.y += hazard.speed * delta;
+    if (hazard.gravity) {
+      hazard.speed += hazard.gravity * delta;
+    }
+  });
+  state.hazards = state.hazards.filter((hazard) => {
+    if (hazard.pendingRemoval) {
+      return false;
+    }
+    if (hazard.x > state.width + hazard.width || hazard.x + hazard.width < -hazard.width) {
+      return false;
+    }
+    return hazard.y < state.height + hazard.height;
+  });
+}
+
+function hasReachableSafePath(state: ReturnType<typeof createGameEngine>) {
+  const candidateXs = getCandidatePlayerXs(state);
+  let reachable = candidateXs.map((x) => Math.abs(x - state.player.x) < 0.01);
+  const deadline = state.bossEncounterDuration + 6;
+  let elapsed = 0;
+
+  while (elapsed < deadline && (hasBossSequenceRemaining(state) || state.hazards.some((hazard) => hazard.owner === "boss"))) {
+    advanceBossSimulation(state, BOSS_SIM_STEP);
+    elapsed += BOSS_SIM_STEP;
+
+    const hazardHitboxes = state.hazards.map((hazard) => getHazardHitbox(hazard));
+    const safe = candidateXs.map((x) => {
+      const playerHitbox = getPlayerHitbox({ ...state.player, x });
+      return hazardHitboxes.every((hazardHitbox) => !overlapsRect(playerHitbox, hazardHitbox));
+    });
+
+    const previousXs = candidateXs.filter((_, index) => reachable[index]);
+    const nextReachable = candidateXs.map(() => false);
+    const maxMove = state.player.speed * BOSS_SIM_STEP + PLAYER_X_STEP;
+    let pointer = 0;
+
+    for (let index = 0; index < candidateXs.length; index += 1) {
+      if (!safe[index]) {
+        continue;
+      }
+      while (pointer < previousXs.length && previousXs[pointer] < candidateXs[index] - maxMove) {
+        pointer += 1;
+      }
+      if (pointer < previousXs.length && previousXs[pointer] <= candidateXs[index] + maxMove) {
+        nextReachable[index] = true;
+      }
+    }
+
+    reachable = nextReachable;
+    if (reachable.every((value) => value === false)) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 describe("game engine", () => {
   it("moves the player only within bounds", () => {
@@ -347,6 +435,29 @@ describe("game engine", () => {
 
     expect(state.hazards.length).toBeGreaterThan(3);
     expect(state.hazards.some((hazard) => hazard.speed >= 260)).toBe(true);
+  });
+
+  it("keeps sampled hard boss encounters dodgeable from the real starting position", () => {
+    const sampledRounds = [2, 4, 6, 8, 10, 12];
+    const sampledSeeds = [1, 17, 39893, 177777, 300001];
+    const failures: string[] = [];
+
+    for (const round of sampledRounds) {
+      for (const seed of sampledSeeds) {
+        const state = createGameEngine("hard");
+        state.round = round;
+        state.reachedRound = round;
+        state.currentPhase = "boss";
+        state.bossPatternSeed = seed;
+        initializeBossEncounter(state);
+
+        if (!hasReachableSafePath(state)) {
+          failures.push(`round ${round} seed ${seed} theme ${state.bossThemeId ?? "unknown"}`);
+        }
+      }
+    }
+
+    expect(failures).toEqual([]);
   });
 
   it("remembers recently finished boss patterns to avoid repetition next time", () => {
