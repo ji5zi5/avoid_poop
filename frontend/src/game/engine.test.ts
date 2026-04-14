@@ -524,7 +524,7 @@ describe("game engine", () => {
 
   it("keeps movement-heavy boss themes from allowing passive center play", () => {
     const cases = [
-      { round: 2, seed: 12711, themeId: "corridor_intro" },
+      { round: 8, seed: 12711, themeId: "corridor_intro" },
       { round: 12, seed: 25422, themeId: "corridor_switch" },
       { round: 12, seed: 31778, themeId: "trap_weave" },
       { round: 12, seed: 38133, themeId: "residue_fakeout" },
