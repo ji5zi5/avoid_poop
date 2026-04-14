@@ -461,6 +461,24 @@ describe("game engine", () => {
     expect(failures).toEqual([]);
   });
 
+  it("makes lane_intro punish standing still in the center", () => {
+    const state = createGameEngine("hard");
+    state.round = 2;
+    state.reachedRound = 2;
+    state.currentPhase = "boss";
+    state.bossPatternSeed = 22245;
+    initializeBossEncounter(state);
+    const startLives = state.player.lives;
+
+    expect(state.bossThemeId).toBe("lane_intro");
+
+    for (let step = 0; step < 400 && state.player.lives === startLives && (state.currentPhase === "boss" || state.pendingBossClearAnnouncement || state.hazards.length > 0); step += 1) {
+      updateGame(state, 0.05, 0);
+    }
+
+    expect(state.player.lives).toBeLessThan(startLives);
+  });
+
   it("remembers recently finished boss patterns to avoid repetition next time", () => {
     const state = createGameEngine("hard");
     state.round = 8;

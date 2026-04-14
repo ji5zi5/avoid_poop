@@ -710,7 +710,7 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     roundStart: 2,
     opener: ["shifting_corridor", "zigzag_corridor"],
     core: ["staircase_corridor", "center_break", "switch_press", "crossfall_mix"],
-    finisher: ["crossfall_mix", "switch_press"],
+    finisher: ["center_swing"],
     minQueueLength: 4,
     maxQueueLength: 4,
     maxHeavySetPieces: 0,
