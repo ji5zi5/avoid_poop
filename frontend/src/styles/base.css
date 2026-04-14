@@ -3050,6 +3050,12 @@ input {
   gap: 0.55rem;
 }
 
+.records-podium-shell {
+  display: grid;
+  align-content: start;
+  gap: 0.55rem;
+}
+
 .records-podium__card {
   display: grid;
   gap: 0.28rem;

@@ -175,7 +175,7 @@ describe('RecordsPage', () => {
     expect(screen.getAllByText('#1').length).toBeGreaterThan(0);
     expect(screen.getAllByText('점수 321 / 6라운드').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('45.6초').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('최고 기록 · 6라운드').length).toBeGreaterThan(0);
+    expect(screen.queryByText('나머지 순위')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: '하드' }));
     await waitFor(() => expect(screen.getAllByText('charlie').length).toBeGreaterThan(0));

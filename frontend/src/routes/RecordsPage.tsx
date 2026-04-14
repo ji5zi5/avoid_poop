@@ -51,6 +51,7 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
       : records.leaderboard[rankingTab];
     const leader = selectedEntries[0] ?? null;
     const podium = selectedEntries.slice(0, 3);
+    const remainingEntries = selectedEntries.slice(3);
     const boardLabel = rankingTab === "multiplayer"
       ? "멀티"
       : rankingTab === "hard"
@@ -62,6 +63,7 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
       selectedEntries,
       leader,
       podium,
+      remainingEntries,
     };
   }, [rankingTab, records]);
 
@@ -95,10 +97,12 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
             <section className="records-hero-band">
               <div className="records-hero-copy">
                 <span className="panel-kicker">{copy.records.spotlight}</span>
-                <h3>{copy.records.playerRanking}</h3>
+                <h3>{boardState.leader?.username ?? copy.records.none}</h3>
                 <p>
                   {boardState.leader
-                    ? copy.records.leaderboardLead(boardState.leader.username)
+                    ? isMultiplayerEntry(boardState.leader)
+                      ? `${copy.records.multiplayerWins} ${boardState.leader.wins} · ${copy.records.multiplayerMatches} ${boardState.leader.matchesPlayed}`
+                      : `${copy.records.roundEntry(boardState.leader.score, boardState.leader.reachedRound)} · ${formatSecondsLabel(boardState.leader.survivalTime)}`
                     : copy.records.none}
                 </p>
                 <div className="records-pill-row">
@@ -113,48 +117,56 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
                   {boardState.leader && isMultiplayerEntry(boardState.leader) ? (
                     <span className="records-pill">{copy.records.topPlacement(boardState.leader.bestPlacement)}</span>
                   ) : null}
+                  {boardState.leader && isMultiplayerEntry(boardState.leader) ? (
+                    <span className="records-pill">최고 라운드 {boardState.leader.bestReachedRound ?? "--"}</span>
+                  ) : null}
+                  {boardState.leader && !isMultiplayerEntry(boardState.leader) ? (
+                    <span className="records-pill">{copy.records.survivalLabel} {formatSecondsLabel(boardState.leader.survivalTime)}</span>
+                  ) : null}
                 </div>
               </div>
 
-              <div className="records-podium" aria-label={copy.records.playerRanking}>
-                {boardState.podium.length > 0 ? (
-                  boardState.podium.map((entry, index) => (
-                    <article
-                      key={`${rankingTab}-${entry.userId}`}
-                      className={index === 0 ? "records-podium__card records-podium__card--leader" : "records-podium__card"}
-                    >
-                      <span className="records-podium__rank">#{entry.rank}</span>
-                      <strong>{entry.username}</strong>
-                      {isMultiplayerEntry(entry) ? (
-                        <>
-                          <span>{copy.records.multiplayerWins} {entry.wins}</span>
-                          <span>{copy.records.topPlacement(entry.bestPlacement)}</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>{copy.records.roundEntry(entry.score, entry.reachedRound)}</span>
-                          <span>{formatSecondsLabel(entry.survivalTime)}</span>
-                        </>
-                      )}
-                    </article>
-                  ))
-                ) : (
-                  <div className="records-empty">{copy.records.none}</div>
-                )}
+              <div className="records-podium-shell">
+                <span className="panel-kicker">TOP 3</span>
+                <div className="records-podium" aria-label={copy.records.playerRanking}>
+                  {boardState.podium.length > 0 ? (
+                    boardState.podium.map((entry, index) => (
+                      <article
+                        key={`${rankingTab}-${entry.userId}`}
+                        className={index === 0 ? "records-podium__card records-podium__card--leader" : "records-podium__card"}
+                      >
+                        <span className="records-podium__rank">#{entry.rank}</span>
+                        <strong>{entry.username}</strong>
+                        {isMultiplayerEntry(entry) ? (
+                          <>
+                            <span>{copy.records.multiplayerWins} {entry.wins}</span>
+                            <span>{copy.records.topPlacement(entry.bestPlacement)}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>{copy.records.roundEntry(entry.score, entry.reachedRound)}</span>
+                            <span>{formatSecondsLabel(entry.survivalTime)}</span>
+                          </>
+                        )}
+                      </article>
+                    ))
+                  ) : (
+                    <div className="records-empty">{copy.records.none}</div>
+                  )}
+                </div>
               </div>
             </section>
 
-            <section className="records-section">
-              <div className="records-section-heading">
-                <div>
-                  <h3>{copy.records.playerRanking}</h3>
-                  <p className="records-section__subcopy">{copy.records.boardWindow(boardState.selectedEntries.length)}</p>
+            {boardState.remainingEntries.length > 0 ? (
+              <section className="records-section">
+                <div className="records-section-heading">
+                  <div>
+                    <h3>나머지 순위</h3>
+                    <p className="records-section__subcopy">{copy.records.boardWindow(boardState.remainingEntries.length)}</p>
+                  </div>
                 </div>
-              </div>
-
-              {boardState.selectedEntries.length > 0 ? (
                 <div className="records-leaderboard">
-                  {boardState.selectedEntries.map((entry) => (
+                  {boardState.remainingEntries.map((entry) => (
                     <article key={`${rankingTab}-${entry.userId}`} className="records-leaderboard-card">
                       <div className="records-leaderboard-card__header">
                         <span className="records-rank-chip">#{entry.rank}</span>
@@ -183,10 +195,8 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
                     </article>
                   ))}
                 </div>
-              ) : (
-                <div className="records-empty">{copy.records.none}</div>
-              )}
-            </section>
+              </section>
+            ) : null}
 
           </>
         ) : (
