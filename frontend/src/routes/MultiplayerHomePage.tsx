@@ -93,7 +93,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
             <p>{copy.multiplayer.createRoomHint}</p>
             <div className="matchmaking-card__chips">
               <span className="home-status-chip">{options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
-              <span className="home-status-chip">{options.bodyBlock ? "길막 ON" : "길막 OFF"}</span>
+              <span className="home-status-chip">{copy.multiplayer.bodyBlock} {options.bodyBlock ? "ON" : "OFF"}</span>
               <span className="home-status-chip">{debuffTierLabel(options.debuffTier)}</span>
             </div>
             <button className="ghost-button subtle-button" onClick={() => setShowCreateSetup(true)}>{copy.multiplayer.createRoom}</button>
@@ -135,7 +135,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
 
                     <div className="matchmaking-card__chips">
                       <span className="home-status-chip">{room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
-                      <span className="home-status-chip">{room.options.bodyBlock ? "길막 ON" : "길막 OFF"}</span>
+                      <span className="home-status-chip">{copy.multiplayer.bodyBlock} {room.options.bodyBlock ? "ON" : "OFF"}</span>
                       <span className="home-status-chip">{copy.multiplayer.debuffTier} {debuffTierLabel(room.options.debuffTier)}</span>
                     </div>
 
@@ -169,7 +169,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
 
                       <div className="matchmaking-card__chips">
                         <span className="home-status-chip">{room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
-                        <span className="home-status-chip">{room.options.bodyBlock ? "길막 ON" : "길막 OFF"}</span>
+                        <span className="home-status-chip">{copy.multiplayer.bodyBlock} {room.options.bodyBlock ? "ON" : "OFF"}</span>
                         <span className="home-status-chip">{copy.multiplayer.debuffTier} {debuffTierLabel(room.options.debuffTier)}</span>
                       </div>
 

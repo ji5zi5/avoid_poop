@@ -54,7 +54,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
           <span className="home-status-chip">{room.options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
           <span className="home-status-chip">{room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
           <span className="home-status-chip">{copy.multiplayer.debuffTier} {debuffTierLabel(room.options.debuffTier)}</span>
-          <span className="home-status-chip">{room.options.bodyBlock ? "길막 ON" : "길막 OFF"}</span>
+          <span className="home-status-chip">{copy.multiplayer.bodyBlock} {room.options.bodyBlock ? "ON" : "OFF"}</span>
         </div>
 
         <div className="multiplayer-lobby-shell">
