@@ -23,6 +23,7 @@ test('multiplayer endpoints require authentication', async () => {
     {method: 'POST', url: '/api/multiplayer/rooms', payload: {}},
     {method: 'POST', url: '/api/multiplayer/join', payload: {roomCode: 'ABC123'}},
     {method: 'POST', url: '/api/multiplayer/quick-join', payload: {}},
+    {method: 'GET', url: '/api/multiplayer/rooms'},
     {method: 'GET', url: '/api/multiplayer/rooms/ABC123'}
   ] as const;
 
@@ -50,7 +51,8 @@ test('creating a room returns the room code and host assignment', async () => {
         visibility: 'private',
         bodyBlock: true,
         debuffTier: 3
-      }
+      },
+      privatePassword: 'secret-pass'
     }
   });
 
@@ -139,6 +141,81 @@ test('joining by room code adds the authenticated player to the room', async () 
 
   assert.equal(hostView.statusCode, 200);
   assert.equal(hostView.json().playerCount, 2);
+  await app.close();
+});
+
+test('joining a private room by password adds the authenticated player to the room', async () => {
+  const app = await createApp();
+  const host = await signupAndGetCookie(app, 'private_join_host');
+  const guest = await signupAndGetCookie(app, 'private_join_guest');
+
+  await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/rooms',
+    cookies: { avoid_poop_session: host.cookie },
+    payload: {
+      options: { visibility: 'private' },
+      privatePassword: 'secret-pass'
+    }
+  });
+
+  const joinRoom = await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/join',
+    cookies: { avoid_poop_session: guest.cookie },
+    payload: { privatePassword: 'secret-pass' }
+  });
+
+  assert.equal(joinRoom.statusCode, 200);
+  assert.equal(joinRoom.json().playerCount, 2);
+  await app.close();
+});
+
+test('public room listing only returns waiting public rooms', async () => {
+  const app = await createApp();
+  const publicHost = await signupAndGetCookie(app, 'public_list_host');
+  const privateHost = await signupAndGetCookie(app, 'private_list_host');
+
+  await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/rooms',
+    cookies: { avoid_poop_session: publicHost.cookie },
+    payload: { options: { visibility: 'public', difficulty: 'hard' } }
+  });
+  await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/rooms',
+    cookies: { avoid_poop_session: privateHost.cookie },
+    payload: { options: { visibility: 'private' }, privatePassword: 'hidden-pass' }
+  });
+
+  const listRooms = await app.inject({
+    method: 'GET',
+    url: '/api/multiplayer/rooms',
+    cookies: { avoid_poop_session: publicHost.cookie }
+  });
+
+  assert.equal(listRooms.statusCode, 200);
+  const rooms = listRooms.json();
+  assert.equal(Array.isArray(rooms), true);
+  assert.equal(rooms.length, 1);
+  assert.equal(rooms[0].options.visibility, 'public');
+  await app.close();
+});
+
+test('creating a private room without a password is rejected', async () => {
+  const app = await createApp();
+  const host = await signupAndGetCookie(app, 'private_needs_password');
+
+  const response = await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/rooms',
+    cookies: { avoid_poop_session: host.cookie },
+    payload: { options: { visibility: 'private' } }
+  });
+
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.json().error, 'Private rooms require a password.');
   await app.close();
 });
 
@@ -272,7 +349,7 @@ test('private rooms are skipped by quick join', async () => {
     method: 'POST',
     url: '/api/multiplayer/rooms',
     cookies: { avoid_poop_session: privateHost.cookie },
-    payload: { options: { visibility: 'private' } }
+    payload: { options: { visibility: 'private' }, privatePassword: 'hidden-pass' }
   });
   assert.equal(privateRoom.statusCode, 201);
 

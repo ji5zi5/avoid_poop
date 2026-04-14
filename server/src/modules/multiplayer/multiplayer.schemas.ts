@@ -9,6 +9,12 @@ export const roomCodeValueSchema = z
   .length(ROOM_CODE_LENGTH, `Room code must be ${ROOM_CODE_LENGTH} characters.`)
   .regex(/^[a-zA-Z0-9]+$/, 'Room code must contain only letters and numbers.');
 
+export const privatePasswordValueSchema = z
+  .string()
+  .trim()
+  .min(4, 'Private room password must be at least 4 characters.')
+  .max(32, 'Private room password must be at most 32 characters.');
+
 export const roomStatusSchema = z.enum(['waiting', 'in_progress']);
 export const roomDifficultySchema = z.enum(['normal', 'hard']);
 export const roomVisibilitySchema = z.enum(['public', 'private']);
@@ -23,11 +29,37 @@ export const roomOptionsSchema = z.object({
 export const roomOptionsPatchSchema = roomOptionsSchema.partial();
 
 export const createRoomPayloadSchema = z.object({
-  options: roomOptionsPatchSchema.optional()
+  options: roomOptionsPatchSchema.optional(),
+  privatePassword: privatePasswordValueSchema.optional()
+}).superRefine((value, ctx) => {
+  const visibility = value.options?.visibility ?? defaultRoomOptions.visibility;
+  if (visibility === 'private' && !value.privatePassword) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Private rooms require a password.',
+      path: ['privatePassword']
+    });
+  }
 });
 
 export const joinRoomPayloadSchema = z.object({
-  roomCode: roomCodeValueSchema
+  roomCode: roomCodeValueSchema.optional(),
+  privatePassword: privatePasswordValueSchema.optional()
+}).superRefine((value, ctx) => {
+  if (!value.roomCode && !value.privatePassword) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Provide a public room or private password.',
+      path: ['roomCode']
+    });
+  }
+  if (value.roomCode && value.privatePassword) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Choose either a public room or a private password, not both.',
+      path: ['privatePassword']
+    });
+  }
 });
 
 export const quickJoinPayloadSchema = z.object({});

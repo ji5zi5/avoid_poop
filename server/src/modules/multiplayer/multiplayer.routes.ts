@@ -14,6 +14,7 @@ import {
   RoomClosedError,
   RoomFullError,
   RoomNotFoundError,
+  RoomPasswordConflictError,
   RoomService,
   RoomStartError
 } from './room.service.js';
@@ -34,8 +35,12 @@ export const multiplayerRoutes: FastifyPluginAsync<MultiplayerRoutesOptions> = a
       return reply.status(400).send({error: getValidationErrorMessage(parsed.error)});
     }
 
-    const room = roomService.createRoom(request.user!, parsed.data.options);
-    return reply.status(201).send(room);
+    try {
+      const room = roomService.createRoom(request.user!, parsed.data.options, parsed.data.privatePassword);
+      return reply.status(201).send(room);
+    } catch (error) {
+      return sendRoomError(reply, error);
+    }
   });
 
   app.post('/join', {preHandler: requireUser}, async (request, reply) => {
@@ -45,10 +50,17 @@ export const multiplayerRoutes: FastifyPluginAsync<MultiplayerRoutesOptions> = a
     }
 
     try {
-      return reply.send(roomService.joinRoom(request.user!, parsed.data.roomCode));
+      if (parsed.data.privatePassword) {
+        return reply.send(roomService.joinPrivateRoom(request.user!, parsed.data.privatePassword));
+      }
+      return reply.send(roomService.joinRoom(request.user!, parsed.data.roomCode!));
     } catch (error) {
       return sendRoomError(reply, error);
     }
+  });
+
+  app.get('/rooms', {preHandler: requireUser}, async (_request, reply) => {
+    return reply.send(roomService.listPublicRooms());
   });
 
   app.post('/quick-join', {preHandler: requireUser}, async (request, reply) => {
@@ -94,6 +106,10 @@ function sendRoomError(reply: FastifyReply, error: unknown) {
 
   if (error instanceof RoomStartError) {
     return reply.status(400).send({error: error.message});
+  }
+
+  if (error instanceof RoomPasswordConflictError) {
+    return reply.status(409).send({error: error.message});
   }
 
   if (error instanceof RoomClosedError || error instanceof RoomFullError) {

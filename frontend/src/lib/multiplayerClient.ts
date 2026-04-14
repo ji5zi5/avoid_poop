@@ -40,10 +40,12 @@ export type RoomSummary = {
 
 export type CreateRoomPayload = {
   options?: Partial<RoomOptions>;
+  privatePassword?: string;
 };
 
 export type JoinRoomPayload = {
-  roomCode: string;
+  roomCode?: string;
+  privatePassword?: string;
 };
 
 export type QuickJoinPayload = Record<string, never>;

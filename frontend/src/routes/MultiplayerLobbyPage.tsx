@@ -38,7 +38,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
           <div>
             <p className="panel-kicker">{copy.multiplayer.entry}</p>
             <h1 className="home-card__title">{copy.multiplayer.lobbyTitle}</h1>
-            <div className="room-code-chip">{copy.multiplayer.roomCode} · {room.roomCode}</div>
+            <div className="room-code-chip">{room.options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</div>
           </div>
           <strong className={`room-status-chip ${connected ? "is-live" : ""}`}>{connected ? copy.multiplayer.statusConnected : copy.multiplayer.statusConnecting}</strong>
         </div>

@@ -1,12 +1,14 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
-import type { CreateRoomPayload, QuickJoinPayload, RoomOptions } from "../lib/multiplayerClient";
+import type { CreateRoomPayload, QuickJoinPayload, RoomOptions, RoomSummary } from "../lib/multiplayerClient";
 import { copy } from "../content/copy";
 
 type Props = {
   onCreateRoom: (payload: CreateRoomPayload) => Promise<void> | void;
-  onJoinByCode: (roomCode: string) => Promise<void> | void;
+  onJoinPublicRoom: (roomCode: string) => Promise<void> | void;
+  onJoinPrivateRoom: (privatePassword: string) => Promise<void> | void;
   onQuickJoin: (payload: QuickJoinPayload) => Promise<void> | void;
+  loadPublicRooms: () => Promise<RoomSummary[]>;
   onBack: () => void;
 };
 
@@ -17,14 +19,30 @@ const defaultOptions: RoomOptions = {
   debuffTier: 2,
 };
 
-export function MultiplayerHomePage({ onCreateRoom, onJoinByCode, onQuickJoin, onBack }: Props) {
-  const [roomCode, setRoomCode] = useState("");
+export function MultiplayerHomePage({ onCreateRoom, onJoinPublicRoom, onJoinPrivateRoom, onQuickJoin, loadPublicRooms, onBack }: Props) {
+  const [privatePassword, setPrivatePassword] = useState("");
+  const [createPrivatePassword, setCreatePrivatePassword] = useState("");
+  const [publicRooms, setPublicRooms] = useState<RoomSummary[]>([]);
   const [showCreateSetup, setShowCreateSetup] = useState(false);
   const [options, setOptions] = useState<RoomOptions>(defaultOptions);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+
+  async function refreshPublicRooms() {
+    setLoadingRooms(true);
+    try {
+      setPublicRooms(await loadPublicRooms());
+    } finally {
+      setLoadingRooms(false);
+    }
+  }
+
+  useEffect(() => {
+    void refreshPublicRooms();
+  }, []);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onJoinByCode(roomCode.trim());
+    onJoinPrivateRoom(privatePassword.trim());
   }
 
   return (
@@ -34,7 +52,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinByCode, onQuickJoin, o
           <div>
             <p className="panel-kicker">{copy.multiplayer.entry}</p>
             <h1 className="home-card__title">{copy.multiplayer.homeTitle}</h1>
-            <p className="home-card__meta">빠른 입장은 공개방 즉시 입장, 방 만들기는 옵션 설정 후 개설, 코드 입장은 친구방 참가용입니다.</p>
+            <p className="home-card__meta">빠른 입장은 공개방 즉시 입장, 공개방 목록은 골라 들어가고, 비공개방은 비밀번호로 참가합니다.</p>
           </div>
           <button className="ghost-button subtle-button" onClick={onBack}>{copy.records.back}</button>
         </div>
@@ -62,12 +80,43 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinByCode, onQuickJoin, o
           </article>
         </div>
 
+        <article className="matchmaking-card">
+          <div className="multiplayer-screen-heading">
+            <div>
+              <span className="info-card__label">{copy.multiplayer.publicRooms}</span>
+              <strong>{copy.multiplayer.publicRooms}</strong>
+              <p>{copy.multiplayer.publicRoomsHint}</p>
+            </div>
+            <button className="ghost-button subtle-button" type="button" onClick={() => void refreshPublicRooms()}>{copy.multiplayer.refreshRooms}</button>
+          </div>
+          {loadingRooms ? <p>{copy.records.loading}</p> : null}
+          {publicRooms.length > 0 ? (
+            <div className="multiplayer-public-room-list">
+              {publicRooms.map((room) => (
+                <article key={room.roomCode} className="multiplayer-public-room-card">
+                  <div>
+                    <strong>{room.players[0]?.username ?? "HOST"} · HOST</strong>
+                    <p>{copy.multiplayer.players} {room.playerCount}/8 · {room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</p>
+                  </div>
+                  <div className="matchmaking-card__chips">
+                    <span className="home-status-chip">{room.options.bodyBlock ? "길막 ON" : "길막 OFF"}</span>
+                    <span className="home-status-chip">{copy.multiplayer.debuffTier} {room.options.debuffTier}</span>
+                  </div>
+                  <button className="ghost-button subtle-button" type="button" onClick={() => onJoinPublicRoom(room.roomCode)}>입장</button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            !loadingRooms ? <p>{copy.multiplayer.noPublicRooms}</p> : null
+          )}
+        </article>
+
         <form className="multiplayer-code-form multiplayer-code-form--card multiplayer-code-form--heroic" onSubmit={handleSubmit}>
           <label>
-            <span>{copy.multiplayer.roomCode}</span>
-            <input value={roomCode} onChange={(event) => setRoomCode(event.target.value.toUpperCase())} placeholder={copy.multiplayer.joinPlaceholder} />
+            <span>{copy.multiplayer.privatePassword}</span>
+            <input value={privatePassword} onChange={(event) => setPrivatePassword(event.target.value)} placeholder={copy.multiplayer.passwordPlaceholder} />
           </label>
-          <button className="ghost-button subtle-button" type="submit" disabled={roomCode.trim().length < 6}>{copy.multiplayer.joinByCode}</button>
+          <button className="ghost-button subtle-button" type="submit" disabled={privatePassword.trim().length < 4}>{copy.multiplayer.joinPrivate}</button>
         </form>
 
         {showCreateSetup ? (
@@ -101,9 +150,15 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinByCode, onQuickJoin, o
                   <span>{copy.multiplayer.bodyBlock}</span>
                   <input type="checkbox" checked={options.bodyBlock} onChange={(event) => setOptions((current) => ({ ...current, bodyBlock: event.target.checked }))} />
                 </label>
+                {options.visibility === "private" ? (
+                  <label>
+                    <span>{copy.multiplayer.privatePassword}</span>
+                    <input value={createPrivatePassword} onChange={(event) => setCreatePrivatePassword(event.target.value)} placeholder={copy.multiplayer.passwordPlaceholder} />
+                  </label>
+                ) : null}
                 <p className="home-card__meta multiplayer-option-note">{copy.multiplayer.jumpHint}</p>
               </div>
-              <button className="home-start-button home-start-button--hero" onClick={() => onCreateRoom({ options })}>{copy.multiplayer.createRoom}</button>
+              <button className="home-start-button home-start-button--hero" onClick={() => onCreateRoom({ options, privatePassword: options.visibility === "private" ? createPrivatePassword.trim() : undefined })} disabled={options.visibility === "private" && createPrivatePassword.trim().length < 4}>{copy.multiplayer.createRoom}</button>
               <button className="ghost-button subtle-button menu-close-button" onClick={() => setShowCreateSetup(false)}>{copy.records.back}</button>
             </div>
           </div>
