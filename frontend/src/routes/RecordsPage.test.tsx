@@ -158,19 +158,18 @@ describe('RecordsPage', () => {
 
   it('renders ranking summaries and switches between leaderboard tabs', async () => {
     records.mockResolvedValue(sampleRecords);
+    const onOpenCareer = vi.fn();
 
-    render(<RecordsPage onBack={vi.fn()} onSessionExpired={vi.fn()} />);
+    render(<RecordsPage onBack={vi.fn()} onOpenCareer={onOpenCareer} onSessionExpired={vi.fn()} />);
 
     expect(screen.getByText('기록을 불러오는 중...')).toBeTruthy();
 
-    await waitFor(() => expect(screen.getByText('랭킹 & 전적')).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('heading', { name: '랭킹' })).toBeTruthy());
 
-    expect(screen.getByText('총 싱글 플레이')).toBeTruthy();
-    expect(screen.getByText('12')).toBeTruthy();
-    expect(screen.getByText('클리어 수 4')).toBeTruthy();
-    expect(screen.getAllByText('멀티 승리 수').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('3').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('멀티 경기 수 9').length).toBeGreaterThan(0);
+    expect(screen.queryByText('총 싱글 플레이')).toBeNull();
+    expect(screen.queryByText('최근 싱글 전적')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '내 전적 보기' }));
+    expect(onOpenCareer).toHaveBeenCalledTimes(1);
 
     expect(screen.getAllByText('alpha').length).toBeGreaterThan(0);
     expect(screen.getAllByText('#1').length).toBeGreaterThan(0);
@@ -183,18 +182,18 @@ describe('RecordsPage', () => {
     expect(screen.getAllByText('점수 410 / 8라운드').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: '멀티' }));
-    await waitFor(() => expect(screen.getAllByText('멀티 승리 수').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText((_, node) => (node?.textContent ?? '').includes('멀티 승리 수')).length).toBeGreaterThan(0));
     expect(screen.getAllByText('최고 순위 1등').length).toBeGreaterThan(0);
     expect(screen.getAllByText('최고 라운드 8').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('최종 승리').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('1등 / 4명 / 8라운드').length).toBeGreaterThan(0);
+    expect(screen.queryByText('최종 승리')).toBeNull();
+    expect(screen.queryByText('1등 / 4명 / 8라운드')).toBeNull();
   });
 
   it('redirects to auth when the records request returns 401', async () => {
     const onSessionExpired = vi.fn();
     records.mockRejectedValue(new ApiRequestError('Authentication required.', 401));
 
-    render(<RecordsPage onBack={vi.fn()} onSessionExpired={onSessionExpired} />);
+    render(<RecordsPage onBack={vi.fn()} onOpenCareer={vi.fn()} onSessionExpired={onSessionExpired} />);
 
     await waitFor(() => expect(onSessionExpired).toHaveBeenCalledTimes(1));
     expect(screen.queryByText('로그인이 필요한 화면입니다.')).toBeNull();
@@ -203,7 +202,7 @@ describe('RecordsPage', () => {
   it('shows translated errors for non-auth failures', async () => {
     records.mockRejectedValue(new Error('Failed to load records'));
 
-    render(<RecordsPage onBack={vi.fn()} onSessionExpired={vi.fn()} />);
+    render(<RecordsPage onBack={vi.fn()} onOpenCareer={vi.fn()} onSessionExpired={vi.fn()} />);
 
     await waitFor(() => expect(screen.getByText('기록을 불러오지 못했습니다.')).toBeTruthy());
   });

@@ -5,6 +5,7 @@ import { copy } from "./content/copy";
 import { api } from "./lib/api";
 import { createMultiplayerClient, type MultiplayerGameSnapshot, type RoomSummary } from "./lib/multiplayerClient";
 import { AuthPage } from "./routes/AuthPage";
+import { CareerPage } from "./routes/CareerPage";
 import { GamePage } from "./routes/GamePage";
 import { MenuPage } from "./routes/MenuPage";
 import { MultiplayerGamePage } from "./routes/MultiplayerGamePage";
@@ -12,7 +13,7 @@ import { MultiplayerHomePage } from "./routes/MultiplayerHomePage";
 import { MultiplayerLobbyPage } from "./routes/MultiplayerLobbyPage";
 import { RecordsPage } from "./routes/RecordsPage";
 
-type Screen = "auth" | "menu" | "game" | "records" | "multiplayer-home" | "multiplayer-lobby" | "multiplayer-game";
+type Screen = "auth" | "menu" | "game" | "records" | "career" | "multiplayer-home" | "multiplayer-lobby" | "multiplayer-game";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("auth");
@@ -164,7 +165,8 @@ export default function App() {
               onViewRecords={() => setScreen("records")}
             />
           ) : null}
-          {screen === "records" ? <RecordsPage onBack={() => setScreen("menu")} onSessionExpired={handleSessionExpired} /> : null}
+          {screen === "records" ? <RecordsPage onBack={() => setScreen("menu")} onOpenCareer={() => setScreen("career")} onSessionExpired={handleSessionExpired} /> : null}
+          {screen === "career" ? <CareerPage onBack={() => setScreen("records")} onSessionExpired={handleSessionExpired} /> : null}
           {screen === "multiplayer-home" ? (
             <MultiplayerHomePage
               onBack={() => setScreen("menu")}

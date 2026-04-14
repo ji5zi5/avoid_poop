@@ -19,6 +19,10 @@ const defaultOptions: RoomOptions = {
   debuffTier: 2,
 };
 
+function debuffTierLabel(debuffTier: RoomOptions["debuffTier"]) {
+  return debuffTier === 3 ? copy.multiplayer.debuffTierStrong : copy.multiplayer.debuffTierWeak;
+}
+
 export function MultiplayerHomePage({ onCreateRoom, onJoinPublicRoom, onJoinPrivateRoom, onQuickJoin, loadPublicRooms, onBack }: Props) {
   const [privatePassword, setPrivatePassword] = useState("");
   const [createPrivatePassword, setCreatePrivatePassword] = useState("");
@@ -100,7 +104,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinPublicRoom, onJoinPriv
                   </div>
                   <div className="matchmaking-card__chips">
                     <span className="home-status-chip">{room.options.bodyBlock ? "길막 ON" : "길막 OFF"}</span>
-                    <span className="home-status-chip">{copy.multiplayer.debuffTier} {room.options.debuffTier}</span>
+                    <span className="home-status-chip">{copy.multiplayer.debuffTier} {debuffTierLabel(room.options.debuffTier)}</span>
                   </div>
                   <button className="ghost-button subtle-button" type="button" onClick={() => onJoinPublicRoom(room.roomCode)}>입장</button>
                 </article>
@@ -142,8 +146,8 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinPublicRoom, onJoinPriv
                 <label>
                   <span>{copy.multiplayer.debuffTier}</span>
                   <select value={options.debuffTier} onChange={(event) => setOptions((current) => ({ ...current, debuffTier: Number(event.target.value) as RoomOptions["debuffTier"] }))}>
-                    <option value={2}>2</option>
-                    <option value={3}>3</option>
+                    <option value={2}>{copy.multiplayer.debuffTierWeak}</option>
+                    <option value={3}>{copy.multiplayer.debuffTierStrong}</option>
                   </select>
                 </label>
                 <label className="multiplayer-home-toggle">

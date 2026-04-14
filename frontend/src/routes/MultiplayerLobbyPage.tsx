@@ -14,6 +14,10 @@ type Props = {
   userId: number;
 };
 
+function debuffTierLabel(debuffTier: RoomSummary["options"]["debuffTier"]) {
+  return debuffTier === 3 ? copy.multiplayer.debuffTierStrong : copy.multiplayer.debuffTierWeak;
+}
+
 export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat, onSetReady, onStart, room, userId }: Props) {
   const currentPlayer = room.players.find((player) => player.userId === userId);
   const isReady = currentPlayer?.ready ?? false;
@@ -47,7 +51,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
           <span className="home-status-chip">{copy.multiplayer.players} {room.playerCount}/8</span>
           <span className="home-status-chip">{room.options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
           <span className="home-status-chip">{room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
-          <span className="home-status-chip">{copy.multiplayer.debuffTier} {room.options.debuffTier}</span>
+          <span className="home-status-chip">{copy.multiplayer.debuffTier} {debuffTierLabel(room.options.debuffTier)}</span>
           <span className="home-status-chip">{room.options.bodyBlock ? "길막 ON" : "길막 OFF"}</span>
         </div>
 
@@ -57,7 +61,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
               <span>{copy.multiplayer.visibility}: {room.options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
               <span>{copy.multiplayer.difficulty}: {room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
               <span>{copy.multiplayer.bodyBlock}: {room.options.bodyBlock ? "ON" : "OFF"}</span>
-              <span>{copy.multiplayer.debuffTier}: {room.options.debuffTier}</span>
+              <span>{copy.multiplayer.debuffTier}: {debuffTierLabel(room.options.debuffTier)}</span>
             </div>
 
             <ul className="multiplayer-player-list multiplayer-player-list--cards">

@@ -2835,6 +2835,13 @@ input {
   flex-wrap: wrap;
 }
 
+.records-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .records-toolbar h3 {
   margin: 0.15rem 0 0;
   font-size: clamp(1.2rem, 2.5vw, 1.65rem);
@@ -3029,6 +3036,7 @@ input {
 
 @media (max-width: 760px) {
   .records-toolbar,
+  .records-toolbar__actions,
   .records-leaderboard-card__header,
   .records-feed-card__header {
     display: grid;
