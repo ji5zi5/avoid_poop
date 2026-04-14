@@ -19,14 +19,11 @@ coverage/
 data/
 server/data/
 
-# OMX runtime/state (keep planning artifacts only)
-.omx/*
-!.omx/plans/
-!.omx/plans/**
-
 # Generated JS siblings from TS sources
 frontend/src/**/*.js
 shared/src/**/*.js
 
 .codex
 .omx/
+.stitch/designs/
+.vercel/
