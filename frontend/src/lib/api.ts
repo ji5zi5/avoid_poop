@@ -60,7 +60,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload ?? {}),
     }),
-  listPublicRooms: () => request<RoomSummary[]>("/api/multiplayer/rooms"),
+  listRooms: () => request<RoomSummary[]>("/api/multiplayer/rooms"),
   joinRoom: (payload: JoinRoomPayload) =>
     request<RoomSummary>("/api/multiplayer/join", {
       method: "POST",

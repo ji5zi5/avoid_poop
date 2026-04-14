@@ -144,12 +144,12 @@ test('joining by room code adds the authenticated player to the room', async () 
   await app.close();
 });
 
-test('joining a private room by password adds the authenticated player to the room', async () => {
+test('joining a listed private room requires the matching password', async () => {
   const app = await createApp();
   const host = await signupAndGetCookie(app, 'private_join_host');
   const guest = await signupAndGetCookie(app, 'private_join_guest');
 
-  await app.inject({
+  const createRoom = await app.inject({
     method: 'POST',
     url: '/api/multiplayer/rooms',
     cookies: { avoid_poop_session: host.cookie },
@@ -158,12 +158,29 @@ test('joining a private room by password adds the authenticated player to the ro
       privatePassword: 'secret-pass'
     }
   });
+  const privateRoom = createRoom.json();
+
+  const wrongPassword = await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/join',
+    cookies: { avoid_poop_session: guest.cookie },
+    payload: {
+      roomCode: privateRoom.roomCode,
+      privatePassword: 'wrong-pass'
+    }
+  });
+
+  assert.equal(wrongPassword.statusCode, 403);
+  assert.equal(wrongPassword.json().error, 'Private room password is incorrect.');
 
   const joinRoom = await app.inject({
     method: 'POST',
     url: '/api/multiplayer/join',
     cookies: { avoid_poop_session: guest.cookie },
-    payload: { privatePassword: 'secret-pass' }
+    payload: {
+      roomCode: privateRoom.roomCode,
+      privatePassword: 'secret-pass'
+    }
   });
 
   assert.equal(joinRoom.statusCode, 200);
@@ -171,7 +188,7 @@ test('joining a private room by password adds the authenticated player to the ro
   await app.close();
 });
 
-test('public room listing only returns waiting public rooms', async () => {
+test('room listing returns both public and private waiting rooms with public rooms first', async () => {
   const app = await createApp();
   const publicHost = await signupAndGetCookie(app, 'public_list_host');
   const privateHost = await signupAndGetCookie(app, 'private_list_host');
@@ -198,8 +215,9 @@ test('public room listing only returns waiting public rooms', async () => {
   assert.equal(listRooms.statusCode, 200);
   const rooms = listRooms.json();
   assert.equal(Array.isArray(rooms), true);
-  assert.equal(rooms.length, 1);
+  assert.equal(rooms.length, 2);
   assert.equal(rooms[0].options.visibility, 'public');
+  assert.equal(rooms[1].options.visibility, 'private');
   await app.close();
 });
 

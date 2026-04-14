@@ -25,6 +25,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
   const enoughPlayers = room.playerCount >= 2;
   const allReady = room.players.every((player) => player.ready);
   const canActuallyStart = canStart && enoughPlayers && allReady;
+  const readyCount = room.players.filter((player) => player.ready).length;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,6 +43,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
           <div>
             <p className="panel-kicker">{copy.multiplayer.entry}</p>
             <h1 className="home-card__title">{copy.multiplayer.lobbyTitle}</h1>
+            <p className="home-card__meta">{connected ? "플레이어 준비 상태를 확인하고 시작 타이밍을 맞추세요." : "연결을 복구하는 동안 대기방 상태를 유지합니다."}</p>
             <div className="room-code-chip">{room.options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</div>
           </div>
           <strong className={`room-status-chip ${connected ? "is-live" : ""}`}>{connected ? copy.multiplayer.statusConnected : copy.multiplayer.statusConnecting}</strong>
@@ -57,6 +59,19 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
 
         <div className="multiplayer-lobby-shell">
           <div className="multiplayer-lobby-main">
+            <div className="multiplayer-lobby-insights">
+              <article className="multiplayer-lobby-insight-card">
+                <span className="info-card__label">READY</span>
+                <strong>{readyCount}/{room.playerCount}</strong>
+                <p>{allReady ? "전원 준비 완료" : "시작 전에 전원 준비가 필요합니다"}</p>
+              </article>
+              <article className="multiplayer-lobby-insight-card">
+                <span className="info-card__label">RULESET</span>
+                <strong>{room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</strong>
+                <p>{room.options.bodyBlock ? "점프로 몸싸움을 피할 수 있습니다" : "서로 통과 가능한 가벼운 규칙입니다"}</p>
+              </article>
+            </div>
+
             <div className="multiplayer-lobby-options multiplayer-lobby-options--heroic">
               <span>{copy.multiplayer.visibility}: {room.options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
               <span>{copy.multiplayer.difficulty}: {room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>

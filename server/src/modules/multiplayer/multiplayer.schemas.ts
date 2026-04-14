@@ -43,23 +43,8 @@ export const createRoomPayloadSchema = z.object({
 });
 
 export const joinRoomPayloadSchema = z.object({
-  roomCode: roomCodeValueSchema.optional(),
+  roomCode: roomCodeValueSchema,
   privatePassword: privatePasswordValueSchema.optional()
-}).superRefine((value, ctx) => {
-  if (!value.roomCode && !value.privatePassword) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Provide a public room or private password.',
-      path: ['roomCode']
-    });
-  }
-  if (value.roomCode && value.privatePassword) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Choose either a public room or a private password, not both.',
-      path: ['privatePassword']
-    });
-  }
 });
 
 export const quickJoinPayloadSchema = z.object({});

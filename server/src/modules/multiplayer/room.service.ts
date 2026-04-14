@@ -40,7 +40,6 @@ export class RoomFullError extends Error {}
 export class RoomClosedError extends Error {}
 export class RoomAccessError extends Error {}
 export class RoomStartError extends Error {}
-export class RoomPasswordConflictError extends Error {}
 
 export class RoomService {
   private readonly rooms = new Map<string, RoomRecord>();
@@ -59,9 +58,6 @@ export class RoomService {
 
     if (mergedOptions.visibility === 'private' && !normalizedPrivatePassword) {
       throw new RoomAccessError('Private rooms require a password.');
-    }
-    if (normalizedPrivatePassword && this.findPrivateRoomCodeByPassword(normalizedPrivatePassword)) {
-      throw new RoomPasswordConflictError('That private room password is already in use.');
     }
 
     const room: RoomRecord = {
@@ -86,7 +82,7 @@ export class RoomService {
     return this.toSummary(room);
   }
 
-  joinRoom(user: RoomUser, roomCode: string) {
+  joinRoom(user: RoomUser, roomCode: string, privatePassword?: string) {
     const normalizedRoomCode = normalizeRoomCode(roomCode);
     const room = this.rooms.get(normalizedRoomCode);
 
@@ -97,6 +93,16 @@ export class RoomService {
     const existingPlayer = room.players.find((player) => player.userId === user.id);
     if (existingPlayer) {
       return this.toSummary(room);
+    }
+
+    if (room.options.visibility === 'private') {
+      const normalizedPrivatePassword = normalizePrivatePassword(privatePassword);
+      if (!normalizedPrivatePassword) {
+        throw new RoomAccessError('Private room password is required.');
+      }
+      if (room.privatePassword !== normalizedPrivatePassword) {
+        throw new RoomAccessError('Private room password is incorrect.');
+      }
     }
 
     if (room.status !== 'waiting') {
@@ -117,15 +123,6 @@ export class RoomService {
     this.userRoomIndex.set(user.id, room.roomCode);
 
     return this.toSummary(room);
-  }
-
-  joinPrivateRoom(user: RoomUser, privatePassword: string) {
-    const normalizedPrivatePassword = normalizePrivatePassword(privatePassword);
-    const roomCode = this.findPrivateRoomCodeByPassword(normalizedPrivatePassword);
-    if (!roomCode) {
-      throw new RoomNotFoundError('Private room not found.');
-    }
-    return this.joinRoom(user, roomCode);
   }
 
   getRoom(roomCode: string) {
@@ -282,10 +279,17 @@ export class RoomService {
     return this.toSummary(room);
   }
 
-  listPublicRooms() {
+  listRooms() {
     return Array.from(this.rooms.values())
-      .filter((room) => room.status === 'waiting' && room.options.visibility === 'public')
-      .sort((left, right) => right.players.length - left.players.length || left.roomCode.localeCompare(right.roomCode))
+      .filter((room) => room.status === 'waiting')
+      .sort((left, right) => {
+        const visibilityWeight = left.options.visibility === right.options.visibility
+          ? 0
+          : left.options.visibility === 'public' ? -1 : 1;
+        return visibilityWeight
+          || right.players.length - left.players.length
+          || left.roomCode.localeCompare(right.roomCode);
+      })
       .map((room) => this.toSummary(room));
   }
 
@@ -306,18 +310,6 @@ export class RoomService {
       return room.roomCode;
     }
 
-    return null;
-  }
-
-  private findPrivateRoomCodeByPassword(privatePassword: string) {
-    for (const room of this.rooms.values()) {
-      if (room.status !== 'waiting' || room.options.visibility !== 'private') {
-        continue;
-      }
-      if (room.privatePassword === privatePassword) {
-        return room.roomCode;
-      }
-    }
     return null;
   }
 

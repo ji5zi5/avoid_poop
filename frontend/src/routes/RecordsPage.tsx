@@ -163,7 +163,7 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
                           <span className="records-leaderboard-card__meta">
                             {isMultiplayerEntry(entry)
                               ? `${copy.records.multiplayerMatches} ${entry.matchesPlayed}`
-                              : entry.clear ? copy.results.outcomeClear : copy.results.outcomeFail}
+                              : `${copy.records.best} · ${entry.reachedRound}라운드`}
                           </span>
                         </div>
                       </div>
@@ -178,7 +178,6 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
                         <div className="records-chip-row">
                           <span className="records-chip">{copy.records.roundEntry(entry.score, entry.reachedRound)}</span>
                           <span className="records-chip">{formatSecondsLabel(entry.survivalTime)}</span>
-                          <span className="records-chip">{entry.clear ? copy.results.outcomeClear : copy.results.outcomeFail}</span>
                         </div>
                       )}
                     </article>

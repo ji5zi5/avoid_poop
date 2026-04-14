@@ -171,9 +171,8 @@ export default function App() {
             <MultiplayerHomePage
               onBack={() => setScreen("menu")}
               onCreateRoom={(payload) => enterRoom(api.createRoom(payload))}
-              loadPublicRooms={() => api.listPublicRooms()}
-              onJoinPublicRoom={(roomCode) => enterRoom(api.joinRoom({ roomCode }))}
-              onJoinPrivateRoom={(privatePassword) => enterRoom(api.joinRoom({ privatePassword }))}
+              loadRooms={() => api.listRooms()}
+              onJoinRoom={(payload) => enterRoom(api.joinRoom(payload))}
               onQuickJoin={(payload) => enterRoom(api.quickJoin(payload))}
             />
           ) : null}

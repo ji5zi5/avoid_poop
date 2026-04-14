@@ -1,14 +1,13 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
-import type { CreateRoomPayload, QuickJoinPayload, RoomOptions, RoomSummary } from "../lib/multiplayerClient";
 import { copy } from "../content/copy";
+import type { CreateRoomPayload, JoinRoomPayload, QuickJoinPayload, RoomOptions, RoomSummary } from "../lib/multiplayerClient";
 
 type Props = {
   onCreateRoom: (payload: CreateRoomPayload) => Promise<void> | void;
-  onJoinPublicRoom: (roomCode: string) => Promise<void> | void;
-  onJoinPrivateRoom: (privatePassword: string) => Promise<void> | void;
+  onJoinRoom: (payload: JoinRoomPayload) => Promise<void> | void;
   onQuickJoin: (payload: QuickJoinPayload) => Promise<void> | void;
-  loadPublicRooms: () => Promise<RoomSummary[]>;
+  loadRooms: () => Promise<RoomSummary[]>;
   onBack: () => void;
 };
 
@@ -23,105 +22,177 @@ function debuffTierLabel(debuffTier: RoomOptions["debuffTier"]) {
   return debuffTier === 3 ? copy.multiplayer.debuffTierStrong : copy.multiplayer.debuffTierWeak;
 }
 
-export function MultiplayerHomePage({ onCreateRoom, onJoinPublicRoom, onJoinPrivateRoom, onQuickJoin, loadPublicRooms, onBack }: Props) {
-  const [privatePassword, setPrivatePassword] = useState("");
+function formatRoomSubtitle(room: RoomSummary) {
+  return `${copy.multiplayer.players} ${room.playerCount}/${room.maxPlayers} · ${
+    room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal
+  }`;
+}
+
+export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loadRooms, onBack }: Props) {
   const [createPrivatePassword, setCreatePrivatePassword] = useState("");
-  const [publicRooms, setPublicRooms] = useState<RoomSummary[]>([]);
+  const [rooms, setRooms] = useState<RoomSummary[]>([]);
+  const [roomPasswords, setRoomPasswords] = useState<Record<string, string>>({});
   const [showCreateSetup, setShowCreateSetup] = useState(false);
   const [options, setOptions] = useState<RoomOptions>(defaultOptions);
   const [loadingRooms, setLoadingRooms] = useState(false);
 
-  async function refreshPublicRooms() {
+  async function refreshRooms() {
     setLoadingRooms(true);
     try {
-      setPublicRooms(await loadPublicRooms());
+      setRooms(await loadRooms());
     } finally {
       setLoadingRooms(false);
     }
   }
 
   useEffect(() => {
-    void refreshPublicRooms();
+    void refreshRooms();
   }, []);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const roomGroups = useMemo(() => ({
+    publicRooms: rooms.filter((room) => room.options.visibility === "public"),
+    privateRooms: rooms.filter((room) => room.options.visibility === "private"),
+  }), [rooms]);
+
+  function handlePrivateJoin(event: FormEvent<HTMLFormElement>, roomCode: string) {
     event.preventDefault();
-    onJoinPrivateRoom(privatePassword.trim());
+    const privatePassword = roomPasswords[roomCode]?.trim() ?? "";
+    if (privatePassword.length < 4) {
+      return;
+    }
+    onJoinRoom({ roomCode, privatePassword });
   }
 
   return (
     <section className="menu-screen multiplayer-home-screen">
       <div className="console-panel console-panel--primary console-panel--compact multiplayer-home-card multiplayer-home-card--stitch">
-        <div className="multiplayer-screen-heading">
+        <div className="multiplayer-screen-heading multiplayer-screen-heading--stacked">
           <div>
             <p className="panel-kicker">{copy.multiplayer.entry}</p>
             <h1 className="home-card__title">{copy.multiplayer.homeTitle}</h1>
-            <p className="home-card__meta">빠른 입장은 공개방 즉시 입장, 공개방 목록은 골라 들어가고, 비공개방은 비밀번호로 참가합니다.</p>
+            <p className="home-card__meta">{copy.multiplayer.roomListHint}</p>
           </div>
           <button className="ghost-button subtle-button" onClick={onBack}>{copy.records.back}</button>
         </div>
 
-        <div className="matchmaking-grid">
-          <article className="matchmaking-card matchmaking-card--highlight matchmaking-card--heroic">
+        <section className="multiplayer-feature-band">
+          <article className="matchmaking-card matchmaking-card--highlight matchmaking-card--heroic matchmaking-card--stitch">
             <span className="info-card__label">FAST MATCH</span>
             <strong>{copy.multiplayer.quickJoin}</strong>
             <p>{copy.multiplayer.quickJoinHint}</p>
             <div className="matchmaking-card__chips">
               <span className="home-status-chip">{copy.multiplayer.publicRoom}</span>
-              <span className="home-status-chip">8인 대기열</span>
+              <span className="home-status-chip">{copy.multiplayer.quickJoinMeta}</span>
             </div>
             <button className="home-start-button home-start-button--hero" onClick={() => onQuickJoin({})}>{copy.multiplayer.quickJoin}</button>
           </article>
-          <article className="matchmaking-card matchmaking-card--heroic">
+
+          <article className="matchmaking-card matchmaking-card--heroic matchmaking-card--stitch">
             <span className="info-card__label">ROOM HOST</span>
             <strong>{copy.multiplayer.createRoom}</strong>
             <p>{copy.multiplayer.createRoomHint}</p>
             <div className="matchmaking-card__chips">
               <span className="home-status-chip">{options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
               <span className="home-status-chip">{options.bodyBlock ? "길막 ON" : "길막 OFF"}</span>
+              <span className="home-status-chip">{debuffTierLabel(options.debuffTier)}</span>
             </div>
             <button className="ghost-button subtle-button" onClick={() => setShowCreateSetup(true)}>{copy.multiplayer.createRoom}</button>
           </article>
-        </div>
+        </section>
 
-        <article className="matchmaking-card">
-          <div className="multiplayer-screen-heading">
+        <section className="records-section multiplayer-room-browser">
+          <div className="records-section-heading">
             <div>
-              <span className="info-card__label">{copy.multiplayer.publicRooms}</span>
-              <strong>{copy.multiplayer.publicRooms}</strong>
-              <p>{copy.multiplayer.publicRoomsHint}</p>
+              <span className="panel-kicker">{copy.multiplayer.roomList}</span>
+              <h2>{copy.multiplayer.roomList}</h2>
+              <p className="records-section__subcopy">{copy.multiplayer.roomListSubcopy(rooms.length)}</p>
             </div>
-            <button className="ghost-button subtle-button" type="button" onClick={() => void refreshPublicRooms()}>{copy.multiplayer.refreshRooms}</button>
+            <button className="ghost-button subtle-button" type="button" onClick={() => void refreshRooms()}>{copy.multiplayer.refreshRooms}</button>
           </div>
-          {loadingRooms ? <p>{copy.records.loading}</p> : null}
-          {publicRooms.length > 0 ? (
-            <div className="multiplayer-public-room-list">
-              {publicRooms.map((room) => (
-                <article key={room.roomCode} className="multiplayer-public-room-card">
-                  <div>
-                    <strong>{room.players[0]?.username ?? "HOST"} · HOST</strong>
-                    <p>{copy.multiplayer.players} {room.playerCount}/8 · {room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</p>
-                  </div>
-                  <div className="matchmaking-card__chips">
-                    <span className="home-status-chip">{room.options.bodyBlock ? "길막 ON" : "길막 OFF"}</span>
-                    <span className="home-status-chip">{copy.multiplayer.debuffTier} {debuffTierLabel(room.options.debuffTier)}</span>
-                  </div>
-                  <button className="ghost-button subtle-button" type="button" onClick={() => onJoinPublicRoom(room.roomCode)}>입장</button>
-                </article>
-              ))}
-            </div>
-          ) : (
-            !loadingRooms ? <p>{copy.multiplayer.noPublicRooms}</p> : null
-          )}
-        </article>
 
-        <form className="multiplayer-code-form multiplayer-code-form--card multiplayer-code-form--heroic" onSubmit={handleSubmit}>
-          <label>
-            <span>{copy.multiplayer.privatePassword}</span>
-            <input value={privatePassword} onChange={(event) => setPrivatePassword(event.target.value)} placeholder={copy.multiplayer.passwordPlaceholder} />
-          </label>
-          <button className="ghost-button subtle-button" type="submit" disabled={privatePassword.trim().length < 4}>{copy.multiplayer.joinPrivate}</button>
-        </form>
+          {loadingRooms ? <p>{copy.records.loading}</p> : null}
+
+          {!loadingRooms && rooms.length === 0 ? (
+            <div className="records-empty">{copy.multiplayer.noRooms}</div>
+          ) : null}
+
+          {roomGroups.publicRooms.length > 0 ? (
+            <div className="multiplayer-room-group">
+              <div className="multiplayer-room-group__heading">
+                <span className="room-visibility-badge">{copy.multiplayer.publicRoom}</span>
+                <p>{copy.multiplayer.publicRoomsHint}</p>
+              </div>
+              <div className="multiplayer-room-list">
+                {roomGroups.publicRooms.map((room) => (
+                  <article key={room.roomCode} className="multiplayer-room-card multiplayer-room-card--public">
+                    <div className="multiplayer-room-card__header">
+                      <div>
+                        <strong>{room.players[0]?.username ?? "HOST"} · HOST</strong>
+                        <p>{formatRoomSubtitle(room)}</p>
+                      </div>
+                      <span className="room-visibility-badge room-visibility-badge--public">{copy.multiplayer.publicRoom}</span>
+                    </div>
+
+                    <div className="matchmaking-card__chips">
+                      <span className="home-status-chip">{room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
+                      <span className="home-status-chip">{room.options.bodyBlock ? "길막 ON" : "길막 OFF"}</span>
+                      <span className="home-status-chip">{copy.multiplayer.debuffTier} {debuffTierLabel(room.options.debuffTier)}</span>
+                    </div>
+
+                    <button className="ghost-button subtle-button" type="button" onClick={() => onJoinRoom({ roomCode: room.roomCode })}>
+                      {copy.multiplayer.joinPublic}
+                    </button>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {roomGroups.privateRooms.length > 0 ? (
+            <div className="multiplayer-room-group">
+              <div className="multiplayer-room-group__heading">
+                <span className="room-visibility-badge room-visibility-badge--private">{copy.multiplayer.privateRoom}</span>
+                <p>{copy.multiplayer.privateJoinHint}</p>
+              </div>
+              <div className="multiplayer-room-list">
+                {roomGroups.privateRooms.map((room) => {
+                  const currentPassword = roomPasswords[room.roomCode] ?? "";
+                  return (
+                    <article key={room.roomCode} className="multiplayer-room-card multiplayer-room-card--private">
+                      <div className="multiplayer-room-card__header">
+                        <div>
+                          <strong>{room.players[0]?.username ?? "HOST"} · HOST</strong>
+                          <p>{formatRoomSubtitle(room)}</p>
+                        </div>
+                        <span className="room-visibility-badge room-visibility-badge--private">{copy.multiplayer.privateRoom}</span>
+                      </div>
+
+                      <div className="matchmaking-card__chips">
+                        <span className="home-status-chip">{room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
+                        <span className="home-status-chip">{room.options.bodyBlock ? "길막 ON" : "길막 OFF"}</span>
+                        <span className="home-status-chip">{copy.multiplayer.debuffTier} {debuffTierLabel(room.options.debuffTier)}</span>
+                      </div>
+
+                      <form className="multiplayer-room-card__join" onSubmit={(event) => handlePrivateJoin(event, room.roomCode)}>
+                        <label>
+                          <span>{copy.multiplayer.privatePassword}</span>
+                          <input
+                            value={currentPassword}
+                            onChange={(event) => setRoomPasswords((current) => ({ ...current, [room.roomCode]: event.target.value }))}
+                            placeholder={copy.multiplayer.passwordPlaceholder}
+                          />
+                        </label>
+                        <button className="ghost-button subtle-button" type="submit" disabled={currentPassword.trim().length < 4}>
+                          {copy.multiplayer.joinPrivate}
+                        </button>
+                      </form>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </section>
 
         {showCreateSetup ? (
           <div className="menu-selection-sheet" role="dialog" aria-label={copy.multiplayer.createRoomSetup}>
@@ -162,7 +233,13 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinPublicRoom, onJoinPriv
                 ) : null}
                 <p className="home-card__meta multiplayer-option-note">{copy.multiplayer.jumpHint}</p>
               </div>
-              <button className="home-start-button home-start-button--hero" onClick={() => onCreateRoom({ options, privatePassword: options.visibility === "private" ? createPrivatePassword.trim() : undefined })} disabled={options.visibility === "private" && createPrivatePassword.trim().length < 4}>{copy.multiplayer.createRoom}</button>
+              <button
+                className="home-start-button home-start-button--hero"
+                onClick={() => onCreateRoom({ options, privatePassword: options.visibility === "private" ? createPrivatePassword.trim() : undefined })}
+                disabled={options.visibility === "private" && createPrivatePassword.trim().length < 4}
+              >
+                {copy.multiplayer.createRoom}
+              </button>
               <button className="ghost-button subtle-button menu-close-button" onClick={() => setShowCreateSetup(false)}>{copy.records.back}</button>
             </div>
           </div>

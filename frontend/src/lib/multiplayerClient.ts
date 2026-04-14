@@ -44,7 +44,7 @@ export type CreateRoomPayload = {
 };
 
 export type JoinRoomPayload = {
-  roomCode?: string;
+  roomCode: string;
   privatePassword?: string;
 };
 
