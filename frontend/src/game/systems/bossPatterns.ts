@@ -698,9 +698,9 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     core: ["center_crush", "double_side_stomp"],
     finisher: ["center_crush"],
     minQueueLength: 3,
-    maxQueueLength: 4,
+    maxQueueLength: 5,
     maxHeavySetPieces: 0,
-    durationFloorMs: 5200,
+    durationFloorMs: 5600,
     themeFamilies: ["pressure"],
   },
   lane_intro: {
@@ -768,9 +768,9 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     core: ["last_hit_followup", "center_collapse", "shoulder_crush"],
     finisher: ["last_hit_followup", "delayed_burst", "shoulder_crush"],
     minQueueLength: 4,
-    maxQueueLength: 5,
+    maxQueueLength: 6,
     maxHeavySetPieces: 1,
-    durationFloorMs: 6800,
+    durationFloorMs: 7600,
     themeFamilies: ["trap"],
   },
   residue_fakeout: {
@@ -783,9 +783,9 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     finisher: ["last_hit_followup", "center_collapse"],
     optionalSetPiece: ["residue_switch"],
     minQueueLength: 4,
-    maxQueueLength: 5,
+    maxQueueLength: 6,
     maxHeavySetPieces: 1,
-    durationFloorMs: 7200,
+    durationFloorMs: 8200,
     themeFamilies: ["trap"],
   },
 };
@@ -864,7 +864,13 @@ function getUnlockedThemes(mode: GameState["mode"], round: number) {
 }
 
 function getQueueTargetLength(theme: BossThemeDefinition, mode: GameState["mode"], round: number) {
-  const base = mode === "hard" ? (round >= 10 ? 5 : 4) : round >= 9 ? 4 : 3;
+  const base = mode === "hard"
+    ? round >= 12
+      ? 6
+      : round >= 8
+        ? 5
+        : 4
+    : round >= 9 ? 4 : 3;
   return Math.max(theme.minQueueLength, Math.min(theme.maxQueueLength, base));
 }
 
