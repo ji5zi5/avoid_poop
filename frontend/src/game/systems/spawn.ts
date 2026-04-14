@@ -283,17 +283,22 @@ export function spawnEdgeHazards(state: GameState, widthRatio: number, speed: nu
 }
 
 export function spawnLaneBarrage(state: GameState, safeLane: number, laneCount: number, speed: number, size = 28) {
-  const laneWidth = Math.floor((state.width - size) / Math.max(1, laneCount - 1));
+  const effectiveSize = state.bossThemeId === "lane_intro"
+    ? Math.max(size, 40)
+    : state.bossThemeId === "corridor_switch"
+      ? Math.max(size, 34)
+      : size;
+  const laneWidth = Math.floor((state.width - effectiveSize) / Math.max(1, laneCount - 1));
   for (let index = 0; index < laneCount; index += 1) {
     if (index === safeLane) {
       continue;
     }
     createCustomHazard(state, {
       x: index * laneWidth,
-      size,
+      size: effectiveSize,
       speed,
       owner: "boss",
-      variant: size >= 28 ? "boss" : undefined,
+      variant: effectiveSize >= 28 ? "boss" : undefined,
     });
   }
 }
