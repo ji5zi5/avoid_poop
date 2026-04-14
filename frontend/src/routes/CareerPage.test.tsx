@@ -108,4 +108,33 @@ describe('CareerPage', () => {
     expect(screen.getAllByText('1등 / 4명 / 8라운드').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: '랭킹 보기' })).toBeTruthy();
   });
+
+  it('caps each recent feed so the page does not grow forever', async () => {
+    records.mockResolvedValue({
+      ...sampleRecords,
+      recent: [
+        ...sampleRecords.recent,
+        { ...sampleRecords.recent[0], id: 13, score: 180, reachedRound: 4, createdAt: '2026-04-13T08:55:00.000Z' },
+        { ...sampleRecords.recent[0], id: 14, score: 160, reachedRound: 3, createdAt: '2026-04-13T08:50:00.000Z' },
+        { ...sampleRecords.recent[0], id: 15, score: 140, reachedRound: 2, createdAt: '2026-04-13T08:45:00.000Z' },
+        { ...sampleRecords.recent[0], id: 16, score: 99, reachedRound: 1, createdAt: '2026-04-13T08:40:00.000Z' },
+      ],
+      multiplayer: {
+        ...sampleRecords.multiplayer,
+        recent: [
+          ...sampleRecords.multiplayer.recent,
+          { ...sampleRecords.multiplayer.recent[0], matchId: 43, placement: 2, totalPlayers: 4, reachedRound: 7, createdAt: '2026-04-13T09:08:00.000Z' },
+          { ...sampleRecords.multiplayer.recent[0], matchId: 44, placement: 3, totalPlayers: 4, reachedRound: 6, createdAt: '2026-04-13T09:06:00.000Z' },
+          { ...sampleRecords.multiplayer.recent[0], matchId: 45, placement: 4, totalPlayers: 4, reachedRound: 5, createdAt: '2026-04-13T09:04:00.000Z' },
+          { ...sampleRecords.multiplayer.recent[0], matchId: 46, placement: 5, totalPlayers: 5, reachedRound: 4, createdAt: '2026-04-13T09:02:00.000Z' },
+        ],
+      },
+    });
+
+    render(<CareerPage onBack={vi.fn()} onSessionExpired={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getAllByText((_, node) => (node?.textContent ?? '').includes('최근 4개')).length).toBeGreaterThan(0));
+    expect(screen.queryByText('점수 99 / 1라운드')).toBeNull();
+    expect(screen.queryByText('5등 / 5명 / 4라운드')).toBeNull();
+  });
 });

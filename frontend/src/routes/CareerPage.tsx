@@ -9,6 +9,8 @@ type Props = {
   onSessionExpired: () => void;
 };
 
+const CAREER_FEED_LIMIT = 4;
+
 function formatPercent(value: number) {
   return `${Math.round(value)}%`;
 }
@@ -85,6 +87,9 @@ export function CareerPage({ onBack, onSessionExpired }: Props) {
     ];
   }, [records]);
 
+  const recentSingleEntries = records?.recent.slice(0, CAREER_FEED_LIMIT) ?? [];
+  const recentMultiplayerEntries = records?.multiplayer.recent.slice(0, CAREER_FEED_LIMIT) ?? [];
+
   return (
     <section className="records-screen">
       <div className="console-panel console-panel--primary console-panel--compact records-hub">
@@ -97,7 +102,7 @@ export function CareerPage({ onBack, onSessionExpired }: Props) {
         {error ? <p className="error-text">{error}</p> : null}
         {records ? (
           <>
-            <div className="records-summary-grid">
+            <div className="records-summary-grid career-summary-grid">
               {summaryCards.map((card) => (
                 <article key={card.label} className="records-stat-card">
                   <span className="records-stat-card__label">{card.label}</span>
@@ -112,14 +117,14 @@ export function CareerPage({ onBack, onSessionExpired }: Props) {
                 <div className="records-section-heading">
                   <div>
                     <h3>{copy.career.recentSingle}</h3>
-                    <p className="records-section__subcopy">{copy.records.recentSingleMeta}</p>
+                    <p className="records-section__subcopy">{copy.records.recentSingleMeta} · 최근 {CAREER_FEED_LIMIT}개</p>
                   </div>
                 </div>
 
-                {records.recent.length > 0 ? (
-                  <div className="records-feed-list">
-                    {records.recent.map((entry) => (
-                      <article key={entry.id} className="records-feed-card">
+                {recentSingleEntries.length > 0 ? (
+                  <div className="records-feed-list career-feed-list">
+                    {recentSingleEntries.map((entry) => (
+                      <article key={entry.id} className="records-feed-card career-feed-card">
                         <div className="records-feed-card__header">
                           <strong>{entry.mode === "normal" ? copy.records.normal : copy.records.hard}</strong>
                           <span>{entry.clear ? copy.results.outcomeClear : copy.results.outcomeFail}</span>
@@ -138,14 +143,14 @@ export function CareerPage({ onBack, onSessionExpired }: Props) {
                 <div className="records-section-heading">
                   <div>
                     <h3>{copy.career.recentMultiplayer}</h3>
-                    <p className="records-section__subcopy">{copy.records.recentMultiplayerMeta}</p>
+                    <p className="records-section__subcopy">{copy.records.recentMultiplayerMeta} · 최근 {CAREER_FEED_LIMIT}개</p>
                   </div>
                 </div>
 
-                {records.multiplayer.recent.length > 0 ? (
-                  <div className="records-feed-list">
-                    {records.multiplayer.recent.map((entry) => (
-                      <article key={`${entry.matchId}-${entry.createdAt}`} className="records-feed-card">
+                {recentMultiplayerEntries.length > 0 ? (
+                  <div className="records-feed-list career-feed-list">
+                    {recentMultiplayerEntries.map((entry) => (
+                      <article key={`${entry.matchId}-${entry.createdAt}`} className="records-feed-card career-feed-card">
                         <div className="records-feed-card__header">
                           <strong>{entry.won ? copy.records.multiplayerWins : copy.records.multiplayerBest}</strong>
                           <span>{copy.records.placementShort(entry.placement, entry.totalPlayers)}</span>

@@ -3170,6 +3170,19 @@ input {
   gap: 0.8rem;
 }
 
+.career-summary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.career-feed-list {
+  gap: 0.5rem;
+}
+
+.career-feed-card {
+  gap: 0.25rem;
+  padding: 0.8rem 0.9rem;
+}
+
 .records-empty {
   place-items: center;
   min-height: 120px;
@@ -3181,6 +3194,16 @@ input {
   .records-hero-band,
   .records-summary-grid,
   .records-split-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .career-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .career-summary-grid {
     grid-template-columns: 1fr;
   }
 }
