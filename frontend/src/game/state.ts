@@ -160,6 +160,11 @@ export const GAME_WIDTH = 360;
 export const GAME_HEIGHT = 520;
 export const ROUND_DURATION = 9;
 export const BOSS_DURATION = 12;
+const MAX_RUN_SEED = 2147483646;
+
+function createRunSeed() {
+  return Math.floor(Math.random() * MAX_RUN_SEED) + 1;
+}
 
 function getWaveRoundBand(mode: GameMode, round: number) {
   if (mode === "hard") {
@@ -187,10 +192,10 @@ function getWaveRoundBand(mode: GameMode, round: number) {
   return 0;
 }
 
-export function createWaveDirector(mode: GameMode, round: number): WaveDirector {
+export function createWaveDirector(mode: GameMode, round: number, seed = createRunSeed()): WaveDirector {
   const roundBand = getWaveRoundBand(mode, round);
   return {
-    seed: mode === "hard" ? 37 : 23,
+    seed,
     patternCursor: 0,
     recentPatterns: [],
     specialCooldown: 0,
@@ -214,7 +219,13 @@ export function createWaveDirector(mode: GameMode, round: number): WaveDirector 
   };
 }
 
-export function createInitialState(mode: GameMode): GameState {
+export function createInitialState(
+  mode: GameMode,
+  seedOverrides?: {
+    waveSeed?: number;
+    bossSeed?: number;
+  },
+): GameState {
   return {
     mode,
     width: GAME_WIDTH,
@@ -249,7 +260,7 @@ export function createInitialState(mode: GameMode): GameState {
     bossPatternPhase: "idle",
     bossPatternStepTimer: 0,
     bossPatternShots: 0,
-    bossPatternSeed: mode === "hard" ? 17 : 11,
+    bossPatternSeed: seedOverrides?.bossSeed ?? createRunSeed(),
     bossRecentThemes: [],
     bossPatternFamilyStreak: null,
     bossPatternFamilyStreakCount: 0,
@@ -266,7 +277,7 @@ export function createInitialState(mode: GameMode): GameState {
     itemToastTone: "neutral",
     effectBurstTimer: 0,
     effectBurstType: null,
-    waveDirector: createWaveDirector(mode, 1),
+    waveDirector: createWaveDirector(mode, 1, seedOverrides?.waveSeed),
     screenShakeTimer: 0,
     damageFlashTimer: 0,
     gameOver: false,

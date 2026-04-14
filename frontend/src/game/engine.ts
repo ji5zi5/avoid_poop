@@ -155,6 +155,12 @@ export function updateGame(state: GameState, delta: number, direction: number) {
   return state;
 }
 
-export function createGameEngine(mode: GameMode) {
-  return createInitialState(mode);
+export function createGameEngine(
+  mode: GameMode,
+  seedOverrides?: {
+    waveSeed?: number;
+    bossSeed?: number;
+  },
+) {
+  return createInitialState(mode, seedOverrides);
 }

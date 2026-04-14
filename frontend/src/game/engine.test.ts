@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { copy } from "../content/copy";
 import { createWaveDirector } from "./state";
@@ -143,13 +143,32 @@ describe("game engine", () => {
   });
 
   it("uses harder rules for hard mode", () => {
-    const normal = createGameEngine("normal");
-    const hard = createGameEngine("hard");
+    const normal = createGameEngine("normal", { waveSeed: 101, bossSeed: 202 });
+    const hard = createGameEngine("hard", { waveSeed: 101, bossSeed: 202 });
 
     updateGame(normal, 1.2, 0);
     updateGame(hard, 1.2, 0);
 
     expect(hard.hazards.length).toBeGreaterThanOrEqual(normal.hazards.length);
+  });
+
+  it("draws fresh initial seeds for new runs", () => {
+    const randomSpy = vi.spyOn(Math, "random");
+    try {
+      randomSpy
+        .mockReturnValueOnce(0.01)
+        .mockReturnValueOnce(0.11)
+        .mockReturnValueOnce(0.21)
+        .mockReturnValueOnce(0.31);
+
+      const first = createGameEngine("hard");
+      const second = createGameEngine("hard");
+
+      expect(first.waveDirector.seed).not.toBe(second.waveDirector.seed);
+      expect(first.bossPatternSeed).not.toBe(second.bossPatternSeed);
+    } finally {
+      randomSpy.mockRestore();
+    }
   });
 
   it("cycles through multiple hazard sizes in normal waves", () => {
