@@ -20,27 +20,6 @@ test.afterEach(() => {
   }
 });
 
-function withEnv(overrides: Record<string, string | undefined>) {
-  const previous = new Map<string, string | undefined>();
-  for (const [key, value] of Object.entries(overrides)) {
-    previous.set(key, process.env[key]);
-    if (value === undefined) {
-      delete process.env[key];
-      continue;
-    }
-    process.env[key] = value;
-  }
-  return () => {
-    for (const [key, value] of previous.entries()) {
-      if (value === undefined) {
-        delete process.env[key];
-        continue;
-      }
-      process.env[key] = value;
-    }
-  };
-}
-
 test('websocket connect requires authentication', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
@@ -59,8 +38,7 @@ test('websocket connect requires authentication', { concurrency: false }, async 
 });
 
 test('websocket connect rejects unexpected origins when APP_ORIGIN is configured', { concurrency: false }, async () => {
-  const restoreEnv = withEnv({APP_ORIGIN: 'https://avoid-poop.example'});
-  const app = await createApp();
+  const app = await createApp({appOrigin: 'https://avoid-poop.example'});
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
   const cookie = await signup(app, 'socket_origin_user');
@@ -72,17 +50,14 @@ test('websocket connect rejects unexpected origins when APP_ORIGIN is configured
     });
     assert.equal(statusCode, 403);
   } finally {
-    restoreEnv();
     await app.close();
   }
 });
 
 test('websocket upgrades are rate limited when the handshake bucket is exhausted', { concurrency: false }, async () => {
-  const restoreEnv = withEnv({
-    RATE_LIMIT_WS_MAX: '1',
-    RATE_LIMIT_WS_WINDOW_MS: '60000',
+  const app = await createApp({
+    rateLimits: { websocket: { max: 1, windowMs: 60_000 } } as never,
   });
-  const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
   const cookie = await signup(app, 'socket_rate_limit_user');
@@ -93,18 +68,15 @@ test('websocket upgrades are rate limited when the handshake bucket is exhausted
     assert.equal(statusCode, 429);
     socket.close();
   } finally {
-    restoreEnv();
     await app.close();
   }
 });
 
 test('websocket rate limiting only honors forwarded IPs when trust proxy is enabled', { concurrency: false }, async () => {
-  const restoreEnv = withEnv({
-    RATE_LIMIT_WS_MAX: '1',
-    RATE_LIMIT_WS_WINDOW_MS: '60000',
-    TRUST_PROXY: 'true',
+  const app = await createApp({
+    trustProxy: true,
+    rateLimits: { websocket: { max: 1, windowMs: 60_000 } } as never,
   });
-  const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
   const cookie = await signup(app, 'socket_proxy_user');
@@ -115,18 +87,15 @@ test('websocket rate limiting only honors forwarded IPs when trust proxy is enab
     socket.close();
     secondSocket.close();
   } finally {
-    restoreEnv();
     await app.close();
   }
 });
 
 test('websocket rate limiting ignores spoofed forwarded IPs when trust proxy is disabled', { concurrency: false }, async () => {
-  const restoreEnv = withEnv({
-    RATE_LIMIT_WS_MAX: '1',
-    RATE_LIMIT_WS_WINDOW_MS: '60000',
-    TRUST_PROXY: 'false',
+  const app = await createApp({
+    trustProxy: false,
+    rateLimits: { websocket: { max: 1, windowMs: 60_000 } } as never,
   });
-  const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
   const cookie = await signup(app, 'socket_proxy_off');
@@ -140,7 +109,6 @@ test('websocket rate limiting ignores spoofed forwarded IPs when trust proxy is 
     assert.equal(statusCode, 429);
     socket.close();
   } finally {
-    restoreEnv();
     await app.close();
   }
 });
@@ -647,11 +615,9 @@ test('malformed websocket payloads are rejected without crashing the socket', { 
 });
 
 test('non-gameplay websocket messages are rate limited', { concurrency: false }, async () => {
-  const restoreEnv = withEnv({
-    RATE_LIMIT_WRITES_MAX: '1',
-    RATE_LIMIT_WRITES_WINDOW_MS: '60000',
+  const app = await createApp({
+    rateLimits: { writes: { max: 1, windowMs: 60_000 } } as never,
   });
-  const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
   const hostCookie = await signup(app, 'message_limit_host');
@@ -669,7 +635,6 @@ test('non-gameplay websocket messages are rate limited', { concurrency: false },
     await waitFor(() => events.some((event) => event.type === 'error' && event.error === 'Too many requests. Try again later.'));
   } finally {
     socket.close();
-    restoreEnv();
     await app.close();
   }
 });
