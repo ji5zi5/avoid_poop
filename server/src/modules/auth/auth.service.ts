@@ -50,7 +50,7 @@ export function establishSession(reply: FastifyReply, userId: number) {
   reply.setCookie(config.sessionCookieName, sessionId, {
     path: '/',
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: config.cookieSameSite,
     secure: config.cookieSecure,
     signed: true,
     expires: expiresAt

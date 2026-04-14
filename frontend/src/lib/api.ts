@@ -13,6 +13,7 @@ import type {
   RoomListEntry,
   RoomSummary,
 } from "./multiplayerClient";
+import { getApiUrl } from "./runtimeConfig";
 
 export class ApiRequestError extends Error {
   status: number;
@@ -25,7 +26,7 @@ export class ApiRequestError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
+  const response = await fetch(getApiUrl(path), {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",

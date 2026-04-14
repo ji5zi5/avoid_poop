@@ -22,6 +22,7 @@ Minimum production env:
 NODE_ENV=production
 PORT=3001
 COOKIE_SECRET=<long-random-secret>
+COOKIE_SAME_SITE=none
 APP_ORIGIN=https://your-domain.example
 TRUST_PROXY=true
 LOG_ENABLED=true
@@ -35,6 +36,22 @@ RATE_LIMIT_WRITES_WINDOW_MS=60000
 RATE_LIMIT_WS_MAX=40
 RATE_LIMIT_WS_WINDOW_MS=60000
 ```
+
+## Vercel + Render split-host note
+
+If the frontend is served from Vercel and the backend is served from Render:
+
+- `APP_ORIGIN` on the backend must equal the Vercel origin.
+- `COOKIE_SAME_SITE=none` is required so auth cookies can be sent cross-site.
+- frontend env should point at the Render backend:
+
+```env
+VITE_API_BASE_URL=https://your-render-service.onrender.com
+VITE_WS_BASE_URL=wss://your-render-service.onrender.com
+```
+
+- the backend now responds with credentialed CORS headers for the configured `APP_ORIGIN`.
+- websocket upgrades from other origins are rejected.
 
 ## Pre-deploy checklist
 

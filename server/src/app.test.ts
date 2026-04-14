@@ -60,6 +60,70 @@ test('health responses ship security headers', { concurrency: false }, async () 
   await app.close();
 });
 
+test('cross-origin API preflight succeeds for the configured frontend origin', { concurrency: false }, async () => {
+  const app = await createApp({
+    appOrigin: 'https://avoid-poop.vercel.app',
+  });
+
+  try {
+    const response = await app.inject({
+      method: 'OPTIONS',
+      url: '/api/auth/login',
+      headers: {
+        origin: 'https://avoid-poop.vercel.app',
+      },
+    });
+
+    assert.equal(response.statusCode, 204);
+    assert.equal(response.headers['access-control-allow-origin'], 'https://avoid-poop.vercel.app');
+    assert.equal(response.headers['access-control-allow-credentials'], 'true');
+  } finally {
+    await app.close();
+  }
+});
+
+test('production-style auth cookies can be configured for split-host deployments', { concurrency: false }, async () => {
+  const previousEnv = {
+    NODE_ENV: process.env.NODE_ENV,
+    APP_ORIGIN: process.env.APP_ORIGIN,
+    COOKIE_SAME_SITE: process.env.COOKIE_SAME_SITE,
+    COOKIE_SECRET: process.env.COOKIE_SECRET,
+  };
+  process.env.NODE_ENV = 'production';
+  process.env.APP_ORIGIN = 'https://avoid-poop.vercel.app';
+  process.env.COOKIE_SAME_SITE = 'none';
+  process.env.COOKIE_SECRET = 'split-host-cookie-secret';
+  const app = await createApp();
+
+  try {
+    const signup = await app.inject({
+      method: 'POST',
+      url: '/api/auth/signup',
+      headers: {
+        origin: 'https://avoid-poop.vercel.app',
+      },
+      payload: {
+        username: 'split_host_cookie_user',
+        password: 'secret123'
+      }
+    });
+
+    assert.equal(signup.statusCode, 200);
+    const cookie = signup.cookies.find((entry) => entry.name === 'avoid_poop_session');
+    assert.equal(cookie?.sameSite, 'None');
+    assert.equal(cookie?.secure, true);
+  } finally {
+    await app.close();
+    for (const [key, value] of Object.entries(previousEnv)) {
+      if (value === undefined) {
+        delete process.env[key];
+        continue;
+      }
+      process.env[key] = value;
+    }
+  }
+});
+
 test('auth endpoints are rate limited when the auth bucket is exhausted', { concurrency: false }, async () => {
   const app = await createApp({
     rateLimits: {

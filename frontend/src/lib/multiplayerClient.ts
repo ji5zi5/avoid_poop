@@ -1,3 +1,5 @@
+import { getWebSocketUrl } from "./runtimeConfig";
+
 export type RoomStatus = "waiting" | "in_progress";
 export type RoomDifficulty = "normal" | "hard";
 export type RoomVisibility = "public" | "private";
@@ -248,11 +250,12 @@ export function createMultiplayerClient({
 }
 
 function buildSocketUrl(url: string | undefined, reconnectToken: string | null | undefined) {
-  const socketUrl =
-    url ?? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/api/multiplayer/ws`;
-  const nextUrl = new URL(socketUrl);
-  if (reconnectToken) {
-    nextUrl.searchParams.set("reconnectToken", reconnectToken);
+  if (url) {
+    const nextUrl = new URL(url);
+    if (reconnectToken) {
+      nextUrl.searchParams.set("reconnectToken", reconnectToken);
+    }
+    return nextUrl.toString();
   }
-  return nextUrl.toString();
+  return getWebSocketUrl(reconnectToken);
 }

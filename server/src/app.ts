@@ -11,6 +11,14 @@ import {RoomService} from './modules/multiplayer/room.service.js';
 import {MultiplayerSocketGateway} from './modules/multiplayer/socket.gateway.js';
 import {recordsRoutes} from './modules/records/records.routes.js';
 
+function applyCorsHeaders(reply: { header: (name: string, value: string) => void }, origin: string) {
+  reply.header('Access-Control-Allow-Origin', origin);
+  reply.header('Access-Control-Allow-Credentials', 'true');
+  reply.header('Access-Control-Allow-Headers', 'Content-Type');
+  reply.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  reply.header('Vary', 'Origin');
+}
+
 function mergeRuntimeConfig(overrides: Partial<RuntimeConfig> = {}): RuntimeConfig {
   const base = resolveConfig();
   return {
@@ -56,9 +64,16 @@ export async function createApp(overrides: Partial<RuntimeConfig> = {}) {
 
   app.addHook('onRequest', async (request, reply) => {
     const pathname = new URL(request.raw.url ?? request.url, 'http://localhost').pathname;
+    const requestOrigin = request.headers.origin?.trim();
+
+    if (runtimeConfig.appOrigin && requestOrigin === runtimeConfig.appOrigin) {
+      applyCorsHeaders(reply, requestOrigin);
+      if (request.method === 'OPTIONS') {
+        return reply.status(204).send();
+      }
+    }
 
     if (runtimeConfig.appOrigin && request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS') {
-      const requestOrigin = request.headers.origin?.trim();
       if (requestOrigin && requestOrigin !== runtimeConfig.appOrigin) {
         request.log.warn(
           {

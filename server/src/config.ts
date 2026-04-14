@@ -2,6 +2,7 @@ import path from 'node:path';
 
 export type DatabaseProvider = 'sqlite' | 'postgres';
 export type RuntimeEnvironment = 'development' | 'test' | 'production';
+export type CookieSameSite = 'lax' | 'none' | 'strict';
 
 export type RateLimitBucket = {
   max: number;
@@ -15,6 +16,7 @@ export type RuntimeConfig = {
   port: number;
   cookieSecret: string;
   cookieSecure: boolean;
+  cookieSameSite: CookieSameSite;
   appOrigin: string | null;
   logEnabled: boolean;
   logLevel: string;
@@ -80,6 +82,17 @@ function parseBoolean(value: string | undefined, fallback: boolean) {
   throw new Error(`Boolean env value must be one of true/false/1/0/on/off, got: ${value}`);
 }
 
+function parseCookieSameSite(value: string | undefined, fallback: CookieSameSite) {
+  if (!value?.trim()) {
+    return fallback;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'lax' || normalized === 'none' || normalized === 'strict') {
+    return normalized;
+  }
+  throw new Error(`COOKIE_SAME_SITE must be one of lax, none, or strict.`);
+}
+
 function parseOptionalUrl(name: string, rawValue: string | undefined) {
   const normalized = rawValue?.trim() ?? '';
   if (!normalized) {
@@ -115,6 +128,7 @@ export function resolveConfig(env: NodeJS.ProcessEnv = process.env): RuntimeConf
     port: parsePositiveInteger('PORT', env.PORT, 3001),
     cookieSecret,
     cookieSecure: environment === 'production',
+    cookieSameSite: parseCookieSameSite(env.COOKIE_SAME_SITE, environment === 'production' ? 'none' : 'lax'),
     appOrigin,
     logEnabled: parseBoolean(env.LOG_ENABLED, environment !== 'test'),
     logLevel: env.LOG_LEVEL?.trim() || (environment === 'production' ? 'info' : 'debug'),
@@ -165,6 +179,9 @@ export const config = {
   },
   get cookieSecure() {
     return current().cookieSecure;
+  },
+  get cookieSameSite() {
+    return current().cookieSameSite;
   },
   get appOrigin() {
     return current().appOrigin;
