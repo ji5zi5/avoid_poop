@@ -2195,6 +2195,7 @@ input {
 .multiplayer-lobby-options span {
   display: block;
   padding: 0.75rem 0.85rem;
+  white-space: nowrap;
 }
 
 .multiplayer-chat-panel {
@@ -2335,6 +2336,7 @@ input {
   color: var(--tone-4);
   font-size: 0.78rem;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .room-status-chip.is-live {

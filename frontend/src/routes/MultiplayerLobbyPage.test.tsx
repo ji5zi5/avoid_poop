@@ -25,7 +25,7 @@ describe('MultiplayerLobbyPage', () => {
     render(<MultiplayerLobbyPage canStart connected room={room} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onStart={vi.fn()} />);
     expect(screen.getByText((_, node) => node?.textContent === '방 공개: 비공개방').textContent).toBe('방 공개: 비공개방');
     expect(screen.getByText((_, node) => node?.textContent === '난이도: 하드').textContent).toBe('난이도: 하드');
-    expect(screen.getByText((_, node) => node?.textContent === '몸싸움: ON').textContent).toBe('몸싸움: ON');
+    expect(screen.getByText((_, node) => node?.textContent === '부딪힘: ON').textContent).toBe('부딪힘: ON');
     expect(screen.getByText('전원이 준비해야 시작 가능').textContent).toBe('전원이 준비해야 시작 가능');
     expect((screen.getByText('시작') as HTMLButtonElement).disabled).toBe(true);
   });

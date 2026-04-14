@@ -209,7 +209,7 @@ export const copy = {
     leave: '나가기',
     options: '방 옵션',
     difficulty: '난이도',
-    bodyBlock: '몸싸움',
+    bodyBlock: '부딪힘',
     visibility: '방 공개',
     publicRoom: '공개방',
     privateRoom: '비공개방',

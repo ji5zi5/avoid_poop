@@ -68,7 +68,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
               <article className="multiplayer-lobby-insight-card">
                 <span className="info-card__label">RULESET</span>
                 <strong>{room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</strong>
-                <p>{room.options.bodyBlock ? "점프로 몸싸움을 피할 수 있습니다" : "서로 통과 가능한 가벼운 규칙입니다"}</p>
+                <p>{room.options.bodyBlock ? "점프로 부딪힘을 피할 수 있습니다" : "서로 통과 가능한 가벼운 규칙입니다"}</p>
               </article>
             </div>
 
