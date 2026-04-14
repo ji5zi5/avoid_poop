@@ -95,16 +95,18 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
             </div>
 
             <section className="records-hero-band">
-              <div className="records-hero-copy">
-                <span className="panel-kicker">{copy.records.spotlight}</span>
-                <h3>{boardState.leader?.username ?? copy.records.none}</h3>
-                <p>
-                  {boardState.leader
-                    ? isMultiplayerEntry(boardState.leader)
-                      ? `${copy.records.multiplayerWins} ${boardState.leader.wins} · ${copy.records.multiplayerMatches} ${boardState.leader.matchesPlayed}`
-                      : `${copy.records.roundEntry(boardState.leader.score, boardState.leader.reachedRound)} · ${formatSecondsLabel(boardState.leader.survivalTime)}`
-                    : copy.records.none}
-                </p>
+              <div className="records-hero-copy records-hero-copy--full">
+                <div>
+                  <span className="panel-kicker">{copy.records.spotlight}</span>
+                  <h3>{boardState.leader?.username ?? copy.records.none}</h3>
+                  <p>
+                    {boardState.leader
+                      ? isMultiplayerEntry(boardState.leader)
+                        ? `${copy.records.multiplayerWins} ${boardState.leader.wins} · ${copy.records.multiplayerMatches} ${boardState.leader.matchesPlayed}`
+                        : `${copy.records.roundEntry(boardState.leader.score, boardState.leader.reachedRound)} · ${formatSecondsLabel(boardState.leader.survivalTime)}`
+                      : copy.records.none}
+                  </p>
+                </div>
                 <div className="records-pill-row">
                   <span className="records-pill">{copy.records.boardWindow(boardState.selectedEntries.length)}</span>
                   {boardState.leader ? (
@@ -126,14 +128,20 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
                 </div>
               </div>
 
-              <div className="records-podium-shell">
+              <div className="records-podium-shell records-podium-shell--full">
                 <span className="panel-kicker">TOP 3</span>
-                <div className="records-podium" aria-label={copy.records.playerRanking}>
+                <div className="records-podium records-podium--balanced" aria-label={copy.records.playerRanking}>
                   {boardState.podium.length > 0 ? (
                     boardState.podium.map((entry, index) => (
                       <article
                         key={`${rankingTab}-${entry.userId}`}
-                        className={index === 0 ? "records-podium__card records-podium__card--leader" : "records-podium__card"}
+                        className={[
+                          "records-podium__card",
+                          index === 0 ? "records-podium__card--leader" : "",
+                          index === 0 ? "records-podium__card--first" : "",
+                          index === 1 ? "records-podium__card--second" : "",
+                          index === 2 ? "records-podium__card--third" : "",
+                        ].filter(Boolean).join(" ")}
                       >
                         <span className="records-podium__rank">#{entry.rank}</span>
                         <strong>{entry.username}</strong>

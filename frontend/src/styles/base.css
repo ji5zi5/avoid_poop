@@ -3112,7 +3112,7 @@ input {
 
 .records-hero-band {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  grid-template-columns: 1fr;
   gap: 1rem;
   padding: 1rem;
   border-radius: 28px;
@@ -3129,6 +3129,10 @@ input {
   align-content: start;
   gap: 0.45rem;
   min-width: 0;
+}
+
+.records-hero-copy--full {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .records-hero-copy h3,
@@ -3179,6 +3183,15 @@ input {
   min-width: 0;
 }
 
+.records-podium-shell--full {
+  width: 100%;
+}
+
+.records-podium--balanced {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+}
+
 .records-podium__card {
   display: grid;
   gap: 0.28rem;
@@ -3199,6 +3212,19 @@ input {
   background: linear-gradient(180deg, rgba(96, 73, 44, 0.98) 0%, rgba(70, 63, 26, 1) 100%);
   border-color: rgba(70, 63, 26, 0.58);
   color: var(--bg-main);
+}
+
+.records-podium__card--first {
+  order: 2;
+  transform: translateY(-0.3rem);
+}
+
+.records-podium__card--second {
+  order: 1;
+}
+
+.records-podium__card--third {
+  order: 3;
 }
 
 .records-podium__card--leader span,
@@ -3333,6 +3359,17 @@ input {
 }
 
 @media (max-width: 760px) {
+  .records-podium--balanced {
+    grid-template-columns: 1fr;
+  }
+
+  .records-podium__card--first,
+  .records-podium__card--second,
+  .records-podium__card--third {
+    order: initial;
+    transform: none;
+  }
+
   .records-toolbar,
   .records-toolbar__actions,
   .records-leaderboard-card__header,
