@@ -6,7 +6,7 @@ import { buildBossEncounterPlan, buildBossPatternQueue, getAvailableBossPatternI
 
 describe("boss patterns", () => {
   it("exposes a larger hard-mode boss pattern pool", () => {
-    expect(getAvailableBossPatternIds("hard")).toHaveLength(23);
+    expect(getAvailableBossPatternIds("hard")).toHaveLength(30);
   });
 
   it("keeps normal queues inside the normal-safe pattern pool", () => {
@@ -45,7 +45,7 @@ describe("boss patterns", () => {
       previousFamilyStreakCount: 0,
       recentPatterns: [],
       recentThemes: [],
-      queueSeed: 38133,
+      queueSeed: 29659,
     });
 
     expect(plan.themeId).toBe("residue_fakeout");
@@ -69,7 +69,7 @@ describe("boss patterns", () => {
   });
 
   it("exposes every hard boss theme from the start across representative seeds", () => {
-    const seeds = [1, 6356, 12711, 19067, 25422, 31778, 38133];
+    const seeds = [1, 4944, 9887, 14830, 19773, 24716, 29659, 34602, 39545];
     const results = seeds.map((queueSeed) =>
       buildBossEncounterPlan({
         mode: "hard",
@@ -90,6 +90,8 @@ describe("boss patterns", () => {
       "corridor_switch",
       "trap_weave",
       "residue_fakeout",
+      "lane_gauntlet",
+      "residue_storm",
     ]));
   });
 

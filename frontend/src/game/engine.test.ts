@@ -468,7 +468,7 @@ describe("game engine", () => {
 
   it("keeps sampled hard boss encounters dodgeable from the real starting position", () => {
     const sampledRounds = [2, 4, 6, 8, 10, 12];
-    const sampledSeeds = [1, 17, 39893, 177777, 300001];
+    const sampledSeeds = [1, 17, 19773, 24716, 29659, 34602, 39545];
     const failures: string[] = [];
 
     for (const round of sampledRounds) {
@@ -491,12 +491,16 @@ describe("game engine", () => {
 
   it("keeps representative late hard-only themes dodgeable across their theme seeds", () => {
     const cases = [
-      { round: 12, seed: 25422, themeId: "corridor_switch" },
-      { round: 12, seed: 31778, themeId: "trap_weave" },
-      { round: 12, seed: 38133, themeId: "residue_fakeout" },
-      { round: 14, seed: 25422, themeId: "corridor_switch" },
-      { round: 14, seed: 31778, themeId: "trap_weave" },
-      { round: 14, seed: 38133, themeId: "residue_fakeout" },
+      { round: 12, seed: 19773, themeId: "corridor_switch" },
+      { round: 12, seed: 24716, themeId: "trap_weave" },
+      { round: 12, seed: 29659, themeId: "residue_fakeout" },
+      { round: 12, seed: 34602, themeId: "lane_gauntlet" },
+      { round: 12, seed: 39545, themeId: "residue_storm" },
+      { round: 14, seed: 19773, themeId: "corridor_switch" },
+      { round: 14, seed: 24716, themeId: "trap_weave" },
+      { round: 14, seed: 29659, themeId: "residue_fakeout" },
+      { round: 14, seed: 34602, themeId: "lane_gauntlet" },
+      { round: 14, seed: 39545, themeId: "residue_storm" },
     ] as const;
     const failures: string[] = [];
 
@@ -524,10 +528,12 @@ describe("game engine", () => {
 
   it("keeps movement-heavy boss themes from allowing passive center play", () => {
     const cases = [
-      { round: 8, seed: 12711, themeId: "corridor_intro" },
-      { round: 12, seed: 25422, themeId: "corridor_switch" },
-      { round: 12, seed: 31778, themeId: "trap_weave" },
-      { round: 12, seed: 38133, themeId: "residue_fakeout" },
+      { round: 8, seed: 9887, themeId: "corridor_intro" },
+      { round: 12, seed: 19773, themeId: "corridor_switch" },
+      { round: 12, seed: 24716, themeId: "trap_weave" },
+      { round: 12, seed: 29659, themeId: "residue_fakeout" },
+      { round: 12, seed: 34602, themeId: "lane_gauntlet" },
+      { round: 12, seed: 39545, themeId: "residue_storm" },
     ] as const;
     const failures: string[] = [];
 

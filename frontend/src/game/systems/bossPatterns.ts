@@ -52,11 +52,16 @@ export type BossEncounterPlan = {
 const HARD_ONLY_PATTERNS: BossPatternId[] = [
   "three_gate_shuffle",
   "pillar_press",
+  "corridor_snapback",
+  "lane_pincer",
   "fake_safe_lane",
   "funnel_switch",
+  "aftershock_lane",
   "residue_zone",
   "residue_switch",
+  "residue_crossfire",
   "fake_warning",
+  "corridor_fakeout",
   "center_collapse",
   "shoulder_crush",
   "delayed_burst",
@@ -68,6 +73,7 @@ const HEAVY_SET_PIECE_IDS = new Set<BossPatternId>([
   "funnel_switch",
   "residue_zone",
   "residue_switch",
+  "residue_crossfire",
   "center_collapse",
   "shoulder_crush",
   "delayed_burst",
@@ -198,6 +204,35 @@ function buildCenterBreakOrder(laneCount: number) {
     }
   }
 
+  return order;
+}
+
+function pushUniqueLane(order: number[], lane: number) {
+  if (!order.includes(lane)) {
+    order.push(lane);
+  }
+}
+
+function buildEdgeTunnelOrder(laneCount: number, startSide: "left" | "right") {
+  const center = Math.floor((laneCount - 1) / 2);
+  const nearLeft = Math.min(1, laneCount - 1);
+  const nearRight = Math.max(0, laneCount - 2);
+  const order: number[] = [];
+  const sequence = startSide === "left"
+    ? [0, laneCount - 1, nearLeft, nearRight, center]
+    : [laneCount - 1, 0, nearRight, nearLeft, center];
+  sequence.forEach((lane) => pushUniqueLane(order, lane));
+  return order;
+}
+
+function buildSnapbackOrder(laneCount: number, startSide: "left" | "right") {
+  const center = Math.floor((laneCount - 1) / 2);
+  const nearStart = startSide === "left" ? Math.min(1, laneCount - 1) : Math.max(0, laneCount - 2);
+  const farEnd = startSide === "left" ? laneCount - 1 : 0;
+  const nearEnd = startSide === "left" ? Math.max(0, laneCount - 2) : Math.min(1, laneCount - 1);
+  const hardReturn = startSide === "left" ? 0 : laneCount - 1;
+  const order: number[] = [];
+  [nearStart, farEnd, center, nearEnd, hardReturn].forEach((lane) => pushUniqueLane(order, lane));
   return order;
 }
 
@@ -343,6 +378,23 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       });
     },
   },
+  door_jam: {
+    archetype: "door_jam",
+    family: "pressure",
+    label: () => "문틀 압박",
+    normalAllowed: true,
+    telegraphHardMs: 320,
+    telegraphNormalMs: 640,
+    run(state, delta) {
+      return tickPattern(state, delta, scaledInterval(state, 0.34, 0.44, 0.2, 0.28), 4, (shot) => {
+        if (shot % 2 === 0) {
+          spawnEdgeHazards(state, shot === 0 ? 0.22 : 0.28, giantSpeed(state, shot === 0 ? -18 : -6), 68);
+          return;
+        }
+        spawnCenterHazard(state, shot === 1 ? 0.32 : 0.28, giantSpeed(state, shot === 1 ? 2 : 10), 72);
+      });
+    },
+  },
   three_gate_shuffle: {
     archetype: "three_gate",
     family: "pressure",
@@ -442,6 +494,22 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       });
     },
   },
+  edge_tunnel: {
+    archetype: "corridor_edge_tunnel",
+    family: "lane",
+    label: () => "끝선 질주",
+    normalAllowed: true,
+    telegraphHardMs: 320,
+    telegraphNormalMs: 620,
+    run(state, delta) {
+      const laneCount = getLaneCount(state);
+      const order = buildEdgeTunnelOrder(laneCount, pickSide(state));
+      const shots = Math.min(order.length, state.mode === "hard" ? order.length : Math.min(4, order.length));
+      return tickPattern(state, delta, scaledInterval(state, 0.3, 0.4, 0.18, 0.24), shots, (shot) => {
+        spawnLaneBarrage(state, order[shot], laneCount, laneSpeed(state, shot < 2 ? 12 : 8), shot < 2 ? 32 : 30);
+      });
+    },
+  },
   switch_press: {
     archetype: "switch_flip",
     family: "lane",
@@ -476,6 +544,51 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
         if (shot === 2) {
           spawnHalfHazard(state, oppositeSide(firstSide), giantSpeed(state, -6), 0.36, 58);
         }
+      });
+    },
+  },
+  corridor_snapback: {
+    archetype: "corridor_snapback",
+    family: "lane",
+    label: () => "통로 되감기",
+    normalAllowed: false,
+    telegraphHardMs: 320,
+    telegraphNormalMs: 660,
+    run(state, delta) {
+      const laneCount = getLaneCount(state);
+      const order = buildSnapbackOrder(laneCount, pickSide(state));
+      return tickPattern(state, delta, scaledInterval(state, 0.28, 0.38, 0.16, 0.22), order.length, (shot) => {
+        spawnLaneBarrage(state, order[shot], laneCount, laneSpeed(state, shot >= 2 ? 14 : 10), shot === order.length - 1 ? 32 : 30);
+      });
+    },
+  },
+  lane_pincer: {
+    archetype: "lane_pincer",
+    family: "lane",
+    label: () => "통로 죄기",
+    normalAllowed: false,
+    telegraphHardMs: 300,
+    telegraphNormalMs: 620,
+    run(state, delta) {
+      const laneCount = getLaneCount(state);
+      const firstSide = pickSide(state);
+      const firstLane = firstSide === "left" ? 0 : laneCount - 1;
+      const secondLane = firstSide === "left" ? laneCount - 1 : 0;
+      const centerLane = Math.floor((laneCount - 1) / 2);
+      return tickPattern(state, delta, scaledInterval(state, 0.32, 0.42, 0.18, 0.24), 4, (shot) => {
+        if (shot === 0) {
+          spawnLaneBarrage(state, firstLane, laneCount, laneSpeed(state, 10), 32);
+          return;
+        }
+        if (shot === 1) {
+          spawnHalfHazard(state, firstSide, giantSpeed(state, -18), 0.46, 66);
+          return;
+        }
+        if (shot === 2) {
+          spawnLaneBarrage(state, secondLane, laneCount, laneSpeed(state, 14), 32);
+          return;
+        }
+        spawnLaneBarrage(state, centerLane === secondLane ? firstLane : centerLane, laneCount, laneSpeed(state, 10), 30);
       });
     },
   },
@@ -519,6 +632,36 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
           return;
         }
         spawnCenterHazard(state, 0.32, giantSpeed(state, -4), 72);
+      });
+    },
+  },
+  aftershock_lane: {
+    archetype: "trap_aftershock_lane",
+    family: "trap",
+    label: () => "여진 통로",
+    normalAllowed: false,
+    telegraphHardMs: 430,
+    telegraphNormalMs: 760,
+    run(state, delta) {
+      const laneCount = getLaneCount(state);
+      const firstSide = pickSide(state);
+      const firstLane = firstSide === "left" ? 0 : laneCount - 1;
+      const centerLane = Math.floor((laneCount - 1) / 2);
+      const finalLane = centerLane === firstLane ? (firstLane === 0 ? laneCount - 1 : 0) : centerLane;
+      return tickPattern(state, delta, scaledInterval(state, 0.42, 0.52, 0.24, 0.34), 4, (shot) => {
+        if (shot === 0) {
+          spawnCenterHazard(state, 0.34, giantSpeed(state, -12), 78);
+          return;
+        }
+        if (shot === 1) {
+          spawnLaneBarrage(state, firstLane, laneCount, laneSpeed(state, 6), 26);
+          return;
+        }
+        if (shot === 2) {
+          spawnFollowupPair(state, mediumSpeed(state, 24));
+          return;
+        }
+        spawnLaneBarrage(state, finalLane, laneCount, laneSpeed(state, 10), 28);
       });
     },
   },
@@ -567,6 +710,38 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       });
     },
   },
+  residue_crossfire: {
+    archetype: "trap_residue_crossfire",
+    family: "trap",
+    label: () => "잔류 교차 화망",
+    normalAllowed: false,
+    telegraphHardMs: 420,
+    telegraphNormalMs: 760,
+    run(state, delta) {
+      const laneCount = getLaneCount(state);
+      const firstSide = pickSide(state);
+      const oppositeLane = firstSide === "left" ? laneCount - 1 : 0;
+      return tickPattern(state, delta, scaledInterval(state, 0.44, 0.56, 0.24, 0.34), 4 + (state.round >= 12 ? 1 : 0), (shot) => {
+        if (shot === 0) {
+          spawnSafeThirdSetup(state, firstSide, giantSpeed(state, -16), 88);
+          return;
+        }
+        if (shot === 1) {
+          spawnFollowupPair(state, mediumSpeed(state, 28));
+          return;
+        }
+        if (shot === 2) {
+          spawnLaneBarrage(state, oppositeLane, laneCount, laneSpeed(state, 8), 24);
+          return;
+        }
+        if (shot === 3) {
+          spawnHalfHazard(state, oppositeSide(firstSide), giantSpeed(state, -4), 0.42, 72);
+          return;
+        }
+        spawnFollowupPair(state, mediumSpeed(state, 32));
+      });
+    },
+  },
   fake_warning: {
     archetype: "trap_warning",
     family: "trap",
@@ -578,6 +753,35 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       const warnedSide = pickSide(state);
       return tickPattern(state, delta, scaledInterval(state, 0.5, 0.62, 0.28, 0.4), 1 + (state.round >= 12 ? 1 : 0), () => {
         spawnHalfHazard(state, oppositeSide(warnedSide), giantSpeed(state, 10), 0.4, 68);
+      });
+    },
+  },
+  corridor_fakeout: {
+    archetype: "trap_corridor_fakeout",
+    family: "trap",
+    label: () => "가짜 통로",
+    normalAllowed: false,
+    telegraphHardMs: 410,
+    telegraphNormalMs: 740,
+    run(state, delta) {
+      const laneCount = getLaneCount(state);
+      const firstSide = pickSide(state);
+      const firstLane = firstSide === "left" ? 0 : laneCount - 1;
+      const secondLane = firstSide === "left" ? laneCount - 1 : 0;
+      return tickPattern(state, delta, scaledInterval(state, 0.38, 0.5, 0.22, 0.3), 4, (shot) => {
+        if (shot === 0) {
+          spawnLaneBarrage(state, firstLane, laneCount, laneSpeed(state, 6), 26);
+          return;
+        }
+        if (shot === 1) {
+          spawnEdgeHazards(state, 0.22, giantSpeed(state, -12), 68);
+          return;
+        }
+        if (shot === 2) {
+          spawnLaneBarrage(state, secondLane, laneCount, laneSpeed(state, 10), 28);
+          return;
+        }
+        spawnCenterHazard(state, 0.28, giantSpeed(state, 6), 72);
       });
     },
   },
@@ -669,19 +873,26 @@ const PATTERN_TIMING_MS: Record<BossPatternId, number> = {
   edge_crush: 1580,
   double_side_stomp: 1680,
   center_swing: 1760,
+  door_jam: 1780,
   three_gate_shuffle: 1900,
   pillar_press: 1960,
   shifting_corridor: 1540,
   zigzag_corridor: 1560,
   staircase_corridor: 1600,
   center_break: 1580,
+  edge_tunnel: 1640,
   switch_press: 1500,
   crossfall_mix: 1740,
+  corridor_snapback: 1760,
+  lane_pincer: 1820,
   fake_safe_lane: 1760,
   funnel_switch: 1820,
+  aftershock_lane: 1920,
   residue_zone: 2060,
   residue_switch: 1980,
+  residue_crossfire: 2140,
   fake_warning: 1680,
+  corridor_fakeout: 1860,
   center_collapse: 1920,
   shoulder_crush: 1880,
   delayed_burst: 1780,
@@ -695,8 +906,8 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     mode: "both",
     roundStart: 2,
     opener: ["half_stomp_alternating", "closing_doors"],
-    core: ["center_crush", "double_side_stomp"],
-    finisher: ["center_crush"],
+    core: ["center_crush", "double_side_stomp", "door_jam"],
+    finisher: ["center_crush", "door_jam"],
     minQueueLength: 3,
     maxQueueLength: 5,
     maxHeavySetPieces: 0,
@@ -708,8 +919,8 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     label: "통로 러시",
     mode: "both",
     roundStart: 2,
-    opener: ["zigzag_corridor"],
-    core: ["staircase_corridor", "zigzag_corridor", "switch_press", "crossfall_mix"],
+    opener: ["zigzag_corridor", "edge_tunnel"],
+    core: ["staircase_corridor", "zigzag_corridor", "switch_press", "crossfall_mix", "edge_tunnel"],
     finisher: ["center_swing"],
     minQueueLength: 4,
     maxQueueLength: 4,
@@ -722,9 +933,9 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     label: "통로 비틀기",
     mode: "both",
     roundStart: 2,
-    opener: ["shifting_corridor", "staircase_corridor"],
-    core: ["center_break", "switch_press", "zigzag_corridor"],
-    finisher: ["crossfall_mix", "last_hit_followup"],
+    opener: ["shifting_corridor", "staircase_corridor", "edge_tunnel"],
+    core: ["center_break", "switch_press", "zigzag_corridor", "edge_tunnel"],
+    finisher: ["crossfall_mix", "last_hit_followup", "edge_tunnel"],
     minQueueLength: 3,
     maxQueueLength: 4,
     maxHeavySetPieces: 0,
@@ -738,7 +949,7 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     roundStart: 2,
     opener: ["switch_press", "fake_warning"],
     core: ["last_hit_followup", "fake_safe_lane"],
-    finisher: ["center_swing"],
+    finisher: ["center_swing", "edge_tunnel"],
     minQueueLength: 3,
     maxQueueLength: 3,
     maxHeavySetPieces: 0,
@@ -750,13 +961,13 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     label: "통로 뒤집기",
     mode: "hard",
     roundStart: 2,
-    opener: ["switch_press", "staircase_corridor"],
-    core: ["center_break", "shifting_corridor"],
-    finisher: ["crossfall_mix", "switch_press"],
+    opener: ["switch_press", "edge_tunnel"],
+    core: ["center_break", "shifting_corridor", "corridor_snapback", "lane_pincer"],
+    finisher: ["crossfall_mix", "switch_press", "corridor_snapback"],
     minQueueLength: 4,
-    maxQueueLength: 5,
+    maxQueueLength: 6,
     maxHeavySetPieces: 0,
-    durationFloorMs: 6400,
+    durationFloorMs: 7000,
     themeFamilies: ["lane"],
   },
   trap_weave: {
@@ -765,12 +976,12 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     mode: "hard",
     roundStart: 2,
     opener: ["fake_safe_lane", "fake_warning"],
-    core: ["last_hit_followup", "center_collapse", "shoulder_crush"],
-    finisher: ["last_hit_followup", "delayed_burst", "shoulder_crush"],
+    core: ["last_hit_followup", "center_collapse", "shoulder_crush", "aftershock_lane", "corridor_fakeout"],
+    finisher: ["last_hit_followup", "delayed_burst", "shoulder_crush", "aftershock_lane"],
     minQueueLength: 4,
     maxQueueLength: 6,
     maxHeavySetPieces: 1,
-    durationFloorMs: 7600,
+    durationFloorMs: 8000,
     themeFamilies: ["trap"],
   },
   residue_fakeout: {
@@ -779,13 +990,42 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     mode: "hard",
     roundStart: 2,
     opener: ["fake_warning", "fake_safe_lane"],
-    core: ["residue_zone", "residue_switch"],
-    finisher: ["last_hit_followup", "center_collapse"],
-    optionalSetPiece: ["residue_switch"],
+    core: ["residue_zone", "residue_switch", "aftershock_lane", "corridor_fakeout"],
+    finisher: ["last_hit_followup", "center_collapse", "residue_crossfire"],
+    optionalSetPiece: ["residue_switch", "residue_crossfire"],
     minQueueLength: 4,
     maxQueueLength: 6,
     maxHeavySetPieces: 1,
     durationFloorMs: 8200,
+    themeFamilies: ["trap"],
+  },
+  lane_gauntlet: {
+    id: "lane_gauntlet",
+    label: "통로 연쇄",
+    mode: "hard",
+    roundStart: 2,
+    opener: ["edge_tunnel", "corridor_snapback"],
+    core: ["lane_pincer", "staircase_corridor", "center_break", "crossfall_mix", "switch_press"],
+    finisher: ["corridor_snapback", "lane_pincer", "switch_press"],
+    minQueueLength: 5,
+    maxQueueLength: 7,
+    maxHeavySetPieces: 0,
+    durationFloorMs: 7800,
+    themeFamilies: ["lane"],
+  },
+  residue_storm: {
+    id: "residue_storm",
+    label: "잔류 폭풍",
+    mode: "hard",
+    roundStart: 2,
+    opener: ["aftershock_lane", "fake_warning"],
+    core: ["residue_zone", "residue_crossfire", "residue_switch", "corridor_fakeout"],
+    finisher: ["center_collapse", "aftershock_lane", "delayed_burst", "residue_crossfire"],
+    optionalSetPiece: ["residue_crossfire"],
+    minQueueLength: 5,
+    maxQueueLength: 7,
+    maxHeavySetPieces: 2,
+    durationFloorMs: 9000,
     themeFamilies: ["trap"],
   },
 };
