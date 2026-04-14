@@ -721,7 +721,7 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     id: "corridor_intro",
     label: "통로 비틀기",
     mode: "both",
-    roundStart: 6,
+    roundStart: 2,
     opener: ["shifting_corridor", "staircase_corridor"],
     core: ["center_break", "switch_press", "zigzag_corridor"],
     finisher: ["crossfall_mix", "last_hit_followup"],
@@ -735,7 +735,7 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     id: "trap_intro",
     label: "가짜 안전지대",
     mode: "both",
-    roundStart: 9,
+    roundStart: 2,
     opener: ["switch_press", "fake_warning"],
     core: ["last_hit_followup", "fake_safe_lane"],
     finisher: ["center_swing"],
@@ -749,7 +749,7 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     id: "corridor_switch",
     label: "통로 뒤집기",
     mode: "hard",
-    roundStart: 5,
+    roundStart: 2,
     opener: ["switch_press", "staircase_corridor"],
     core: ["center_break", "shifting_corridor"],
     finisher: ["crossfall_mix", "switch_press"],
@@ -763,7 +763,7 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     id: "trap_weave",
     label: "함정 직조",
     mode: "hard",
-    roundStart: 7,
+    roundStart: 2,
     opener: ["fake_safe_lane", "fake_warning"],
     core: ["last_hit_followup", "center_collapse", "shoulder_crush"],
     finisher: ["last_hit_followup", "delayed_burst", "shoulder_crush"],
@@ -777,7 +777,7 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     id: "residue_fakeout",
     label: "잔류 속임수",
     mode: "hard",
-    roundStart: 10,
+    roundStart: 2,
     opener: ["fake_warning", "fake_safe_lane"],
     core: ["residue_zone", "residue_switch"],
     finisher: ["last_hit_followup", "center_collapse"],
@@ -866,10 +866,10 @@ function getUnlockedThemes(mode: GameState["mode"], round: number) {
 function getQueueTargetLength(theme: BossThemeDefinition, mode: GameState["mode"], round: number) {
   const base = mode === "hard"
     ? round >= 12
-      ? 6
+      ? 7
       : round >= 8
-        ? 5
-        : 4
+        ? 6
+        : 5
     : round >= 9 ? 4 : 3;
   return Math.max(theme.minQueueLength, Math.min(theme.maxQueueLength, base));
 }

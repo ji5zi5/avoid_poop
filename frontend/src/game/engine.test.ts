@@ -466,7 +466,7 @@ describe("game engine", () => {
     state.round = 2;
     state.reachedRound = 2;
     state.currentPhase = "boss";
-    state.bossPatternSeed = 22245;
+    state.bossPatternSeed = 6356;
     initializeBossEncounter(state);
     const startLives = state.player.lives;
 

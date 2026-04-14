@@ -37,28 +37,18 @@ describe("boss patterns", () => {
     expect(getBossThemeLabel(first.themeId).length).toBeGreaterThan(0);
   });
 
-  it("keeps residue themes gated out before late hard rounds", () => {
-    const beforeUnlock = buildBossEncounterPlan({
+  it("allows residue themes in hard mode from the opening boss pool", () => {
+    const plan = buildBossEncounterPlan({
       mode: "hard",
-      round: 9,
+      round: 2,
       previousFamilyStreak: null,
       previousFamilyStreakCount: 0,
       recentPatterns: [],
       recentThemes: [],
-      queueSeed: 39893,
-    });
-    const afterUnlock = buildBossEncounterPlan({
-      mode: "hard",
-      round: 10,
-      previousFamilyStreak: null,
-      previousFamilyStreakCount: 0,
-      recentPatterns: [],
-      recentThemes: [],
-      queueSeed: 39893,
+      queueSeed: 38133,
     });
 
-    expect(beforeUnlock.themeId).not.toBe("residue_fakeout");
-    expect(afterUnlock.themeId).toBe("residue_fakeout");
+    expect(plan.themeId).toBe("residue_fakeout");
   });
 
   it("keeps normal mode out of hard-only themes and patterns across seeds", () => {
@@ -78,8 +68,8 @@ describe("boss patterns", () => {
     expect(results.every((plan) => plan.queue.every((id) => !isHardOnlyPattern(id)))).toBe(true);
   });
 
-  it("matches the early hard unlock matrix with pressure and lane themes only", () => {
-    const seeds = [1, 39893, 177777];
+  it("exposes every hard boss theme from the start across representative seeds", () => {
+    const seeds = [1, 6356, 12711, 19067, 25422, 31778, 38133];
     const results = seeds.map((queueSeed) =>
       buildBossEncounterPlan({
         mode: "hard",
@@ -92,10 +82,15 @@ describe("boss patterns", () => {
       }),
     );
     const seenThemes = new Set(results.map((plan) => plan.themeId));
-    const heavyIds = ["three_gate_shuffle", "pillar_press", "residue_zone", "residue_switch", "center_collapse", "shoulder_crush", "delayed_burst"];
-
-    expect(seenThemes).toEqual(new Set(["pressure_intro", "lane_intro"]));
-    expect(results.every((plan) => plan.queue.every((id) => !heavyIds.includes(id)))).toBe(true);
+    expect(seenThemes).toEqual(new Set([
+      "pressure_intro",
+      "lane_intro",
+      "corridor_intro",
+      "trap_intro",
+      "corridor_switch",
+      "trap_weave",
+      "residue_fakeout",
+    ]));
   });
 
   it("derives encounter duration from themed composition instead of queue length alone", () => {
