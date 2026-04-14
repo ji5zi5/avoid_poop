@@ -52,6 +52,37 @@ export function AuthPage({ onAuthenticated }: Props) {
             <strong>{copy.auth.featureSave}</strong>
             <span>싱글 기록과 멀티 전적이 계정 단위로 같이 쌓입니다.</span>
           </article>
+          <article className="info-card auth-feature-card">
+            <span className="info-card__label">LIVE BOARD</span>
+            <strong>{copy.auth.featureRanking}</strong>
+            <span>플레이어 랭킹과 내 전적을 분리해서 더 빨리 확인할 수 있습니다.</span>
+          </article>
+          <article className="info-card auth-feature-card">
+            <span className="info-card__label">ROOM FLOW</span>
+            <strong>{copy.auth.featureMultiplayer}</strong>
+            <span>공개방은 바로 입장하고, 비공개방은 비밀번호를 입력해 바로 참가합니다.</span>
+          </article>
+        </div>
+
+        <div className="auth-brand-showcase">
+          <div className="auth-brand-showcase__copy">
+            <span className="panel-kicker">{copy.auth.showcaseLabel}</span>
+            <strong>{copy.auth.showcaseTitle}</strong>
+            <p>{copy.auth.showcaseBody}</p>
+          </div>
+          <div className="auth-brand-showcase__stats">
+            <article className="auth-brand-stat">
+              <span>{copy.auth.showcasePrimary}</span>
+              <strong>{copy.auth.showcasePrimaryValue}</strong>
+            </article>
+            <article className="auth-brand-stat">
+              <span>{copy.auth.showcaseSecondary}</span>
+              <strong>{copy.auth.showcaseSecondaryValue}</strong>
+            </article>
+          </div>
+          <div className="auth-brand-showcase__footer">
+            <span className="home-status-chip">{copy.auth.showcaseFooter}</span>
+          </div>
         </div>
       </div>
 
