@@ -52,6 +52,13 @@ export const copy = {
     showcaseSecondary: "멀티",
     showcaseSecondaryValue: "바로 입장",
     showcaseFooter: "회원가입 후 바로 메인 홈으로 연결",
+    studioEyebrow: "PLAYHOUSE",
+    membershipTitle: "플레이하우스 멤버십",
+    membershipBody: "디자인 아이콘과 통계를 담은 프리미엄 로비로 바로 연결됩니다.",
+    membershipCloud: "실시간 동기화",
+    membershipVault: "랭킹 · 전적 허브",
+    forgotPassword: "비밀번호를 잊으셨나요?",
+    socialLabel: "소셜 연결",
   },
   menu: {
     welcome: (username: string) => `${username} 님, 준비됐나요?`,

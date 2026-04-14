@@ -9,6 +9,8 @@ type Props = {
   onAuthenticated: (user: AuthUser) => void;
 };
 
+const socialIcons = ["✉", "◉", "⋯"] as const;
+
 export function AuthPage({ onAuthenticated }: Props) {
   const [mode, setMode] = useState<"login" | "signup">("signup");
   const [username, setUsername] = useState("");
@@ -27,79 +29,45 @@ export function AuthPage({ onAuthenticated }: Props) {
   }
 
   return (
-    <section className="auth-screen auth-screen--stitch">
-      <div className="console-panel console-panel--brand auth-brand-panel">
-        <div className="panel-heading">
-          <p className="panel-kicker">{copy.auth.consoleTitle}</p>
-          <h1 className="home-card__title auth-brand-title">{copy.auth.title}</h1>
-          <p className="panel-copy">{copy.auth.consoleDescription}</p>
+    <section className="auth-screen auth-screen--studio">
+      <div className="console-panel console-panel--primary console-panel--compact auth-studio-card">
+        <div className="auth-studio-header">
+          <span className="panel-kicker auth-studio-eyebrow">{copy.auth.studioEyebrow}</span>
+          <span className="auth-studio-orb" aria-hidden="true">●</span>
         </div>
 
-        <div className="auth-brand-badges">
-          <span className="home-status-chip">{copy.auth.featureRounds}</span>
-          <span className="home-status-chip">{copy.auth.featureItems}</span>
-          <span className="home-status-chip">{copy.auth.featureSave}</span>
-        </div>
-
-        <div className="auth-feature-grid">
-          <article className="info-card auth-feature-card">
-            <span className="info-card__label">ARCADE LOOP</span>
-            <strong>{copy.auth.featureRounds}</strong>
-            <span>라운드가 올라갈수록 더 촘촘하고 보스가 더 악랄해집니다.</span>
-          </article>
-          <article className="info-card auth-feature-card">
-            <span className="info-card__label">ACCOUNT SAVE</span>
-            <strong>{copy.auth.featureSave}</strong>
-            <span>싱글 기록과 멀티 전적이 계정 단위로 같이 쌓입니다.</span>
-          </article>
-          <article className="info-card auth-feature-card">
-            <span className="info-card__label">LIVE BOARD</span>
-            <strong>{copy.auth.featureRanking}</strong>
-            <span>플레이어 랭킹과 내 전적을 분리해서 더 빨리 확인할 수 있습니다.</span>
-          </article>
-          <article className="info-card auth-feature-card">
-            <span className="info-card__label">ROOM FLOW</span>
-            <strong>{copy.auth.featureMultiplayer}</strong>
-            <span>공개방은 바로 입장하고, 비공개방은 비밀번호를 입력해 바로 참가합니다.</span>
-          </article>
-        </div>
-
-        <div className="auth-brand-showcase">
-          <div className="auth-brand-showcase__copy">
-            <span className="panel-kicker">{copy.auth.showcaseLabel}</span>
-            <strong>{copy.auth.showcaseTitle}</strong>
-            <p>{copy.auth.showcaseBody}</p>
+        <section className="auth-membership-card">
+          <div className="auth-membership-card__header">
+            <div>
+              <h1 className="auth-membership-card__title">{copy.auth.membershipTitle}</h1>
+              <p>{copy.auth.membershipBody}</p>
+            </div>
+            <div className="auth-membership-card__cluster" aria-hidden="true">
+              <span className="auth-membership-card__badge auth-membership-card__badge--plus">＋</span>
+              <span className="auth-membership-card__badge" />
+              <span className="auth-membership-card__badge auth-membership-card__badge--small" />
+            </div>
           </div>
-          <div className="auth-brand-showcase__stats">
-            <article className="auth-brand-stat">
-              <span>{copy.auth.showcasePrimary}</span>
-              <strong>{copy.auth.showcasePrimaryValue}</strong>
+
+          <div className="auth-membership-card__stats">
+            <article className="auth-membership-stat">
+              <span className="auth-membership-stat__icon">☁</span>
+              <div>
+                <strong>{copy.auth.membershipCloud}</strong>
+                <small>{copy.auth.featureSave}</small>
+              </div>
             </article>
-            <article className="auth-brand-stat">
-              <span>{copy.auth.showcaseSecondary}</span>
-              <strong>{copy.auth.showcaseSecondaryValue}</strong>
+            <article className="auth-membership-stat">
+              <span className="auth-membership-stat__icon">★</span>
+              <div>
+                <strong>{copy.auth.membershipVault}</strong>
+                <small>{copy.auth.featureRanking}</small>
+              </div>
             </article>
           </div>
-          <div className="auth-brand-showcase__footer">
-            <span className="home-status-chip">{copy.auth.showcaseFooter}</span>
-          </div>
-        </div>
-      </div>
+        </section>
 
-      <div className="console-panel console-panel--form console-panel--compact auth-form-panel">
-        <div className="panel-heading">
-          <p className="panel-kicker">{copy.app.online}</p>
-          <h2>{mode === "signup" ? copy.auth.signup : copy.auth.login}</h2>
-        </div>
-
-        <div className="segmented-switch" role="tablist" aria-label="인증 방식">
-          <button
-            type="button"
-            className={mode === "signup" ? "segmented-switch__item is-active" : "segmented-switch__item"}
-            onClick={() => setMode("signup")}
-          >
-            {copy.auth.modeSignup}
-          </button>
+        <div className="segmented-switch auth-mode-switch" role="tablist" aria-label="인증 방식">
           <button
             type="button"
             className={mode === "login" ? "segmented-switch__item is-active" : "segmented-switch__item"}
@@ -107,28 +75,48 @@ export function AuthPage({ onAuthenticated }: Props) {
           >
             {copy.auth.modeLogin}
           </button>
+          <button
+            type="button"
+            className={mode === "signup" ? "segmented-switch__item is-active" : "segmented-switch__item"}
+            onClick={() => setMode("signup")}
+          >
+            {copy.auth.modeSignup}
+          </button>
         </div>
 
-        <form className="stack auth-form-stack" onSubmit={handleSubmit}>
+        <form className="stack auth-studio-form" onSubmit={handleSubmit}>
           <label>
-            {copy.auth.username}
-            <input value={username} onChange={(event) => setUsername(event.target.value)} minLength={3} required />
+            <span>{copy.auth.username}</span>
+            <input value={username} onChange={(event) => setUsername(event.target.value)} minLength={3} required placeholder={copy.auth.username} />
           </label>
           <label>
-            {copy.auth.password}
+            <span>{copy.auth.password}</span>
             <input
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               minLength={6}
               required
               type="password"
+              placeholder={copy.auth.password}
             />
           </label>
+          <p className="auth-studio-form__hint">{copy.auth.forgotPassword}</p>
           {error ? <p className="error-text">{error}</p> : null}
-          <button type="submit" className="primary-action auth-submit-button">
+          <button type="submit" className="primary-action auth-submit-button auth-submit-button--studio">
             {mode === "signup" ? copy.auth.signup : copy.auth.login}
           </button>
         </form>
+
+        <div className="auth-social-block">
+          <span className="auth-social-block__label">{copy.auth.socialLabel}</span>
+          <div className="auth-social-block__actions">
+            {socialIcons.map((icon, index) => (
+              <button key={`${icon}-${index}`} type="button" className="auth-social-block__button" aria-label={`${copy.auth.socialLabel} ${index + 1}`}>
+                {icon}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );
