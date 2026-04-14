@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: avoid-poop-api
+    runtime: node
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: node server/dist/server/src/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: COOKIE_SAME_SITE
+        value: none
+      - key: APP_ORIGIN
+        sync: false
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: TRUST_PROXY
+        value: "true"
+      - key: DB_PROVIDER
+        value: sqlite
+      - key: DB_PATH
+        value: /var/data/avoid-poop.sqlite
+      - key: LOG_ENABLED
+        value: "true"
+      - key: LOG_LEVEL
+        value: info
+      - key: RATE_LIMIT_AUTH_MAX
+        value: "12"
+      - key: RATE_LIMIT_AUTH_WINDOW_MS
+        value: "60000"
+      - key: RATE_LIMIT_WRITES_MAX
+        value: "40"
+      - key: RATE_LIMIT_WRITES_WINDOW_MS
+        value: "60000"
+      - key: RATE_LIMIT_WS_MAX
+        value: "40"
+      - key: RATE_LIMIT_WS_WINDOW_MS
+        value: "60000"
+    disk:
+      name: avoid-poop-data
+      mountPath: /var/data
+      sizeGB: 1
