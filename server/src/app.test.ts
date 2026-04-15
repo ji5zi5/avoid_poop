@@ -8,6 +8,7 @@ import {resetDbForTests} from './db/client.js';
 
 const dbPath = path.join(process.cwd(), 'data', 'avoid-poop-test.sqlite');
 process.env.DB_PATH = dbPath;
+process.env.NODE_ENV = 'test';
 
 test.afterEach(async () => {
   await resetDbForTests();
@@ -360,6 +361,22 @@ test('records endpoints require auth and return best plus recent runs', { concur
   });
 
   const cookie = signup.cookies[0];
+  const normalRunSession = await app.inject({
+    method: 'POST',
+    url: '/api/records/run-session',
+    cookies: {
+      avoid_poop_session: cookie.value
+    },
+    payload: { mode: 'normal' }
+  });
+  const hardRunSession = await app.inject({
+    method: 'POST',
+    url: '/api/records/run-session',
+    cookies: {
+      avoid_poop_session: cookie.value
+    },
+    payload: { mode: 'hard' }
+  });
 
   const saveNormal = await app.inject({
     method: 'POST',
@@ -368,6 +385,7 @@ test('records endpoints require auth and return best plus recent runs', { concur
       avoid_poop_session: cookie.value
     },
     payload: {
+      runSessionId: normalRunSession.json().id,
       mode: 'normal',
       score: 120,
       reachedRound: 3,
@@ -385,6 +403,7 @@ test('records endpoints require auth and return best plus recent runs', { concur
       avoid_poop_session: cookie.value
     },
     payload: {
+      runSessionId: hardRunSession.json().id,
       mode: 'hard',
       score: 180,
       reachedRound: 4,
@@ -412,8 +431,8 @@ test('records endpoints require auth and return best plus recent runs', { concur
   assert.equal(body.recent.length, 2);
   assert.equal(body.multiplayer.stats.matchesPlayed, 0);
   assert.equal(body.multiplayer.recent.length, 0);
-  assert.deepEqual(body.leaderboard.normal, []);
-  assert.deepEqual(body.leaderboard.hard, []);
+  assert.equal(body.leaderboard.normal[0].username, 'record_user');
+  assert.equal(body.leaderboard.hard[0].username, 'record_user');
   await app.close();
 });
 
@@ -434,18 +453,30 @@ test('records endpoint exposes real cross-user leaderboards', { concurrency: fal
 
   const firstCookie = firstSignup.cookies[0]!.value;
   const secondCookie = secondSignup.cookies[0]!.value;
+  const firstRunSession = await app.inject({
+    method: 'POST',
+    url: '/api/records/run-session',
+    cookies: { avoid_poop_session: firstCookie },
+    payload: { mode: 'normal' }
+  });
+  const secondRunSession = await app.inject({
+    method: 'POST',
+    url: '/api/records/run-session',
+    cookies: { avoid_poop_session: secondCookie },
+    payload: { mode: 'normal' }
+  });
 
   await app.inject({
     method: 'POST',
     url: '/api/records',
     cookies: { avoid_poop_session: firstCookie },
-    payload: { mode: 'normal', score: 320, reachedRound: 7, survivalTime: 41.2, clear: true }
+    payload: { runSessionId: firstRunSession.json().id, mode: 'normal', score: 320, reachedRound: 7, survivalTime: 41.2, clear: true }
   });
   await app.inject({
     method: 'POST',
     url: '/api/records',
     cookies: { avoid_poop_session: secondCookie },
-    payload: { mode: 'normal', score: 210, reachedRound: 5, survivalTime: 26.8, clear: false }
+    payload: { runSessionId: secondRunSession.json().id, mode: 'normal', score: 210, reachedRound: 5, survivalTime: 26.8, clear: false }
   });
 
   const hostRoom = await app.inject({
@@ -470,7 +501,8 @@ test('records endpoint exposes real cross-user leaderboards', { concurrency: fal
 
   assert.equal(recordsView.statusCode, 200);
   const body = recordsView.json();
-  assert.deepEqual(body.leaderboard.normal, []);
+  assert.equal(body.leaderboard.normal[0].username, 'rank_one');
+  assert.equal(body.leaderboard.normal[1].username, 'rank_two');
   assert.equal(body.profile.totalRuns, 1);
   await app.close();
 });

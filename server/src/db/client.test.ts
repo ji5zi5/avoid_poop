@@ -49,7 +49,7 @@ test('sqlite remains the default database provider and boots the local schema', 
 
   assert.deepEqual(
     tables.map((table) => table.name),
-    ['multiplayer_matches', 'multiplayer_participants', 'records', 'sessions', 'sqlite_sequence', 'users']
+    ['multiplayer_matches', 'multiplayer_participants', 'records', 'sessions', 'single_player_run_sessions', 'sqlite_sequence', 'users']
   );
 });
 

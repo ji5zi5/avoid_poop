@@ -5,6 +5,7 @@ import type {
   RecordEntry,
   RecordsResponse,
   RunResultPayload,
+  SinglePlayerRunSession,
 } from "../../../shared/src/contracts/index";
 import type {
   CreateRoomPayload,
@@ -55,7 +56,11 @@ export const api = {
     request<AuthResponse>("/api/auth/login", { method: "POST", body: JSON.stringify(payload) }),
   logout: () => request<{ ok: true }>("/api/auth/logout", { method: "POST" }),
   records: () => request<RecordsResponse>("/api/records"),
-  saveRecord: (payload: RunResultPayload) =>
+  createRunSession: (mode: RunResultPayload["mode"]) =>
+    request<SinglePlayerRunSession>("/api/records/run-session", { method: "POST", body: JSON.stringify({ mode }) }),
+  heartbeatRunSession: (runSessionId: string) =>
+    request<{ ok: true }>(`/api/records/run-session/${encodeURIComponent(runSessionId)}/heartbeat`, { method: "POST" }),
+  saveRecord: (payload: RunResultPayload & { runSessionId?: string }) =>
     request<RecordEntry>("/api/records", { method: "POST", body: JSON.stringify(payload) }),
   createRoom: (payload?: CreateRoomPayload) =>
     request<RoomSummary>("/api/multiplayer/rooms", {

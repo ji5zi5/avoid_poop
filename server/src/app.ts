@@ -97,6 +97,8 @@ export async function createApp(overrides: Partial<RuntimeConfig> = {}) {
       request.method === 'POST'
       && (
         pathname === '/api/records'
+        || pathname === '/api/records/run-session'
+        || pathname.startsWith('/api/records/run-session/')
         || pathname === '/api/multiplayer/rooms'
         || pathname === '/api/multiplayer/join'
         || pathname === '/api/multiplayer/quick-join'

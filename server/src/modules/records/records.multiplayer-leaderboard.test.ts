@@ -10,6 +10,7 @@ import { saveCompletedMultiplayerGame } from '../multiplayer/results.service.js'
 
 const dbPath = path.join(process.cwd(), 'data', 'avoid-poop-records-leaderboard-test.sqlite');
 process.env.DB_PATH = dbPath;
+process.env.NODE_ENV = 'test';
 
 test.afterEach(async () => {
   await resetDbForTests();

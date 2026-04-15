@@ -22,6 +22,20 @@ vi.mock('../game/rendering/canvasRenderer', () => ({
   renderGame: vi.fn(),
 }));
 
+vi.mock('../lib/api', () => ({
+  api: {
+    createRunSession: vi.fn().mockResolvedValue({
+      id: '11111111-1111-4111-8111-111111111111',
+      mode: 'hard',
+      waveSeed: 123,
+      bossSeed: 456,
+      startedAt: '2026-04-15T05:00:00.000Z',
+    }),
+    heartbeatRunSession: vi.fn().mockResolvedValue({ ok: true }),
+  },
+  ApiRequestError: class ApiRequestError extends Error { status = 400; },
+}));
+
 import { GamePage } from './GamePage';
 
 function makeState() {

@@ -10,6 +10,7 @@ export type DbRecord = {
   survivalTime: number;
   clear: boolean;
   createdAt: string;
+  verified: boolean;
 };
 
 export type DbSingleLeaderboardEntry = {
@@ -22,10 +23,27 @@ export type DbSingleLeaderboardEntry = {
   createdAt: string;
 };
 
+export type DbSinglePlayerRunSession = {
+  id: string;
+  userId: number;
+  mode: 'normal' | 'hard';
+  waveSeed: number;
+  bossSeed: number;
+  startedAt: string;
+  expiresAt: string;
+  heartbeatCount: number;
+  consumedAt: string | null;
+};
+
 export type DbSinglePlayerProfile = {
   totalRuns: number;
   totalClears: number;
   totalScore: number;
+};
+
+type SqliteRecordRow = Omit<DbRecord, 'clear' | 'verified'> & {
+  clear: number;
+  verified: number;
 };
 
 function normalizeRecordRow<T extends { createdAt: string | Date }>(row: T) {
@@ -42,12 +60,25 @@ function normalizeSingleLeaderboardRow<T extends { createdAt: string | Date; cle
   };
 }
 
+function normalizeRunSessionRow<T extends {
+  startedAt: string | Date;
+  expiresAt: string | Date;
+  consumedAt: string | Date | null;
+}>(row: T) {
+  return {
+    ...row,
+    startedAt: toIsoTimestamp(row.startedAt),
+    expiresAt: toIsoTimestamp(row.expiresAt),
+    consumedAt: row.consumedAt ? toIsoTimestamp(row.consumedAt) : null,
+  };
+}
+
 export async function createRecord(input: Omit<DbRecord, 'id' | 'createdAt'>) {
   const db = await getDb();
   if (db.provider === 'sqlite') {
     const stmt = db.db.prepare(
       `INSERT INTO records (user_id, mode, score, reached_round, survival_time, clear, verified)
-       VALUES (?, ?, ?, ?, ?, ?, 0)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
        RETURNING
          id,
          user_id AS userId,
@@ -56,6 +87,7 @@ export async function createRecord(input: Omit<DbRecord, 'id' | 'createdAt'>) {
          reached_round AS reachedRound,
          survival_time AS survivalTime,
          clear,
+         verified,
          created_at AS createdAt`,
     );
 
@@ -66,17 +98,19 @@ export async function createRecord(input: Omit<DbRecord, 'id' | 'createdAt'>) {
       input.reachedRound,
       input.survivalTime,
       input.clear ? 1 : 0,
-    ) as Omit<DbRecord, 'clear'> & { clear: number };
+      input.verified ? 1 : 0,
+    ) as unknown as SqliteRecordRow;
 
     return {
       ...row,
       clear: Boolean(row.clear),
+      verified: Boolean(row.verified),
     };
   }
 
   const [row] = await db.sql<DbRecord[]>`
     INSERT INTO records (user_id, mode, score, reached_round, survival_time, clear, verified)
-    VALUES (${input.userId}, ${input.mode}, ${input.score}, ${input.reachedRound}, ${input.survivalTime}, ${input.clear}, false)
+    VALUES (${input.userId}, ${input.mode}, ${input.score}, ${input.reachedRound}, ${input.survivalTime}, ${input.clear}, ${input.verified})
     RETURNING
       id,
       user_id AS "userId",
@@ -85,6 +119,7 @@ export async function createRecord(input: Omit<DbRecord, 'id' | 'createdAt'>) {
       reached_round AS "reachedRound",
       survival_time AS "survivalTime",
       clear,
+      verified,
       created_at AS "createdAt"
   `;
 
@@ -103,6 +138,7 @@ export async function listRecentRecords(userId: number) {
          reached_round AS reachedRound,
          survival_time AS survivalTime,
          clear,
+         verified,
          created_at AS createdAt
        FROM records
        WHERE user_id = ?
@@ -111,8 +147,9 @@ export async function listRecentRecords(userId: number) {
     );
 
     return stmt.all(userId).map((row) => ({
-      ...(row as Omit<DbRecord, 'clear'> & { clear: number }),
-      clear: Boolean((row as { clear: number }).clear),
+      ...(row as SqliteRecordRow),
+      clear: Boolean((row as SqliteRecordRow).clear),
+      verified: Boolean((row as SqliteRecordRow).verified),
     })) as DbRecord[];
   }
 
@@ -125,6 +162,7 @@ export async function listRecentRecords(userId: number) {
       reached_round AS "reachedRound",
       survival_time AS "survivalTime",
       clear,
+      verified,
       created_at AS "createdAt"
     FROM records
     WHERE user_id = ${userId}
@@ -147,6 +185,7 @@ export async function findBestRecordByMode(userId: number, mode: 'normal' | 'har
          reached_round AS reachedRound,
          survival_time AS survivalTime,
          clear,
+         verified,
          created_at AS createdAt
        FROM records
        WHERE user_id = ? AND mode = ?
@@ -154,7 +193,7 @@ export async function findBestRecordByMode(userId: number, mode: 'normal' | 'har
        LIMIT 1`,
     );
 
-    const row = stmt.get(userId, mode) as (Omit<DbRecord, 'clear'> & { clear: number }) | undefined;
+    const row = stmt.get(userId, mode) as unknown as SqliteRecordRow | undefined;
     if (!row) {
       return null;
     }
@@ -162,6 +201,7 @@ export async function findBestRecordByMode(userId: number, mode: 'normal' | 'har
     return {
       ...row,
       clear: Boolean(row.clear),
+      verified: Boolean(row.verified),
     } satisfies DbRecord;
   }
 
@@ -174,6 +214,7 @@ export async function findBestRecordByMode(userId: number, mode: 'normal' | 'har
       reached_round AS "reachedRound",
       survival_time AS "survivalTime",
       clear,
+      verified,
       created_at AS "createdAt"
     FROM records
     WHERE user_id = ${userId} AND mode = ${mode}
@@ -182,6 +223,136 @@ export async function findBestRecordByMode(userId: number, mode: 'normal' | 'har
   `;
 
   return row ? normalizeRecordRow(row) : null;
+}
+
+export async function createSinglePlayerRunSession(input: Omit<DbSinglePlayerRunSession, 'heartbeatCount' | 'consumedAt'>) {
+  const db = await getDb();
+  if (db.provider === 'sqlite') {
+    const stmt = db.db.prepare(
+      `INSERT INTO single_player_run_sessions (id, user_id, mode, wave_seed, boss_seed, started_at, expires_at, heartbeat_count, consumed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0, NULL)
+       RETURNING
+         id,
+         user_id AS userId,
+         mode,
+         wave_seed AS waveSeed,
+         boss_seed AS bossSeed,
+         started_at AS startedAt,
+         expires_at AS expiresAt,
+         heartbeat_count AS heartbeatCount,
+         consumed_at AS consumedAt`,
+    );
+
+    return stmt.get(
+      input.id,
+      input.userId,
+      input.mode,
+      input.waveSeed,
+      input.bossSeed,
+      input.startedAt,
+      input.expiresAt,
+    ) as DbSinglePlayerRunSession;
+  }
+
+  const [row] = await db.sql<DbSinglePlayerRunSession[]>`
+    INSERT INTO single_player_run_sessions (id, user_id, mode, wave_seed, boss_seed, started_at, expires_at, heartbeat_count, consumed_at)
+    VALUES (${input.id}, ${input.userId}, ${input.mode}, ${input.waveSeed}, ${input.bossSeed}, ${input.startedAt}, ${input.expiresAt}, 0, NULL)
+    RETURNING
+      id,
+      user_id AS "userId",
+      mode,
+      wave_seed AS "waveSeed",
+      boss_seed AS "bossSeed",
+      started_at AS "startedAt",
+      expires_at AS "expiresAt",
+      heartbeat_count AS "heartbeatCount",
+      consumed_at AS "consumedAt"
+  `;
+
+  return normalizeRunSessionRow(row);
+}
+
+export async function getSinglePlayerRunSession(runSessionId: string) {
+  const db = await getDb();
+  if (db.provider === 'sqlite') {
+    const stmt = db.db.prepare(
+      `SELECT
+         id,
+         user_id AS userId,
+         mode,
+         wave_seed AS waveSeed,
+         boss_seed AS bossSeed,
+         started_at AS startedAt,
+         expires_at AS expiresAt,
+         heartbeat_count AS heartbeatCount,
+         consumed_at AS consumedAt
+       FROM single_player_run_sessions
+       WHERE id = ?`,
+    );
+
+    return (stmt.get(runSessionId) as DbSinglePlayerRunSession | undefined) ?? null;
+  }
+
+  const [row] = await db.sql<DbSinglePlayerRunSession[]>`
+    SELECT
+      id,
+      user_id AS "userId",
+      mode,
+      wave_seed AS "waveSeed",
+      boss_seed AS "bossSeed",
+      started_at AS "startedAt",
+      expires_at AS "expiresAt",
+      heartbeat_count AS "heartbeatCount",
+      consumed_at AS "consumedAt"
+    FROM single_player_run_sessions
+    WHERE id = ${runSessionId}
+  `;
+
+  return row ? normalizeRunSessionRow(row) : null;
+}
+
+export async function touchSinglePlayerRunSession(runSessionId: string, userId: number) {
+  const db = await getDb();
+  if (db.provider === 'sqlite') {
+    const stmt = db.db.prepare(
+      `UPDATE single_player_run_sessions
+       SET heartbeat_count = heartbeat_count + 1
+       WHERE id = ? AND user_id = ? AND consumed_at IS NULL`,
+    );
+
+    return stmt.run(runSessionId, userId).changes > 0;
+  }
+
+  const rows = await db.sql<Array<{ id: string }>>`
+    UPDATE single_player_run_sessions
+    SET heartbeat_count = heartbeat_count + 1
+    WHERE id = ${runSessionId} AND user_id = ${userId} AND consumed_at IS NULL
+    RETURNING id
+  `;
+
+  return rows.length > 0;
+}
+
+export async function consumeSinglePlayerRunSession(runSessionId: string, userId: number, consumedAt: string) {
+  const db = await getDb();
+  if (db.provider === 'sqlite') {
+    const stmt = db.db.prepare(
+      `UPDATE single_player_run_sessions
+       SET consumed_at = ?
+       WHERE id = ? AND user_id = ? AND consumed_at IS NULL`,
+    );
+
+    return stmt.run(consumedAt, runSessionId, userId).changes > 0;
+  }
+
+  const rows = await db.sql<Array<{ id: string }>>`
+    UPDATE single_player_run_sessions
+    SET consumed_at = ${consumedAt}
+    WHERE id = ${runSessionId} AND user_id = ${userId} AND consumed_at IS NULL
+    RETURNING id
+  `;
+
+  return rows.length > 0;
 }
 
 export async function getSinglePlayerProfile(userId: number) {

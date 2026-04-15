@@ -2,7 +2,7 @@
 import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
-const {me, createRoom, quickJoin, joinRoom, leaveRoom, records, listRooms} = vi.hoisted(() => ({
+const {me, createRoom, quickJoin, joinRoom, leaveRoom, records, listRooms, createRunSession, heartbeatRunSession} = vi.hoisted(() => ({
   me: vi.fn(),
   createRoom: vi.fn(),
   quickJoin: vi.fn(),
@@ -10,6 +10,8 @@ const {me, createRoom, quickJoin, joinRoom, leaveRoom, records, listRooms} = vi.
   leaveRoom: vi.fn(),
   records: vi.fn(),
   listRooms: vi.fn(),
+  createRunSession: vi.fn(),
+  heartbeatRunSession: vi.fn(),
 }));
 
 vi.mock('./lib/api', () => ({
@@ -21,6 +23,8 @@ vi.mock('./lib/api', () => ({
     quickJoin,
     joinRoom,
     records,
+    createRunSession,
+    heartbeatRunSession,
     saveRecord: vi.fn(),
     leaveRoom,
   },
@@ -67,6 +71,14 @@ describe('App multiplayer entry flow', () => {
       multiplayer: {stats: {matchesPlayed: 0, wins: 0, bestPlacement: null}, recent: []},
       leaderboard: {normal: [], hard: [], multiplayer: []},
     });
+    createRunSession.mockResolvedValue({
+      id: '11111111-1111-4111-8111-111111111111',
+      mode: 'normal',
+      waveSeed: 123,
+      bossSeed: 456,
+      startedAt: '2026-04-15T05:00:00.000Z',
+    });
+    heartbeatRunSession.mockResolvedValue({ ok: true });
   });
 
   it('opens multiplayer home after game start then multiplayer selection', async () => {

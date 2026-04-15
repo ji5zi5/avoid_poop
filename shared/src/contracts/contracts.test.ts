@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {authCredentialsSchema} from './auth.js';
-import {recordsResponseSchema, runResultPayloadSchema} from './records.js';
+import {recordsResponseSchema, runResultPayloadSchema, singlePlayerRunSessionSchema} from './records.js';
 
 test('credentials schema accepts simple valid credentials', () => {
   const parsed = authCredentialsSchema.parse({
@@ -50,4 +50,16 @@ test('records response schema accepts nullable best entries', () => {
   });
 
   assert.equal(parsed.recent.length, 0);
+});
+
+test('single-player run session schema accepts issued seeds', () => {
+  const parsed = singlePlayerRunSessionSchema.parse({
+    id: '11111111-1111-4111-8111-111111111111',
+    mode: 'hard',
+    waveSeed: 123,
+    bossSeed: 456,
+    startedAt: '2026-04-15T05:00:00.000Z',
+  });
+
+  assert.equal(parsed.mode, 'hard');
 });

@@ -10,6 +10,14 @@ export const runResultPayloadSchema = z.object({
   clear: z.boolean()
 });
 
+export const singlePlayerRunSessionSchema = z.object({
+  id: z.string().uuid(),
+  mode: gameModeSchema,
+  waveSeed: z.number().int().positive(),
+  bossSeed: z.number().int().positive(),
+  startedAt: z.string(),
+});
+
 export const recordEntrySchema = runResultPayloadSchema.extend({
   id: z.number().int().positive(),
   userId: z.number().int().positive().optional(),
@@ -78,6 +86,7 @@ export const recordsResponseSchema = z.object({
 
 export type GameMode = z.infer<typeof gameModeSchema>;
 export type RunResultPayload = z.infer<typeof runResultPayloadSchema>;
+export type SinglePlayerRunSession = z.infer<typeof singlePlayerRunSessionSchema>;
 export type RecordEntry = z.infer<typeof recordEntrySchema>;
 export type MultiplayerRecordEntry = z.infer<typeof multiplayerRecordEntrySchema>;
 export type MultiplayerStats = z.infer<typeof multiplayerStatsSchema>;

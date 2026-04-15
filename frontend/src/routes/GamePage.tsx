@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 
-import type { RecordEntry, RunResultPayload } from "../../../shared/src/contracts/index";
+import type { RecordEntry, RunResultPayload, SinglePlayerRunSession } from "../../../shared/src/contracts/index";
 import type { GameMode } from "../../../shared/src/contracts/index";
 import { copy, formatSecondsLabel } from "../content/copy";
+import { api, ApiRequestError } from "../lib/api";
 import { createHorizontalInputTracker } from "../lib/horizontalInput";
 import { createGameEngine, updateGame } from "../game/engine";
 import { createLoop } from "../game/loop";
@@ -33,6 +34,8 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
   const [, forceRender] = useState(0);
   const [runId, setRunId] = useState(0);
   const [result, setResult] = useState<RunResultPayload | null>(null);
+  const [resultRunSessionId, setResultRunSessionId] = useState<string | undefined>();
+  const runSessionRef = useRef<SinglePlayerRunSession | null>(null);
 
   function setDirection(direction: number) {
     directionRef.current = direction;
@@ -41,8 +44,10 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
   function restartRun() {
     directionRef.current = 0;
     inputTrackerRef.current.clear();
+    runSessionRef.current = null;
     stateRef.current = createGameEngine(mode);
     setResult(null);
+    setResultRunSessionId(undefined);
     setRunId((value) => value + 1);
     forceRender((value) => value + 1);
   }
@@ -50,8 +55,46 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
   useEffect(() => {
     directionRef.current = 0;
     inputTrackerRef.current.clear();
+    runSessionRef.current = null;
     stateRef.current = createGameEngine(mode);
     setResult(null);
+    setResultRunSessionId(undefined);
+
+    let heartbeatTimer: number | null = null;
+
+    async function initializeVerifiedRun() {
+      try {
+        const runSession = await api.createRunSession(mode);
+        if (disposed) {
+          return;
+        }
+        runSessionRef.current = runSession;
+        stateRef.current = createGameEngine(mode, {
+          waveSeed: runSession.waveSeed,
+          bossSeed: runSession.bossSeed,
+        });
+        forceRender((value) => value + 1);
+        heartbeatTimer = window.setInterval(() => {
+          const activeSession = runSessionRef.current;
+          if (!activeSession || stateRef.current.gameOver) {
+            return;
+          }
+          api.heartbeatRunSession(activeSession.id).catch((caught) => {
+            if (caught instanceof ApiRequestError && caught.status === 401) {
+              onSessionExpired();
+            }
+          });
+        }, 5000);
+      } catch (caught) {
+        if (caught instanceof ApiRequestError && caught.status === 401) {
+          onSessionExpired();
+        }
+      }
+    }
+
+    let disposed = false;
+    void initializeVerifiedRun();
+
     const loop = createLoop((delta) => {
       const state = updateGame(stateRef.current, delta, directionRef.current);
       const canvas = canvasRef.current;
@@ -65,6 +108,7 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
       if (state.gameOver) {
         loop.stop();
         setResult(toRunResult(state));
+        setResultRunSessionId(runSessionRef.current?.id);
       }
     });
 
@@ -93,6 +137,10 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       inputTrackerRef.current.clear();
+      if (heartbeatTimer !== null) {
+        window.clearInterval(heartbeatTimer);
+      }
+      disposed = true;
       loop.stop();
     };
   }, [mode, runId]);
@@ -179,6 +227,7 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
                 <ResultsPage
                   embedded
                   result={result}
+                  runSessionId={resultRunSessionId}
                   onRetry={restartRun}
                   onBackToMenu={onBackToMenu}
                   onSaved={onSaved}

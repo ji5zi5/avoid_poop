@@ -6,6 +6,7 @@ import { api, ApiRequestError } from "../lib/api";
 
 type Props = {
   result: RunResultPayload;
+  runSessionId?: string;
   onRetry: () => void;
   onBackToMenu: () => void;
   onViewRecords: () => void;
@@ -15,9 +16,14 @@ type Props = {
 };
 
 const PENDING_RESULT_KEY = "avoid-poop-pending-result";
+type PendingResultState = {
+  result: RunResultPayload;
+  runSessionId?: string;
+};
 
 export function ResultsPage({
   result,
+  runSessionId,
   onRetry,
   onBackToMenu,
   onViewRecords,
@@ -28,24 +34,31 @@ export function ResultsPage({
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const pendingPayload = useMemo(() => {
+  const pendingState = useMemo(() => {
     const raw = sessionStorage.getItem(PENDING_RESULT_KEY);
     if (!raw) {
-      return result;
+      return { result, runSessionId } satisfies PendingResultState;
     }
 
     try {
-      return JSON.parse(raw) as RunResultPayload;
+      const parsed = JSON.parse(raw) as PendingResultState | RunResultPayload;
+      if ("result" in parsed) {
+        return parsed;
+      }
+      return { result: parsed, runSessionId } satisfies PendingResultState;
     } catch {
-      return result;
+      return { result, runSessionId } satisfies PendingResultState;
     }
-  }, [result]);
+  }, [result, runSessionId]);
 
   async function handleSave() {
     try {
       setSaving(true);
-      sessionStorage.setItem(PENDING_RESULT_KEY, JSON.stringify(pendingPayload));
-      const entry = await api.saveRecord(pendingPayload);
+      sessionStorage.setItem(PENDING_RESULT_KEY, JSON.stringify(pendingState));
+      const entry = await api.saveRecord({
+        ...pendingState.result,
+        ...(pendingState.runSessionId ? { runSessionId: pendingState.runSessionId } : {}),
+      });
       setSaved(true);
       setError("");
       sessionStorage.removeItem(PENDING_RESULT_KEY);
