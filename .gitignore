@@ -29,3 +29,5 @@ shared/src/**/*.js
 .vercel/
 .stitch/
 docs/plans/
+DEPLOY.md
+deploy-env.txt

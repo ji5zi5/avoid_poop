@@ -46,8 +46,8 @@ export async function createRecord(input: Omit<DbRecord, 'id' | 'createdAt'>) {
   const db = await getDb();
   if (db.provider === 'sqlite') {
     const stmt = db.db.prepare(
-      `INSERT INTO records (user_id, mode, score, reached_round, survival_time, clear)
-       VALUES (?, ?, ?, ?, ?, ?)
+      `INSERT INTO records (user_id, mode, score, reached_round, survival_time, clear, verified)
+       VALUES (?, ?, ?, ?, ?, ?, 0)
        RETURNING
          id,
          user_id AS userId,
@@ -75,8 +75,8 @@ export async function createRecord(input: Omit<DbRecord, 'id' | 'createdAt'>) {
   }
 
   const [row] = await db.sql<DbRecord[]>`
-    INSERT INTO records (user_id, mode, score, reached_round, survival_time, clear)
-    VALUES (${input.userId}, ${input.mode}, ${input.score}, ${input.reachedRound}, ${input.survivalTime}, ${input.clear})
+    INSERT INTO records (user_id, mode, score, reached_round, survival_time, clear, verified)
+    VALUES (${input.userId}, ${input.mode}, ${input.score}, ${input.reachedRound}, ${input.survivalTime}, ${input.clear}, false)
     RETURNING
       id,
       user_id AS "userId",
@@ -224,13 +224,13 @@ export async function listSingleLeaderboard(mode: 'normal' | 'hard', limit = 20)
            r.survival_time AS survivalTime,
            r.clear AS clear,
            r.created_at AS createdAt,
-           ROW_NUMBER() OVER (
+         ROW_NUMBER() OVER (
              PARTITION BY r.user_id
              ORDER BY r.score DESC, r.reached_round DESC, r.survival_time DESC, r.id DESC
            ) AS rowNumber
          FROM records r
          JOIN users u ON u.id = r.user_id
-         WHERE r.mode = ?
+         WHERE r.mode = ? AND r.verified = 1
        )
        SELECT userId, username, score, reachedRound, survivalTime, clear, createdAt
        FROM ranked
@@ -261,7 +261,7 @@ export async function listSingleLeaderboard(mode: 'normal' | 'hard', limit = 20)
         ) AS "rowNumber"
       FROM records r
       JOIN users u ON u.id = r.user_id
-      WHERE r.mode = ${mode}
+      WHERE r.mode = ${mode} AND r.verified = true
     )
     SELECT "userId", username, score, "reachedRound", "survivalTime", clear, "createdAt"
     FROM ranked

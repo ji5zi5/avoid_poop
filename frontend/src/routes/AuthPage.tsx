@@ -65,7 +65,7 @@ export function AuthPage({ onAuthenticated }: Props) {
             <input
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              minLength={6}
+              minLength={mode === "signup" ? 8 : 1}
               required
               type="password"
               placeholder={copy.auth.password}

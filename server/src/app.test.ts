@@ -57,6 +57,7 @@ test('health responses ship security headers', { concurrency: false }, async () 
   assert.equal(health.headers['x-frame-options'], 'DENY');
   assert.equal(health.headers['referrer-policy'], 'no-referrer');
   assert.equal(health.headers['cross-origin-opener-policy'], 'same-origin');
+  assert.equal(health.headers['content-security-policy'], "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
   await app.close();
 });
 
@@ -317,6 +318,28 @@ test('state-changing requests reject unexpected origins when APP_ORIGIN is confi
   }
 });
 
+test('state-changing requests reject missing origins when APP_ORIGIN is configured', { concurrency: false }, async () => {
+  const app = await createApp({
+    appOrigin: 'https://avoid-poop.example',
+  });
+
+  try {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/signup',
+      payload: {
+        username: 'missing_origin_user',
+        password: 'secret123'
+      }
+    });
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().error, 'Origin not allowed.');
+  } finally {
+    await app.close();
+  }
+});
+
 test('records endpoints require auth and return best plus recent runs', { concurrency: false }, async () => {
   const app = await createApp();
 
@@ -389,8 +412,8 @@ test('records endpoints require auth and return best plus recent runs', { concur
   assert.equal(body.recent.length, 2);
   assert.equal(body.multiplayer.stats.matchesPlayed, 0);
   assert.equal(body.multiplayer.recent.length, 0);
-  assert.equal(body.leaderboard.normal[0].username, 'record_user');
-  assert.equal(body.leaderboard.hard[0].username, 'record_user');
+  assert.deepEqual(body.leaderboard.normal, []);
+  assert.deepEqual(body.leaderboard.hard, []);
   await app.close();
 });
 
@@ -447,8 +470,7 @@ test('records endpoint exposes real cross-user leaderboards', { concurrency: fal
 
   assert.equal(recordsView.statusCode, 200);
   const body = recordsView.json();
-  assert.equal(body.leaderboard.normal[0].username, 'rank_one');
-  assert.equal(body.leaderboard.normal[1].username, 'rank_two');
+  assert.deepEqual(body.leaderboard.normal, []);
   assert.equal(body.profile.totalRuns, 1);
   await app.close();
 });

@@ -75,11 +75,11 @@ export async function createApp(overrides: Partial<RuntimeConfig> = {}) {
     }
 
     if (runtimeConfig.appOrigin && request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS') {
-      if (requestOrigin && requestOrigin !== runtimeConfig.appOrigin) {
+      if (!requestOrigin || requestOrigin !== runtimeConfig.appOrigin) {
         request.log.warn(
           {
             event: 'origin_rejected',
-            origin: requestOrigin,
+            origin: requestOrigin ?? null,
             expectedOrigin: runtimeConfig.appOrigin,
             path: request.url,
           },
@@ -113,6 +113,7 @@ export async function createApp(overrides: Partial<RuntimeConfig> = {}) {
     reply.header('X-Frame-Options', 'DENY');
     reply.header('Referrer-Policy', 'no-referrer');
     reply.header('Cross-Origin-Opener-Policy', 'same-origin');
+    reply.header('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
     return payload;
   });
 

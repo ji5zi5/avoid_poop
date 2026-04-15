@@ -51,6 +51,11 @@ type ConnectionMetadata = {
   user: ConnectedUser;
 };
 
+const gameplayInputBucket = {
+  max: 30,
+  windowMs: 1000,
+} as const;
+
 export class MultiplayerSocketGateway {
   private readonly connections = new Map<WebSocket, ConnectionContext>();
   private readonly reconnectRecords = new Map<string, ReconnectRecord>();
@@ -59,6 +64,7 @@ export class MultiplayerSocketGateway {
   private readonly gameService = new MultiplayerGameService();
   private readonly server = new WebSocketServer({noServer: true});
   private readonly messageLimiter: FixedWindowRateLimiter;
+  private readonly gameplayLimiter = new FixedWindowRateLimiter(gameplayInputBucket);
 
   constructor(private readonly app: FastifyInstance, private readonly options: SocketGatewayOptions) {
     this.messageLimiter = new FixedWindowRateLimiter(options.runtimeConfig.rateLimits.writes);
@@ -163,11 +169,11 @@ export class MultiplayerSocketGateway {
       }
 
       const requestOrigin = request.headers.origin?.trim();
-      if (this.options.runtimeConfig.appOrigin && requestOrigin && requestOrigin !== this.options.runtimeConfig.appOrigin) {
+      if (this.options.runtimeConfig.appOrigin && requestOrigin !== this.options.runtimeConfig.appOrigin) {
         this.app.log.warn(
           {
             event: 'multiplayer_ws_origin_rejected',
-            origin: requestOrigin,
+            origin: requestOrigin ?? null,
             expectedOrigin: this.options.runtimeConfig.appOrigin,
           },
           'Rejected websocket upgrade from unexpected origin',
@@ -305,6 +311,21 @@ export class MultiplayerSocketGateway {
         }
       }
 
+      if (event.type === 'player_input' || event.type === 'jump') {
+        const gameplayRateLimitResult = this.gameplayLimiter.consume(`ws-gameplay:${context.user.id}`);
+        if (!gameplayRateLimitResult.allowed) {
+          this.app.log.warn(
+            {
+              event: 'multiplayer_ws_gameplay_rate_limited',
+              userId: context.user.id,
+              messageType: event.type,
+            },
+            'Dropped gameplay websocket message due to rate limiting',
+          );
+          return;
+        }
+      }
+
       if (event.type === 'subscribe_room') {
         try {
           const room = this.options.roomService.getRoomForUser(context.user.id, event.roomCode);
@@ -416,14 +437,15 @@ export class MultiplayerSocketGateway {
       }
 
       if (event.type === 'player_input') {
+        if (game.players.find((player) => player.userId === context.user.id)?.direction === event.direction) {
+          return;
+        }
         this.gameService.setPlayerDirection(game, context.user.id, event.direction);
-        this.broadcastGameSnapshot(context.roomCode);
         return;
       }
 
       if (event.type === 'jump') {
         this.gameService.jumpPlayer(game, context.user.id);
-        this.broadcastGameSnapshot(context.roomCode);
       }
     } catch (error) {
       this.app.log.error({ err: error, userId: context.user.id }, 'Failed to handle multiplayer socket message');

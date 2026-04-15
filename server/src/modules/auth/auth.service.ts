@@ -16,6 +16,9 @@ import {
 export class AuthConflictError extends Error {}
 export class AuthUnauthorizedError extends Error {}
 
+const EXPIRED_SESSION_SWEEP_INTERVAL_MS = 60_000;
+let lastExpiredSessionSweepAt = 0;
+
 export function toPublicUser(user: { id: number; username: string }) {
   return {
     id: user.id,
@@ -76,7 +79,11 @@ export async function resolveSessionUserFromSignedCookie(
   rawCookie: string | undefined,
   unsignCookie: (cookieValue: string) => UnsignCookieResult,
 ) {
-  await deleteExpiredSessions();
+  const now = Date.now();
+  if (now - lastExpiredSessionSweepAt >= EXPIRED_SESSION_SWEEP_INTERVAL_MS) {
+    await deleteExpiredSessions();
+    lastExpiredSessionSweepAt = now;
+  }
 
   if (!rawCookie) {
     return null;
@@ -92,7 +99,7 @@ export async function resolveSessionUserFromSignedCookie(
     return null;
   }
 
-  if (new Date(session.expiresAt).getTime() <= Date.now()) {
+  if (new Date(session.expiresAt).getTime() <= now) {
     await deleteSession(session.id);
     return null;
   }

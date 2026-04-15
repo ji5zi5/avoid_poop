@@ -69,6 +69,17 @@ function migrateRecordsModeSchema(db: DatabaseSync) {
   `);
 }
 
+function migrateRecordsVerificationSchema(db: DatabaseSync) {
+  const columns = db.prepare("PRAGMA table_info(records)").all() as Array<{ name: string }>;
+  if (columns.some((column) => column.name === 'verified')) {
+    return;
+  }
+
+  db.exec(`
+    ALTER TABLE records ADD COLUMN verified INTEGER NOT NULL DEFAULT 0;
+  `);
+}
+
 function createSqliteDb() {
   const dir = path.dirname(config.dbPath);
   fs.mkdirSync(dir, { recursive: true });
@@ -77,6 +88,7 @@ function createSqliteDb() {
   db.exec('PRAGMA foreign_keys = ON;');
   db.exec(schemaSql);
   migrateRecordsModeSchema(db);
+  migrateRecordsVerificationSchema(db);
 
   return db;
 }
@@ -101,6 +113,7 @@ async function createPostgresDb(databaseUrl: string) {
 
   try {
     await sql.unsafe(postgresSchemaSql);
+    await sql.unsafe('ALTER TABLE records ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT FALSE;');
   } catch (error) {
     await sql.end({ timeout: 0 }).catch(() => undefined);
     throw error;

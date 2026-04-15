@@ -13,11 +13,11 @@ import {
   signup,
   toPublicUser
 } from './auth.service.js';
-import {authCredentialsSchema} from './auth.schemas.js';
+import {loginCredentialsSchema, signupCredentialsSchema} from './auth.schemas.js';
 
 export async function authRoutes(app: FastifyInstance) {
   app.post('/signup', async (request, reply) => {
-    const parsed = authCredentialsSchema.safeParse(request.body);
+    const parsed = signupCredentialsSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({error: parsed.error.issues[0]?.message ?? 'Invalid payload.'});
     }
@@ -37,7 +37,7 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.post('/login', async (request, reply) => {
-    const parsed = authCredentialsSchema.safeParse(request.body);
+    const parsed = loginCredentialsSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({error: parsed.error.issues[0]?.message ?? 'Invalid payload.'});
     }

@@ -41,12 +41,28 @@ test('websocket connect rejects unexpected origins when APP_ORIGIN is configured
   const app = await createApp({appOrigin: 'https://avoid-poop.example'});
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
-  const cookie = await signup(app, 'socket_origin_user');
+  const cookie = await signup(app, 'socket_origin_user', { origin: 'https://avoid-poop.example' });
 
   try {
     const statusCode = await connectSocketExpectStatus(port, {
       cookie,
       origin: 'https://evil.example',
+    });
+    assert.equal(statusCode, 403);
+  } finally {
+    await app.close();
+  }
+});
+
+test('websocket connect rejects missing origins when APP_ORIGIN is configured', { concurrency: false }, async () => {
+  const app = await createApp({appOrigin: 'https://avoid-poop.example'});
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+  const cookie = await signup(app, 'socket_missing_origin', { origin: 'https://avoid-poop.example' });
+
+  try {
+    const statusCode = await connectSocketExpectStatus(port, {
+      cookie,
     });
     assert.equal(statusCode, 403);
   } finally {
@@ -398,10 +414,11 @@ test('reconnecting to an active game restores the player from disconnected state
   await app.close();
 });
 
-async function signup(app: Awaited<ReturnType<typeof createApp>>, username: string) {
+async function signup(app: Awaited<ReturnType<typeof createApp>>, username: string, headers?: Record<string, string>) {
   const response = await app.inject({
     method: 'POST',
     url: '/api/auth/signup',
+    headers,
     payload: {
       username,
       password: 'secret123'
