@@ -35,6 +35,7 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
   const [runId, setRunId] = useState(0);
   const [result, setResult] = useState<RunResultPayload | null>(null);
   const [resultRunSessionId, setResultRunSessionId] = useState<string | undefined>();
+  const [runReady, setRunReady] = useState(false);
   const runSessionRef = useRef<SinglePlayerRunSession | null>(null);
 
   function setDirection(direction: number) {
@@ -48,6 +49,7 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
     stateRef.current = createGameEngine(mode);
     setResult(null);
     setResultRunSessionId(undefined);
+    setRunReady(false);
     setRunId((value) => value + 1);
     forceRender((value) => value + 1);
   }
@@ -59,8 +61,10 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
     stateRef.current = createGameEngine(mode);
     setResult(null);
     setResultRunSessionId(undefined);
+    setRunReady(false);
 
     let heartbeatTimer: number | null = null;
+    let loopStarted = false;
 
     async function initializeVerifiedRun() {
       try {
@@ -69,6 +73,9 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
           return;
         }
         runSessionRef.current = runSession;
+        setRunReady(true);
+        loop.start();
+        loopStarted = true;
         heartbeatTimer = window.setInterval(() => {
           const activeSession = runSessionRef.current;
           if (!activeSession || stateRef.current.gameOver) {
@@ -83,13 +90,17 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
       } catch (caught) {
         if (caught instanceof ApiRequestError && caught.status === 401) {
           onSessionExpired();
+          return;
+        }
+        if (!disposed) {
+          setRunReady(true);
+          loop.start();
+          loopStarted = true;
         }
       }
     }
 
     let disposed = false;
-    void initializeVerifiedRun();
-
     const loop = createLoop((delta) => {
       const state = updateGame(stateRef.current, delta, directionRef.current);
       const canvas = canvasRef.current;
@@ -126,7 +137,7 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
 
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
-    loop.start();
+    void initializeVerifiedRun();
 
     return () => {
       window.removeEventListener("keydown", onKeyDown);
@@ -136,7 +147,9 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
         window.clearInterval(heartbeatTimer);
       }
       disposed = true;
-      loop.stop();
+      if (loopStarted) {
+        loop.stop();
+      }
     };
   }, [mode, runId]);
 
@@ -188,6 +201,12 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
           <div className="game-frame">
             <div className="game-playfield">
               <canvas ref={canvasRef} width={state.width} height={state.height} className="game-canvas" />
+              {!runReady && !result ? (
+                <div className="boss-telegraph" role="status" aria-live="polite">
+                  <span>RANKED</span>
+                  <strong>랭킹 세션 준비 중</strong>
+                </div>
+              ) : null}
               {state.damageFlashTimer > 0 ? <div className="damage-flash" aria-hidden="true" /> : null}
               {state.bossTelegraphText && !result ? (
                 <div className="boss-telegraph" role="status" aria-live="polite">
