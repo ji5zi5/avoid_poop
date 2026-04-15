@@ -30,6 +30,7 @@ vi.mock('./lib/api', () => ({
     saveRecord: vi.fn(),
     leaveRoom,
   },
+  clearStoredSessionToken: vi.fn(),
   ApiRequestError: class ApiRequestError extends Error { status = 400; },
 }));
 

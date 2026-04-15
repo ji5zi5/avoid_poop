@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {authCredentialsSchema, authWebSocketTicketSchema} from './auth.js';
+import {authCredentialsSchema, authResponseSchema, authWebSocketTicketSchema} from './auth.js';
 import {recordsResponseSchema, runResultPayloadSchema, singlePlayerRunSessionSchema} from './records.js';
 
 test('credentials schema accepts simple valid credentials', () => {
@@ -28,6 +28,15 @@ test('websocket ticket schema accepts a token payload', () => {
   });
 
   assert.equal(parsed.token, 'signed-ticket');
+});
+
+test('auth response schema includes a session token', () => {
+  const parsed = authResponseSchema.parse({
+    user: { id: 1, username: 'player_one' },
+    sessionToken: 'session-token',
+  });
+
+  assert.equal(parsed.sessionToken, 'session-token');
 });
 
 test('run result schema requires a positive round number', () => {

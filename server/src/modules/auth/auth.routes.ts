@@ -25,9 +25,9 @@ export async function authRoutes(app: FastifyInstance) {
 
     try {
       const user = await signup(parsed.data.username, parsed.data.password);
-      await establishSession(reply, user.id);
+      const sessionToken = await establishSession(reply, user.id);
       request.log.info({event: 'auth_signup', userId: user.id, username: user.username}, 'User signed up');
-      return authResponseSchema.parse({user: toPublicUser(user)});
+      return authResponseSchema.parse({user: toPublicUser(user), sessionToken});
     } catch (error) {
       if (error instanceof AuthConflictError) {
         request.log.warn({event: 'auth_signup_conflict', username: parsed.data.username}, 'Signup rejected because username exists');
@@ -45,9 +45,9 @@ export async function authRoutes(app: FastifyInstance) {
 
     try {
       const user = await login(parsed.data.username, parsed.data.password);
-      await establishSession(reply, user.id);
+      const sessionToken = await establishSession(reply, user.id);
       request.log.info({event: 'auth_login', userId: user.id, username: user.username}, 'User logged in');
-      return authResponseSchema.parse({user: toPublicUser(user)});
+      return authResponseSchema.parse({user: toPublicUser(user), sessionToken});
     } catch (error) {
       if (error instanceof AuthUnauthorizedError) {
         request.log.warn({event: 'auth_login_denied', username: parsed.data.username}, 'Login rejected');
@@ -60,7 +60,11 @@ export async function authRoutes(app: FastifyInstance) {
   app.post('/logout', {preHandler: optionalUser}, async (request, reply) => {
     const rawCookie = request.cookies[config.sessionCookieName];
     const unsigned = rawCookie ? request.unsignCookie(rawCookie) : null;
-    await clearSession(reply, unsigned?.valid ? unsigned.value : undefined);
+    const bearerToken = request.headers.authorization?.startsWith('Bearer ')
+      ? request.headers.authorization.slice(7).trim()
+      : undefined;
+    const sessionToken = unsigned?.valid ? unsigned.value : bearerToken;
+    await clearSession(reply, sessionToken);
     request.log.info({event: 'auth_logout', userId: request.user?.id ?? null}, 'User logged out');
     return reply.send({ok: true});
   });

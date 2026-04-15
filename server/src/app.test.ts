@@ -46,6 +46,53 @@ test('signup creates a session and me returns the authenticated user', { concurr
   await app.close();
 });
 
+test('bearer session tokens can access auth endpoints without cookies', { concurrency: false }, async () => {
+  const app = await createApp();
+  const signup = await app.inject({
+    method: 'POST',
+    url: '/api/auth/signup',
+    payload: {
+      username: 'token_user',
+      password: 'secret123'
+    }
+  });
+
+  assert.equal(signup.statusCode, 200);
+  const sessionToken = signup.json().sessionToken as string;
+
+  const me = await app.inject({
+    method: 'GET',
+    url: '/api/auth/me',
+    headers: {
+      authorization: `Bearer ${sessionToken}`,
+    },
+  });
+
+  assert.equal(me.statusCode, 200);
+  assert.equal(me.json().user.username, 'token_user');
+
+  const logout = await app.inject({
+    method: 'POST',
+    url: '/api/auth/logout',
+    headers: {
+      authorization: `Bearer ${sessionToken}`,
+    },
+  });
+
+  assert.equal(logout.statusCode, 200);
+
+  const meAfterLogout = await app.inject({
+    method: 'GET',
+    url: '/api/auth/me',
+    headers: {
+      authorization: `Bearer ${sessionToken}`,
+    },
+  });
+
+  assert.equal(meAfterLogout.statusCode, 401);
+  await app.close();
+});
+
 test('authenticated users can mint websocket tickets', { concurrency: false }, async () => {
   const app = await createApp();
   const signup = await app.inject({

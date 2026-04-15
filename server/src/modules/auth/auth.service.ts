@@ -84,6 +84,8 @@ export async function establishSession(reply: FastifyReply, userId: number) {
     signed: true,
     expires: expiresAt,
   });
+
+  return sessionId;
 }
 
 export function createWebSocketTicket(userId: number) {
@@ -171,9 +173,47 @@ export async function resolveSessionUserFromSignedCookie(
   return findUserById(session.userId);
 }
 
+export async function resolveSessionUserFromSessionId(sessionId: string | undefined | null) {
+  await deleteExpiredSessions();
+
+  if (!sessionId) {
+    return null;
+  }
+
+  const session = await getSession(sessionId);
+  if (!session) {
+    return null;
+  }
+
+  if (new Date(session.expiresAt).getTime() <= Date.now()) {
+    await deleteSession(session.id);
+    return null;
+  }
+
+  return findUserById(session.userId);
+}
+
+function readAuthorizationSessionToken(header: string | undefined) {
+  if (!header) {
+    return null;
+  }
+
+  const [scheme, token] = header.split(/\s+/, 2);
+  if (!scheme || !token || scheme.toLowerCase() !== 'bearer') {
+    return null;
+  }
+
+  return token.trim() || null;
+}
+
 export async function resolveSessionUser(request: FastifyRequest) {
-  return resolveSessionUserFromSignedCookie(
+  const fromCookie = await resolveSessionUserFromSignedCookie(
     request.cookies[config.sessionCookieName],
     (cookieValue) => request.unsignCookie(cookieValue),
   );
+  if (fromCookie) {
+    return fromCookie;
+  }
+
+  return resolveSessionUserFromSessionId(readAuthorizationSessionToken(request.headers.authorization));
 }

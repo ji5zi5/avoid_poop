@@ -25,7 +25,8 @@ export const authCredentialsSchema = z.object({
 });
 
 export const authResponseSchema = z.object({
-  user: authUserSchema
+  user: authUserSchema,
+  sessionToken: z.string().min(1),
 });
 
 export const authWebSocketTicketSchema = z.object({

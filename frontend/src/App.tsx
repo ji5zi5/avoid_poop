@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { AuthUser, GameMode, RecordEntry } from "../../shared/src/contracts/index";
 import { copy } from "./content/copy";
-import { api } from "./lib/api";
+import { api, clearStoredSessionToken } from "./lib/api";
 import { createMultiplayerClient, type MultiplayerGameSnapshot, type RoomSummary } from "./lib/multiplayerClient";
 import { AuthPage } from "./routes/AuthPage";
 import { CareerPage } from "./routes/CareerPage";
@@ -97,12 +97,14 @@ export default function App() {
   }
 
   function handleSessionExpired() {
+    clearStoredSessionToken();
     setUser(null);
     setScreen("auth");
   }
 
   async function handleLogout() {
     await api.logout().catch(() => undefined);
+    clearStoredSessionToken();
     setUser(null);
     setScreen("auth");
   }

@@ -17,6 +17,26 @@ import type {
 } from "./multiplayerClient";
 import { getApiUrl } from "./runtimeConfig";
 
+const SESSION_TOKEN_KEY = "avoid-poop-session-token";
+
+function readSessionToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return window.localStorage.getItem(SESSION_TOKEN_KEY);
+}
+
+function writeSessionToken(sessionToken: string | null) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (!sessionToken) {
+    window.localStorage.removeItem(SESSION_TOKEN_KEY);
+    return;
+  }
+  window.localStorage.setItem(SESSION_TOKEN_KEY, sessionToken);
+}
+
 export class ApiRequestError extends Error {
   status: number;
 
@@ -30,10 +50,14 @@ export class ApiRequestError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   const hasBody = init?.body !== undefined && init.body !== null;
+  const sessionToken = readSessionToken();
   if (hasBody) {
     headers.set("Content-Type", headers.get("Content-Type") ?? "application/json");
   } else {
     headers.delete("Content-Type");
+  }
+  if (sessionToken) {
+    headers.set("Authorization", `Bearer ${sessionToken}`);
   }
 
   const response = await fetch(getApiUrl(path), {
@@ -56,11 +80,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   me: () => request<AuthSession>("/api/auth/me"),
-  signup: (payload: AuthCredentials) =>
-    request<AuthResponse>("/api/auth/signup", { method: "POST", body: JSON.stringify(payload) }),
-  login: (payload: AuthCredentials) =>
-    request<AuthResponse>("/api/auth/login", { method: "POST", body: JSON.stringify(payload) }),
-  logout: () => request<{ ok: true }>("/api/auth/logout", { method: "POST" }),
+  signup: async (payload: AuthCredentials) => {
+    const response = await request<AuthResponse>("/api/auth/signup", { method: "POST", body: JSON.stringify(payload) });
+    writeSessionToken(response.sessionToken);
+    return response;
+  },
+  login: async (payload: AuthCredentials) => {
+    const response = await request<AuthResponse>("/api/auth/login", { method: "POST", body: JSON.stringify(payload) });
+    writeSessionToken(response.sessionToken);
+    return response;
+  },
+  logout: async () => {
+    const response = await request<{ ok: true }>("/api/auth/logout", { method: "POST" });
+    writeSessionToken(null);
+    return response;
+  },
   createWebSocketTicket: () => request<AuthWebSocketTicket>("/api/auth/ws-ticket", { method: "POST" }),
   records: () => request<RecordsResponse>("/api/records"),
   createRunSession: (mode: RunResultPayload["mode"]) =>
@@ -88,3 +122,7 @@ export const api = {
   getRoom: (roomCode: string) => request<RoomSummary>(`/api/multiplayer/rooms/${encodeURIComponent(roomCode)}`),
   leaveRoom: () => request<{ ok: true }>("/api/multiplayer/leave", { method: "POST" }),
 };
+
+export function clearStoredSessionToken() {
+  writeSessionToken(null);
+}
