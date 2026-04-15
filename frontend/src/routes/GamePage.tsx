@@ -69,11 +69,6 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
           return;
         }
         runSessionRef.current = runSession;
-        stateRef.current = createGameEngine(mode, {
-          waveSeed: runSession.waveSeed,
-          bossSeed: runSession.bossSeed,
-        });
-        forceRender((value) => value + 1);
         heartbeatTimer = window.setInterval(() => {
           const activeSession = runSessionRef.current;
           if (!activeSession || stateRef.current.gameOver) {
