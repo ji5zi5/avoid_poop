@@ -13,6 +13,15 @@ test('credentials schema accepts simple valid credentials', () => {
   assert.equal(parsed.username, 'player_one');
 });
 
+test('credentials schema accepts Korean usernames', () => {
+  const parsed = authCredentialsSchema.parse({
+    username: '가나다_1',
+    password: 'secret123'
+  });
+
+  assert.equal(parsed.username, '가나다_1');
+});
+
 test('run result schema requires a positive round number', () => {
   assert.throws(() =>
     runResultPayloadSchema.parse({

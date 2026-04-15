@@ -26,17 +26,22 @@ export function toPublicUser(user: { id: number; username: string }) {
   };
 }
 
+function normalizeUsername(username: string) {
+  return username.normalize('NFC').trim();
+}
+
 export async function signup(username: string, password: string) {
-  const existing = await findUserByUsername(username);
+  const normalizedUsername = normalizeUsername(username);
+  const existing = await findUserByUsername(normalizedUsername);
   if (existing) {
     throw new AuthConflictError('Username is already taken.');
   }
 
-  return createUser(username, hashPassword(password));
+  return createUser(normalizedUsername, hashPassword(password));
 }
 
 export async function login(username: string, password: string) {
-  const user = await findUserByUsername(username);
+  const user = await findUserByUsername(normalizeUsername(username));
   if (!user || !verifyPassword(password, user.passwordHash)) {
     throw new AuthUnauthorizedError('Invalid username or password.');
   }

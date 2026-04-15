@@ -1,8 +1,15 @@
 import {z} from 'zod';
 
+export const authUsernameSchema = z
+  .string()
+  .trim()
+  .min(2)
+  .max(24)
+  .regex(/^[\p{Script=Hangul}a-zA-Z0-9_]+$/u);
+
 export const authUserSchema = z.object({
   id: z.number().int().positive(),
-  username: z.string().min(3).max(24)
+  username: authUsernameSchema
 });
 
 export const authSessionSchema = z.object({
@@ -11,7 +18,7 @@ export const authSessionSchema = z.object({
 });
 
 export const authCredentialsSchema = z.object({
-  username: z.string().min(3).max(24).regex(/^[a-zA-Z0-9_]+$/),
+  username: authUsernameSchema,
   password: z.string()
     .min(6)
     .max(72)

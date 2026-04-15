@@ -23,7 +23,7 @@ test('signup creates a session and me returns the authenticated user', { concurr
     method: 'POST',
     url: '/api/auth/signup',
     payload: {
-      username: 'player_one',
+      username: '플레이어1',
       password: 'secret123'
     }
   });
@@ -41,7 +41,7 @@ test('signup creates a session and me returns the authenticated user', { concurr
   });
 
   assert.equal(me.statusCode, 200);
-  assert.equal(me.json().user.username, 'player_one');
+  assert.equal(me.json().user.username, '플레이어1');
   assert.equal(me.json().authenticated, true);
   await app.close();
 });

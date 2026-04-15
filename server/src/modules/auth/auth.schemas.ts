@@ -1,6 +1,7 @@
 import { z } from 'zod';
+import { authUsernameSchema } from '../../../../shared/src/contracts/auth.js';
 
-const usernameSchema = z.string().min(3).max(24).regex(/^[a-zA-Z0-9_]+$/);
+const usernameSchema = authUsernameSchema;
 
 export const loginCredentialsSchema = z.object({
   username: usernameSchema,
