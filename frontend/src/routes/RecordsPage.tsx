@@ -21,6 +21,16 @@ function isMultiplayerEntry(entry: BoardEntry): entry is MultiplayerLeaderboardE
   return "wins" in entry;
 }
 
+function formatLeaderSummary(entry: BoardEntry | null) {
+  if (!entry) {
+    return copy.records.none;
+  }
+  if (isMultiplayerEntry(entry)) {
+    return `${copy.records.multiplayerWins} ${entry.wins} · ${entry.matchesPlayed}판`;
+  }
+  return `${entry.score}점 · ${entry.reachedRound}R`;
+}
+
 export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
   const [records, setRecords] = useState<RecordsResponse | null>(null);
   const [error, setError] = useState("");
@@ -73,7 +83,6 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
         <div className="panel-heading records-heading">
           <span className="records-badge">{copy.records.badge}</span>
           <h2>{copy.records.title}</h2>
-          <span className="records-meta">{copy.records.meta}</span>
         </div>
 
         {error ? <p className="error-text">{error}</p> : null}
@@ -81,7 +90,6 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
           <>
             <div className="records-toolbar">
               <div>
-                <span className="panel-kicker">{copy.records.publicBoard}</span>
                 <h3>{copy.records.leaderboardPulse(boardState.boardLabel)}</h3>
               </div>
               <div className="records-toolbar__actions">
@@ -99,13 +107,7 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
                 <div>
                   <span className="panel-kicker">{copy.records.spotlight}</span>
                   <h3>{boardState.leader?.username ?? copy.records.none}</h3>
-                  <p>
-                    {boardState.leader
-                      ? isMultiplayerEntry(boardState.leader)
-                        ? `${copy.records.multiplayerWins} ${boardState.leader.wins} · ${copy.records.multiplayerMatches} ${boardState.leader.matchesPlayed}`
-                        : `${copy.records.roundEntry(boardState.leader.score, boardState.leader.reachedRound)} · ${formatSecondsLabel(boardState.leader.survivalTime)}`
-                      : copy.records.none}
-                  </p>
+                  <p>{formatLeaderSummary(boardState.leader)}</p>
                 </div>
                 <div className="records-pill-row">
                   <span className="records-pill">{copy.records.boardWindow(boardState.selectedEntries.length)}</span>
@@ -147,8 +149,7 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
                         <strong>{entry.username}</strong>
                         {isMultiplayerEntry(entry) ? (
                           <>
-                            <span>{copy.records.multiplayerWins} {entry.wins}</span>
-                            <span>{copy.records.topPlacement(entry.bestPlacement)}</span>
+                            <span>{entry.wins}승 · {copy.records.topPlacement(entry.bestPlacement)}</span>
                           </>
                         ) : (
                           <>
@@ -192,7 +193,6 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
                         <div className="records-chip-row">
                           <span className="records-chip">{copy.records.multiplayerWins} {entry.wins}</span>
                           <span className="records-chip">{copy.records.topPlacement(entry.bestPlacement)}</span>
-                          <span className="records-chip">최고 라운드 {entry.bestReachedRound ?? "--"}</span>
                         </div>
                       ) : (
                         <div className="records-chip-row">

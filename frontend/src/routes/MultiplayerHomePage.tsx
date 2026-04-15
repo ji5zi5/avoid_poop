@@ -70,7 +70,6 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
           <div>
             <p className="panel-kicker">{copy.multiplayer.entry}</p>
             <h1 className="home-card__title">{copy.multiplayer.homeTitle}</h1>
-            <p className="home-card__meta">{copy.multiplayer.roomListHint}</p>
           </div>
           <button className="ghost-button subtle-button" onClick={onBack}>{copy.records.back}</button>
         </div>
@@ -79,7 +78,6 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
           <article className="matchmaking-card matchmaking-card--highlight matchmaking-card--heroic matchmaking-card--stitch">
             <span className="info-card__label">FAST MATCH</span>
             <strong>{copy.multiplayer.quickJoin}</strong>
-            <p>{copy.multiplayer.quickJoinHint}</p>
             <div className="matchmaking-card__chips">
               <span className="home-status-chip">{copy.multiplayer.publicRoom}</span>
               <span className="home-status-chip">{copy.multiplayer.quickJoinMeta}</span>
@@ -90,7 +88,6 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
           <article className="matchmaking-card matchmaking-card--heroic matchmaking-card--stitch">
             <span className="info-card__label">ROOM HOST</span>
             <strong>{copy.multiplayer.createRoom}</strong>
-            <p>{copy.multiplayer.createRoomHint}</p>
             <div className="matchmaking-card__chips">
               <span className="home-status-chip">{options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
               <span className="home-status-chip">{copy.multiplayer.bodyBlock} {options.bodyBlock ? "ON" : "OFF"}</span>
@@ -105,7 +102,6 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
             <div>
               <span className="panel-kicker">{copy.multiplayer.roomList}</span>
               <h2>{copy.multiplayer.roomList}</h2>
-              <p className="records-section__subcopy">{copy.multiplayer.roomListSubcopy(rooms.length)}</p>
             </div>
             <button className="ghost-button subtle-button" type="button" onClick={() => void refreshRooms()}>{copy.multiplayer.refreshRooms}</button>
           </div>
@@ -120,7 +116,6 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
             <div className="multiplayer-room-group">
               <div className="multiplayer-room-group__heading">
                 <span className="room-visibility-badge">{copy.multiplayer.publicRoom}</span>
-                <p>{copy.multiplayer.publicRoomsHint}</p>
               </div>
               <div className="multiplayer-room-list">
                 {roomGroups.publicRooms.map((room) => (
@@ -152,7 +147,6 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
             <div className="multiplayer-room-group">
               <div className="multiplayer-room-group__heading">
                 <span className="room-visibility-badge room-visibility-badge--private">{copy.multiplayer.privateRoom}</span>
-                <p>{copy.multiplayer.privateJoinHint}</p>
               </div>
               <div className="multiplayer-room-list">
                 {roomGroups.privateRooms.map((room) => {
@@ -231,7 +225,6 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
                     <input value={createPrivatePassword} onChange={(event) => setCreatePrivatePassword(event.target.value)} placeholder={copy.multiplayer.passwordPlaceholder} />
                   </label>
                 ) : null}
-                <p className="home-card__meta multiplayer-option-note">{copy.multiplayer.jumpHint}</p>
               </div>
               <button
                 className="home-start-button home-start-button--hero"
