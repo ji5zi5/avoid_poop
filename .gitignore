@@ -27,3 +27,5 @@ shared/src/**/*.js
 .omx/
 .stitch/designs/
 .vercel/
+.stitch/
+docs/plans/

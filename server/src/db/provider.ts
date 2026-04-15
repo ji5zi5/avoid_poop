@@ -39,7 +39,7 @@ export function assertSupportedDatabaseRuntime() {
 
   if (runtime.provider === 'postgres') {
     throw new Error(
-      'DATABASE_PROVIDER=postgres is scaffolded for schema planning only. Keep SQLite runtime enabled for now and follow docs/plans/2026-04-13-postgres-migration-prep.md before wiring a real Postgres adapter.'
+      'DATABASE_PROVIDER=postgres is scaffolded for schema planning only. Keep SQLite runtime enabled until a real Postgres runtime adapter and migration path are implemented.'
     );
   }
 
