@@ -103,11 +103,12 @@ export async function saveRunResult(userId: number, payload: SaveRunResultInput)
   }
 
   if (payload.runSessionId && runSession?.userId === userId && !runSession.consumedAt) {
-    await consumeSinglePlayerRunSession(payload.runSessionId, userId, new Date().toISOString());
+    // defer consumption until after the record write succeeds
   }
 
-  return createRecord({
+  const record = await createRecord({
     userId,
+    runSessionId: verified ? payload.runSessionId ?? null : null,
     mode: storedPayload.mode,
     score: storedPayload.score,
     reachedRound: storedPayload.reachedRound,
@@ -115,6 +116,12 @@ export async function saveRunResult(userId: number, payload: SaveRunResultInput)
     clear: storedPayload.clear,
     verified,
   });
+
+  if (payload.runSessionId && runSession?.userId === userId && !runSession.consumedAt) {
+    await consumeSinglePlayerRunSession(payload.runSessionId, userId, new Date().toISOString());
+  }
+
+  return record;
 }
 
 function rankSingle(entries: DbSingleLeaderboardEntry[]) {

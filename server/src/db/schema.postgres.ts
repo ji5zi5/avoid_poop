@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS records (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  run_session_id TEXT UNIQUE REFERENCES single_player_run_sessions(id) ON DELETE SET NULL,
   mode TEXT NOT NULL CHECK(mode IN ('normal', 'hard')),
   score INTEGER NOT NULL,
   reached_round INTEGER NOT NULL,

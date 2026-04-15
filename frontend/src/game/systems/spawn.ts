@@ -27,8 +27,10 @@ type CustomHazardOptions = {
   x: number;
 };
 
-function randomX(width: number, size: number) {
-  return Math.floor(Math.random() * Math.max(1, width - size));
+function randomX(state: GameState, width: number, size: number) {
+  const rolled = advanceWaveSeed(state.waveDirector.seed);
+  state.waveDirector.seed = rolled.nextSeed;
+  return Math.floor(rolled.value * Math.max(1, width - size));
 }
 
 function clampX(width: number, hazardWidth: number, x: number) {
@@ -169,7 +171,7 @@ export function spawnHazard(state: GameState, boss = false, forcedX?: number) {
     speed,
     owner: boss ? "boss" : "wave",
     variant: boss ? "boss" : undefined,
-    x: forcedX ?? randomX(state.width, size),
+    x: forcedX ?? randomX(state, state.width, size),
   });
 }
 
@@ -177,7 +179,7 @@ function spawnClusterHazards(state: GameState, count: 2 | 3) {
   const size = getNormalHazardSize(state);
   const gap = size + 18;
   const totalWidth = size + gap * (count - 1);
-  const anchorX = randomX(state.width, totalWidth);
+  const anchorX = randomX(state, state.width, totalWidth);
   const pressure = roundPressure(state);
   const speed = (state.mode === "hard" ? 176 : 152) + pressure * (state.mode === "hard" ? 15 : 11);
 
@@ -198,7 +200,7 @@ function spawnSplitHazard(state: GameState) {
   const speed = (state.mode === "hard" ? 194 : 172) + pressure * (state.mode === "hard" ? 14 : 11);
 
   createCustomHazard(state, {
-    x: randomX(state.width, size),
+    x: randomX(state, state.width, size),
     size,
     speed,
     owner: "wave",
@@ -217,7 +219,7 @@ function spawnBounceHazard(state: GameState) {
   const speed = (state.mode === "hard" ? 204 : 180) + pressure * (state.mode === "hard" ? 15 : 10);
 
   createCustomHazard(state, {
-    x: randomX(state.width, size),
+    x: randomX(state, state.width, size),
     size,
     speed,
     owner: "wave",
@@ -311,6 +313,6 @@ export function maybeSpawnItem(state: GameState) {
 
   state.itemTimer = 0;
   const type = ITEM_TYPES[state.nextItemId % ITEM_TYPES.length];
-  state.items.push(createItem(state.nextItemId, randomX(state.width, 20), type));
+  state.items.push(createItem(state.nextItemId, randomX(state, state.width, 20), type));
   state.nextItemId += 1;
 }

@@ -80,6 +80,18 @@ function migrateRecordsVerificationSchema(db: DatabaseSync) {
   `);
 }
 
+function migrateRecordsRunSessionSchema(db: DatabaseSync) {
+  const columns = db.prepare("PRAGMA table_info(records)").all() as Array<{ name: string }>;
+  if (columns.some((column) => column.name === 'run_session_id')) {
+    return;
+  }
+
+  db.exec(`
+    ALTER TABLE records ADD COLUMN run_session_id TEXT REFERENCES single_player_run_sessions(id) ON DELETE SET NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_records_run_session_id ON records(run_session_id) WHERE run_session_id IS NOT NULL;
+  `);
+}
+
 function createSqliteDb() {
   const dir = path.dirname(config.dbPath);
   fs.mkdirSync(dir, { recursive: true });
@@ -89,6 +101,7 @@ function createSqliteDb() {
   db.exec(schemaSql);
   migrateRecordsModeSchema(db);
   migrateRecordsVerificationSchema(db);
+  migrateRecordsRunSessionSchema(db);
 
   return db;
 }
@@ -114,6 +127,7 @@ async function createPostgresDb(databaseUrl: string) {
   try {
     await sql.unsafe(postgresSchemaSql);
     await sql.unsafe('ALTER TABLE records ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT FALSE;');
+    await sql.unsafe('ALTER TABLE records ADD COLUMN IF NOT EXISTS run_session_id TEXT UNIQUE REFERENCES single_player_run_sessions(id) ON DELETE SET NULL;');
   } catch (error) {
     await sql.end({ timeout: 0 }).catch(() => undefined);
     throw error;

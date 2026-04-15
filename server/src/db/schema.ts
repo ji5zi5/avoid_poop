@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS records (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
+  run_session_id TEXT UNIQUE,
   mode TEXT NOT NULL CHECK(mode IN ('normal', 'hard')),
   score INTEGER NOT NULL,
   reached_round INTEGER NOT NULL,
@@ -24,7 +25,8 @@ CREATE TABLE IF NOT EXISTS records (
   clear INTEGER NOT NULL,
   verified INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(run_session_id) REFERENCES single_player_run_sessions(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS single_player_run_sessions (
@@ -91,6 +93,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS records (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  run_session_id TEXT UNIQUE REFERENCES single_player_run_sessions(id) ON DELETE SET NULL,
   mode TEXT NOT NULL CHECK(mode IN ('normal', 'hard')),
   score INTEGER NOT NULL,
   reached_round INTEGER NOT NULL,

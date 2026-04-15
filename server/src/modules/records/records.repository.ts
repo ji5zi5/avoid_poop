@@ -4,6 +4,7 @@ import { toIsoTimestamp } from '../../utils/timestamps.js';
 export type DbRecord = {
   id: number;
   userId: number;
+  runSessionId: string | null;
   mode: 'normal' | 'hard';
   score: number;
   reachedRound: number;
@@ -77,11 +78,12 @@ export async function createRecord(input: Omit<DbRecord, 'id' | 'createdAt'>) {
   const db = await getDb();
   if (db.provider === 'sqlite') {
     const stmt = db.db.prepare(
-      `INSERT INTO records (user_id, mode, score, reached_round, survival_time, clear, verified)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO records (user_id, run_session_id, mode, score, reached_round, survival_time, clear, verified)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING
          id,
          user_id AS userId,
+         run_session_id AS runSessionId,
          mode,
          score,
          reached_round AS reachedRound,
@@ -93,6 +95,7 @@ export async function createRecord(input: Omit<DbRecord, 'id' | 'createdAt'>) {
 
     const row = stmt.get(
       input.userId,
+      input.runSessionId,
       input.mode,
       input.score,
       input.reachedRound,
@@ -110,10 +113,11 @@ export async function createRecord(input: Omit<DbRecord, 'id' | 'createdAt'>) {
 
   const [row] = await db.sql<DbRecord[]>`
     INSERT INTO records (user_id, mode, score, reached_round, survival_time, clear, verified)
-    VALUES (${input.userId}, ${input.mode}, ${input.score}, ${input.reachedRound}, ${input.survivalTime}, ${input.clear}, ${input.verified})
+    VALUES (${input.userId}, ${input.runSessionId}, ${input.mode}, ${input.score}, ${input.reachedRound}, ${input.survivalTime}, ${input.clear}, ${input.verified})
     RETURNING
       id,
       user_id AS "userId",
+      run_session_id AS "runSessionId",
       mode,
       score,
       reached_round AS "reachedRound",
@@ -133,6 +137,7 @@ export async function listRecentRecords(userId: number) {
       `SELECT
          id,
          user_id AS userId,
+         run_session_id AS runSessionId,
          mode,
          score,
          reached_round AS reachedRound,
@@ -157,6 +162,7 @@ export async function listRecentRecords(userId: number) {
     SELECT
       id,
       user_id AS "userId",
+      run_session_id AS "runSessionId",
       mode,
       score,
       reached_round AS "reachedRound",
@@ -180,6 +186,7 @@ export async function findBestRecordByMode(userId: number, mode: 'normal' | 'har
       `SELECT
          id,
          user_id AS userId,
+         run_session_id AS runSessionId,
          mode,
          score,
          reached_round AS reachedRound,
@@ -209,6 +216,7 @@ export async function findBestRecordByMode(userId: number, mode: 'normal' | 'har
     SELECT
       id,
       user_id AS "userId",
+      run_session_id AS "runSessionId",
       mode,
       score,
       reached_round AS "reachedRound",
