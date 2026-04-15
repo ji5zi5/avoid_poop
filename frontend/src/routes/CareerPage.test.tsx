@@ -40,6 +40,7 @@ const sampleRecords: RecordsResponse = {
       reachedRound: 6,
       survivalTime: 45.6,
       clear: true,
+      verified: true,
       createdAt: '2026-04-13T09:00:00.000Z',
     },
     hard: {
@@ -50,6 +51,7 @@ const sampleRecords: RecordsResponse = {
       reachedRound: 5,
       survivalTime: 37.4,
       clear: false,
+      verified: true,
       createdAt: '2026-04-13T09:05:00.000Z',
     },
   },
@@ -62,6 +64,7 @@ const sampleRecords: RecordsResponse = {
       reachedRound: 5,
       survivalTime: 37.4,
       clear: false,
+      verified: true,
       createdAt: '2026-04-13T09:05:00.000Z',
     },
   ],

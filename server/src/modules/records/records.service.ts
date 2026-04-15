@@ -68,8 +68,8 @@ function estimateMaxReachableRound(mode: RunResultPayload['mode'], survivalTime:
 
 function estimateMaxReasonableScore(payload: RunResultPayload) {
   const passiveRate = payload.mode === 'hard' ? 30 : 24;
-  const optimisticHazardBonus = payload.survivalTime * (payload.mode === 'hard' ? 26 : 20);
-  const optimisticItemBonus = Math.ceil(payload.survivalTime / 6) * 40;
+  const optimisticHazardBonus = payload.survivalTime * (payload.mode === 'hard' ? 36 : 28);
+  const optimisticItemBonus = Math.ceil(payload.survivalTime / 6) * 50;
   const clearBonus = payload.clear ? 400 : 0;
   return Math.ceil(payload.survivalTime * passiveRate + optimisticHazardBonus + optimisticItemBonus + clearBonus);
 }

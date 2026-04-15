@@ -21,6 +21,7 @@ export const singlePlayerRunSessionSchema = z.object({
 export const recordEntrySchema = runResultPayloadSchema.extend({
   id: z.number().int().positive(),
   userId: z.number().int().positive().optional(),
+  verified: z.boolean().default(false),
   createdAt: z.string()
 });
 
