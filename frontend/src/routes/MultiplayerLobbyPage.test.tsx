@@ -30,6 +30,15 @@ describe('MultiplayerLobbyPage', () => {
     expect((screen.getByText('시작') as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('gives each lobby player a distinct visual accent', () => {
+    render(<MultiplayerLobbyPage canStart connected room={room} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onStart={vi.fn()} />);
+
+    const hostRow = screen.getByTestId('lobby-player-1');
+    const guestRow = screen.getByTestId('lobby-player-2');
+
+    expect(hostRow.getAttribute('style')).not.toBe(guestRow.getAttribute('style'));
+  });
+
   it('sends chat message from the form', () => {
     const onSendChat = vi.fn();
     render(<MultiplayerLobbyPage canStart connected room={{...room, players: room.players.map((p) => ({...p, ready: true}))}} userId={1} onLeave={vi.fn()} onSendChat={onSendChat} onSetReady={vi.fn()} onStart={vi.fn()} />);

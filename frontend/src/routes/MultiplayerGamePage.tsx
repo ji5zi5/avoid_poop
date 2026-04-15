@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 import { copy } from "../content/copy";
 import { createHorizontalInputTracker } from "../lib/horizontalInput";
+import { getMultiplayerColorMap } from "../lib/multiplayerColors";
 import type { MultiplayerGameSnapshot } from "../lib/multiplayerClient";
 import { renderMultiplayerGame } from "../game/multiplayer/renderMultiplayerGame";
 
@@ -16,6 +17,7 @@ type Props = {
 export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, onJump, onLeave }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const inputTrackerRef = useRef(createHorizontalInputTracker());
+  const playerColors = getMultiplayerColorMap(game.players);
   const me = game.players.find((player) => player.userId === currentUserId) ?? null;
   const remaining = game.players.filter((player) => player.status === "alive").length;
   const currentDebuffs = me?.activeDebuffs ?? [];
@@ -79,7 +81,15 @@ export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, on
           {game.phase === "complete" ? <div className="spectator-banner">{game.winnerUserId === currentUserId ? "WIN" : "게임 종료"}</div> : null}
           <div className="multiplayer-player-strip">
             {game.players.map((player) => (
-              <div key={player.userId} className={`effect-pill ${player.userId === currentUserId ? "is-self" : ""}`}>
+              <div
+                key={player.userId}
+                className={`effect-pill effect-pill--player ${player.userId === currentUserId ? "is-self" : ""}`}
+                style={{
+                  "--player-accent": playerColors.get(player.userId)?.accent,
+                  "--player-soft": playerColors.get(player.userId)?.soft,
+                  "--player-ink": playerColors.get(player.userId)?.ink,
+                } as React.CSSProperties}
+              >
                 <span>{player.username}</span>
                 <strong>{player.status}</strong>
               </div>

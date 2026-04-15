@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 
 import type { RoomSummary } from "../lib/multiplayerClient";
 import { copy } from "../content/copy";
+import { getMultiplayerColorMap } from "../lib/multiplayerColors";
 
 type Props = {
   canStart: boolean;
@@ -20,6 +21,7 @@ function debuffTierLabel(debuffTier: RoomSummary["options"]["debuffTier"]) {
 
 export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat, onSetReady, onStart, room, userId }: Props) {
   const currentPlayer = room.players.find((player) => player.userId === userId);
+  const playerColors = getMultiplayerColorMap(room.players);
   const isReady = currentPlayer?.ready ?? false;
   const [message, setMessage] = useState("");
   const enoughPlayers = room.playerCount >= 2;
@@ -78,7 +80,16 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
 
             <ul className="multiplayer-player-list multiplayer-player-list--cards">
               {room.players.map((player) => (
-                <li key={player.userId} className="multiplayer-player-row multiplayer-player-row--card">
+                <li
+                  key={player.userId}
+                  className="multiplayer-player-row multiplayer-player-row--card"
+                  data-testid={`lobby-player-${player.userId}`}
+                  style={{
+                    "--player-accent": playerColors.get(player.userId)?.accent,
+                    "--player-soft": playerColors.get(player.userId)?.soft,
+                    "--player-ink": playerColors.get(player.userId)?.ink,
+                  } as React.CSSProperties}
+                >
                   <div className="lobby-player-identity">
                     <span className="lobby-player-avatar">{player.username.slice(0, 1).toUpperCase()}</span>
                     <div className="lobby-player-copy">

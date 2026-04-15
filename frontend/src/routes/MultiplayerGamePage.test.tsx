@@ -42,4 +42,12 @@ describe('MultiplayerGamePage', () => {
     expect(screen.getByText('시야 방해').textContent).toBe('시야 방해');
     expect(screen.getByText('입력 지연').textContent).toBe('입력 지연');
   });
+
+  it('uses distinct player colors in the multiplayer player strip', () => {
+    const { container } = render(<MultiplayerGamePage currentUserId={1} game={game} onDirectionChange={vi.fn()} onJump={vi.fn()} onLeave={vi.fn()} />);
+    const playerPills = Array.from(container.querySelectorAll('.multiplayer-player-strip .effect-pill--player'));
+
+    expect(playerPills).toHaveLength(2);
+    expect(playerPills[0]?.getAttribute('style')).not.toBe(playerPills[1]?.getAttribute('style'));
+  });
 });

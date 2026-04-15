@@ -2102,6 +2102,16 @@ input {
   border-color: #ce7a63;
 }
 
+.multiplayer-player-strip .effect-pill--player {
+  background: var(--player-soft, rgba(255, 252, 247, 0.92));
+  border-color: color-mix(in srgb, var(--player-accent, rgba(74, 52, 31, 0.2)) 38%, rgba(74, 52, 31, 0.12));
+}
+
+.multiplayer-player-strip .effect-pill--player span,
+.multiplayer-player-strip .effect-pill--player strong {
+  color: var(--player-ink, var(--tone-4));
+}
+
 .spectator-banner {
   position: absolute;
   top: 12px;
@@ -2702,6 +2712,8 @@ input {
   border-radius: 22px;
   border: 1px solid rgba(74, 52, 31, 0.12);
   background: rgba(255, 252, 247, 0.82);
+  border-left: 0.4rem solid var(--player-accent, rgba(74, 52, 31, 0.18));
+  box-shadow: inset 0 0 0 1px var(--player-soft, transparent);
 }
 
 .lobby-player-identity {
@@ -2717,10 +2729,10 @@ input {
   width: 2rem;
   height: 2rem;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(208, 122, 99, 0.95) 0%, rgba(183, 98, 75, 0.95) 100%);
+  background: linear-gradient(180deg, var(--player-accent, rgba(208, 122, 99, 0.95)) 0%, var(--player-ink, rgba(183, 98, 75, 0.95)) 100%);
   color: #fff8f1;
   font-size: 0.95rem;
-  box-shadow: 0 8px 16px rgba(208, 122, 99, 0.22);
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--player-accent, rgba(208, 122, 99, 0.22)) 35%, transparent);
 }
 
 .multiplayer-lobby-actions--heroic {

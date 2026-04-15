@@ -1,10 +1,12 @@
 import type {MultiplayerGameSnapshot} from '../../lib/multiplayerClient';
+import { getMultiplayerColorMap } from '../../lib/multiplayerColors';
 
 export function renderMultiplayerGame(
   ctx: CanvasRenderingContext2D,
   snapshot: MultiplayerGameSnapshot,
   currentUserId: number
 ) {
+  const playerColors = getMultiplayerColorMap(snapshot.players);
   ctx.clearRect(0, 0, 360, 520);
   ctx.fillStyle = '#f9ebe0';
   ctx.fillRect(0, 0, 360, 520);
@@ -31,6 +33,7 @@ export function renderMultiplayerGame(
 
   for (const player of snapshot.players) {
     const isSelf = player.userId === currentUserId;
+    const color = playerColors.get(player.userId);
     const drawY = player.airborneUntil ? player.y - 18 : player.y;
     if (player.status === 'spectator') {
       ctx.globalAlpha = 0.45;
@@ -45,9 +48,9 @@ export function renderMultiplayerGame(
       ctx.fillRect(player.x + 4, player.y + player.height, player.width - 8, 4);
     }
 
-    ctx.fillStyle = isSelf ? '#ce7a63' : '#60492c';
+    ctx.fillStyle = color?.accent ?? (isSelf ? '#ce7a63' : '#60492c');
     ctx.fillRect(player.x, drawY, player.width, player.height);
-    ctx.fillStyle = '#463f1a';
+    ctx.fillStyle = color?.ink ?? '#463f1a';
     ctx.fillText(player.username, player.x + player.width / 2, drawY - 8);
   }
 
