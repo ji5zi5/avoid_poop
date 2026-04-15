@@ -2,7 +2,7 @@
 import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
-const {me, createRoom, quickJoin, joinRoom, leaveRoom, records, listRooms, createRunSession, heartbeatRunSession} = vi.hoisted(() => ({
+const {me, createRoom, quickJoin, joinRoom, leaveRoom, records, listRooms, createRunSession, heartbeatRunSession, createWebSocketTicket} = vi.hoisted(() => ({
   me: vi.fn(),
   createRoom: vi.fn(),
   quickJoin: vi.fn(),
@@ -12,6 +12,7 @@ const {me, createRoom, quickJoin, joinRoom, leaveRoom, records, listRooms, creat
   listRooms: vi.fn(),
   createRunSession: vi.fn(),
   heartbeatRunSession: vi.fn(),
+  createWebSocketTicket: vi.fn(),
 }));
 
 vi.mock('./lib/api', () => ({
@@ -25,6 +26,7 @@ vi.mock('./lib/api', () => ({
     records,
     createRunSession,
     heartbeatRunSession,
+    createWebSocketTicket,
     saveRecord: vi.fn(),
     leaveRoom,
   },
@@ -79,6 +81,7 @@ describe('App multiplayer entry flow', () => {
       startedAt: '2026-04-15T05:00:00.000Z',
     });
     heartbeatRunSession.mockResolvedValue({ ok: true });
+    createWebSocketTicket.mockResolvedValue({ token: 'ws-ticket' });
   });
 
   it('opens multiplayer home after game start then multiplayer selection', async () => {

@@ -1,3 +1,4 @@
+import { api } from "./api";
 import { getWebSocketUrl } from "./runtimeConfig";
 
 export type RoomStatus = "waiting" | "in_progress";
@@ -159,6 +160,7 @@ export function createMultiplayerClient({
   let socket: WebSocket | null = null;
   let activeReconnectToken = reconnectToken;
   let didConnect = false;
+  let connectPromise: Promise<WebSocket | null> | null = null;
   const pendingMessages: ClientSocketEvent[] = [];
   const listeners = new Set<(event: ServerSocketEvent) => void>();
 
@@ -166,17 +168,33 @@ export function createMultiplayerClient({
     listeners.add(onEvent);
   }
 
-  function connect() {
+  async function connect() {
     if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
       return socket;
     }
+    if (connectPromise) {
+      return connectPromise;
+    }
 
-    socket = new WebSocket(buildSocketUrl(url, activeReconnectToken));
-    socket.addEventListener("open", flushPendingMessages);
-    socket.addEventListener("message", handleMessage);
-    socket.addEventListener("close", handleClose);
-    socket.addEventListener("error", handleError);
-    return socket;
+    connectPromise = (async () => {
+      let wsToken: string | null = null;
+      try {
+        wsToken = (await api.createWebSocketTicket()).token;
+      } catch {
+        connectPromise = null;
+        return null;
+      }
+
+      socket = new WebSocket(buildSocketUrl(url, activeReconnectToken, wsToken));
+      socket.addEventListener("open", flushPendingMessages);
+      socket.addEventListener("message", handleMessage);
+      socket.addEventListener("close", handleClose);
+      socket.addEventListener("error", handleError);
+      connectPromise = null;
+      return socket;
+    })();
+
+    return connectPromise;
   }
 
   function handleMessage(message: MessageEvent<string>) {
@@ -228,6 +246,7 @@ export function createMultiplayerClient({
     socket.removeEventListener("close", handleClose);
     socket.removeEventListener("error", handleError);
     socket = null;
+    connectPromise = null;
   }
 
   return {
@@ -257,13 +276,16 @@ export function createMultiplayerClient({
   };
 }
 
-function buildSocketUrl(url: string | undefined, reconnectToken: string | null | undefined) {
+function buildSocketUrl(url: string | undefined, reconnectToken: string | null | undefined, wsToken?: string | null) {
   if (url) {
     const nextUrl = new URL(url);
     if (reconnectToken) {
       nextUrl.searchParams.set("reconnectToken", reconnectToken);
     }
+    if (wsToken) {
+      nextUrl.searchParams.set("wsToken", wsToken);
+    }
     return nextUrl.toString();
   }
-  return getWebSocketUrl(reconnectToken);
+  return getWebSocketUrl(reconnectToken, wsToken);
 }

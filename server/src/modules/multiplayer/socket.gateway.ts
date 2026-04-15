@@ -7,7 +7,7 @@ import {WebSocketServer, type RawData, type WebSocket} from 'ws';
 
 import {config, type RuntimeConfig} from '../../config.js';
 import {FixedWindowRateLimiter, identifySocketRequester} from '../../middleware/rateLimit.js';
-import {resolveSessionUserFromSignedCookie} from '../auth/auth.service.js';
+import {resolveSessionUserFromSignedCookie, resolveUserFromWebSocketTicket} from '../auth/auth.service.js';
 import {MultiplayerGameService} from './game.service.js';
 import {saveCompletedMultiplayerGame} from './results.service.js';
 import type {MultiplayerGameState} from './game.types.js';
@@ -489,6 +489,13 @@ export class MultiplayerSocketGateway {
   }
 
   private async resolveUser(request: IncomingMessage) {
+    const upgradeUrl = new URL(request.url ?? '/', 'http://localhost');
+    const wsToken = upgradeUrl.searchParams.get('wsToken') ?? undefined;
+    const ticketUser = await resolveUserFromWebSocketTicket(wsToken);
+    if (ticketUser) {
+      return ticketUser;
+    }
+
     const cookieValue = getCookieValue(request.headers.cookie, config.sessionCookieName);
     return resolveSessionUserFromSignedCookie(cookieValue, (value) => this.app.unsignCookie(value));
   }

@@ -1,12 +1,13 @@
 import {FastifyInstance} from 'fastify';
 
-import {authResponseSchema, authSessionSchema} from '../../../../shared/src/contracts/auth.js';
+import {authResponseSchema, authSessionSchema, authWebSocketTicketSchema} from '../../../../shared/src/contracts/auth.js';
 import {config} from '../../config.js';
 import {optionalUser, requireUser} from '../../middleware/authGuard.js';
 import {
   AuthConflictError,
   AuthUnauthorizedError,
   clearSession,
+  createWebSocketTicket,
   establishSession,
   login,
   resolveSessionUser,
@@ -82,6 +83,12 @@ export async function authRoutes(app: FastifyInstance) {
     return authSessionSchema.parse({
       authenticated: true,
       user: toPublicUser(user)
+    });
+  });
+
+  app.post('/ws-ticket', {preHandler: requireUser}, async (request) => {
+    return authWebSocketTicketSchema.parse({
+      token: createWebSocketTicket(request.user!.id),
     });
   });
 }

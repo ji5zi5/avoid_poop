@@ -35,7 +35,7 @@ export function getApiUrl(path: string) {
   return new URL(path, `${apiBaseUrl}/`).toString();
 }
 
-export function getWebSocketUrl(reconnectToken: string | null | undefined) {
+export function getWebSocketUrl(reconnectToken: string | null | undefined, wsToken?: string | null) {
   const configuredBase = readEnvValue(import.meta.env.VITE_WS_BASE_URL);
   const fallbackBase = `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}${DEFAULT_WS_PATH}`;
   const socketBase = configuredBase
@@ -47,6 +47,9 @@ export function getWebSocketUrl(reconnectToken: string | null | undefined) {
   const nextUrl = new URL(socketBase);
   if (reconnectToken) {
     nextUrl.searchParams.set("reconnectToken", reconnectToken);
+  }
+  if (wsToken) {
+    nextUrl.searchParams.set("wsToken", wsToken);
   }
   return nextUrl.toString();
 }

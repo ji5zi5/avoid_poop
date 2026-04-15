@@ -2,6 +2,7 @@ import type {
   AuthCredentials,
   AuthResponse,
   AuthSession,
+  AuthWebSocketTicket,
   RecordEntry,
   RecordsResponse,
   RunResultPayload,
@@ -60,6 +61,7 @@ export const api = {
   login: (payload: AuthCredentials) =>
     request<AuthResponse>("/api/auth/login", { method: "POST", body: JSON.stringify(payload) }),
   logout: () => request<{ ok: true }>("/api/auth/logout", { method: "POST" }),
+  createWebSocketTicket: () => request<AuthWebSocketTicket>("/api/auth/ws-ticket", { method: "POST" }),
   records: () => request<RecordsResponse>("/api/records"),
   createRunSession: (mode: RunResultPayload["mode"]) =>
     request<SinglePlayerRunSession>("/api/records/run-session", { method: "POST", body: JSON.stringify({ mode }) }),

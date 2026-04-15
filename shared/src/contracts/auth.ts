@@ -28,6 +28,10 @@ export const authResponseSchema = z.object({
   user: authUserSchema
 });
 
+export const authWebSocketTicketSchema = z.object({
+  token: z.string().min(1),
+});
+
 export const apiErrorSchema = z.object({
   error: z.string()
 });
@@ -36,4 +40,5 @@ export type AuthUser = z.infer<typeof authUserSchema>;
 export type AuthSession = z.infer<typeof authSessionSchema>;
 export type AuthCredentials = z.infer<typeof authCredentialsSchema>;
 export type AuthResponse = z.infer<typeof authResponseSchema>;
+export type AuthWebSocketTicket = z.infer<typeof authWebSocketTicketSchema>;
 export type ApiError = z.infer<typeof apiErrorSchema>;

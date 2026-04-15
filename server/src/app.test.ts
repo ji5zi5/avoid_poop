@@ -46,6 +46,31 @@ test('signup creates a session and me returns the authenticated user', { concurr
   await app.close();
 });
 
+test('authenticated users can mint websocket tickets', { concurrency: false }, async () => {
+  const app = await createApp();
+  const signup = await app.inject({
+    method: 'POST',
+    url: '/api/auth/signup',
+    payload: {
+      username: 'ws_ticket_user',
+      password: 'secret123'
+    }
+  });
+
+  const ticket = await app.inject({
+    method: 'POST',
+    url: '/api/auth/ws-ticket',
+    cookies: {
+      avoid_poop_session: signup.cookies[0]!.value
+    }
+  });
+
+  assert.equal(ticket.statusCode, 200);
+  assert.equal(typeof ticket.json().token, 'string');
+  assert.ok(ticket.json().token.length > 10);
+  await app.close();
+});
+
 test('health responses ship security headers', { concurrency: false }, async () => {
   const app = await createApp();
   const health = await app.inject({

@@ -38,6 +38,35 @@ test('websocket connect requires authentication', { concurrency: false }, async 
   await app.close();
 });
 
+test('websocket connect accepts a valid websocket ticket without cookies', { concurrency: false }, async () => {
+  const app = await createApp({appOrigin: 'https://avoid-poop.example'});
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+  const cookie = await signup(app, 'socket_ticket_user', { origin: 'https://avoid-poop.example' });
+
+  const ticketResponse = await app.inject({
+    method: 'POST',
+    url: '/api/auth/ws-ticket',
+    headers: {
+      origin: 'https://avoid-poop.example',
+    },
+    cookies: {
+      avoid_poop_session: cookie,
+    },
+  });
+
+  try {
+    assert.equal(ticketResponse.statusCode, 200);
+    const { socket, connected } = await connectSocketAndWaitForConnected(port, undefined, undefined, {
+      Origin: 'https://avoid-poop.example',
+    }, ticketResponse.json().token);
+    assert.equal(connected.user.username, 'socket_ticket_user');
+    socket.close();
+  } finally {
+    await app.close();
+  }
+});
+
 test('websocket connect rejects unexpected origins when APP_ORIGIN is configured', { concurrency: false }, async () => {
   const app = await createApp({appOrigin: 'https://avoid-poop.example'});
   await app.listen({port: 0, host: '127.0.0.1'});
@@ -432,15 +461,23 @@ async function signup(app: Awaited<ReturnType<typeof createApp>>, username: stri
 
 async function connectSocketAndWaitForConnected(
   port: number,
-  cookie: string,
+  cookie?: string,
   reconnectToken?: string,
   extraHeaders?: Record<string, string>,
+  wsToken?: string,
 ) {
   return await new Promise<{socket: WebSocket; connected: any}>((resolve, reject) => {
-    const suffix = reconnectToken ? `?reconnectToken=${reconnectToken}` : '';
+    const params = new URLSearchParams();
+    if (reconnectToken) {
+      params.set('reconnectToken', reconnectToken);
+    }
+    if (wsToken) {
+      params.set('wsToken', wsToken);
+    }
+    const suffix = params.size > 0 ? `?${params.toString()}` : '';
     const ws = new WebSocket(`ws://127.0.0.1:${port}${config.multiplayerWebSocketPath}${suffix}`, {
       headers: {
-        Cookie: `${config.sessionCookieName}=${cookie}`,
+        ...(cookie ? { Cookie: `${config.sessionCookieName}=${cookie}` } : {}),
         ...(extraHeaders ?? {})
       }
     });
