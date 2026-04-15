@@ -9,8 +9,6 @@ type Props = {
   onAuthenticated: (user: AuthUser) => void;
 };
 
-const socialIcons = ["✉", "◉", "⋯"] as const;
-
 export function AuthPage({ onAuthenticated }: Props) {
   const [mode, setMode] = useState<"login" | "signup">("signup");
   const [username, setUsername] = useState("");
@@ -31,41 +29,18 @@ export function AuthPage({ onAuthenticated }: Props) {
   return (
     <section className="auth-screen auth-screen--studio">
       <div className="console-panel console-panel--primary console-panel--compact auth-studio-card">
-        <div className="auth-studio-header">
+        <div className="auth-studio-header auth-studio-header--simple">
           <span className="panel-kicker auth-studio-eyebrow">{copy.auth.studioEyebrow}</span>
-          <span className="auth-studio-orb" aria-hidden="true">●</span>
         </div>
 
-        <section className="auth-membership-card">
-          <div className="auth-membership-card__header">
-            <div>
-              <h1 className="auth-membership-card__title">{copy.auth.membershipTitle}</h1>
-              <p>{copy.auth.membershipBody}</p>
-            </div>
-            <div className="auth-membership-card__cluster" aria-hidden="true">
-              <span className="auth-membership-card__badge auth-membership-card__badge--plus">＋</span>
-              <span className="auth-membership-card__badge" />
-              <span className="auth-membership-card__badge auth-membership-card__badge--small" />
-            </div>
+        <div className="auth-studio-hero">
+          <h1 className="auth-studio-hero__title">{copy.auth.title}</h1>
+          <p className="auth-studio-hero__subtitle">{copy.auth.studioHint}</p>
+          <div className="auth-studio-chip-row">
+            <span className="home-status-chip">{copy.auth.featureSave}</span>
+            <span className="home-status-chip">{copy.auth.featureRanking}</span>
           </div>
-
-          <div className="auth-membership-card__stats">
-            <article className="auth-membership-stat">
-              <span className="auth-membership-stat__icon">☁</span>
-              <div>
-                <strong>{copy.auth.membershipCloud}</strong>
-                <small>{copy.auth.featureSave}</small>
-              </div>
-            </article>
-            <article className="auth-membership-stat">
-              <span className="auth-membership-stat__icon">★</span>
-              <div>
-                <strong>{copy.auth.membershipVault}</strong>
-                <small>{copy.auth.featureRanking}</small>
-              </div>
-            </article>
-          </div>
-        </section>
+        </div>
 
         <div className="segmented-switch auth-mode-switch" role="tablist" aria-label="인증 방식">
           <button
@@ -100,23 +75,11 @@ export function AuthPage({ onAuthenticated }: Props) {
               placeholder={copy.auth.password}
             />
           </label>
-          <p className="auth-studio-form__hint">{copy.auth.forgotPassword}</p>
           {error ? <p className="error-text">{error}</p> : null}
           <button type="submit" className="primary-action auth-submit-button auth-submit-button--studio">
             {mode === "signup" ? copy.auth.signup : copy.auth.login}
           </button>
         </form>
-
-        <div className="auth-social-block">
-          <span className="auth-social-block__label">{copy.auth.socialLabel}</span>
-          <div className="auth-social-block__actions">
-            {socialIcons.map((icon, index) => (
-              <button key={`${icon}-${index}`} type="button" className="auth-social-block__button" aria-label={`${copy.auth.socialLabel} ${index + 1}`}>
-                {icon}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </section>
   );
