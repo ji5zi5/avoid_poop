@@ -215,9 +215,15 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
                     <option value={3}>{copy.multiplayer.debuffTierStrong}</option>
                   </select>
                 </label>
-                <label className="multiplayer-home-toggle">
+                <label>
                   <span>{copy.multiplayer.bodyBlock}</span>
-                  <input type="checkbox" checked={options.bodyBlock} onChange={(event) => setOptions((current) => ({ ...current, bodyBlock: event.target.checked }))} />
+                  <select
+                    value={options.bodyBlock ? "on" : "off"}
+                    onChange={(event) => setOptions((current) => ({ ...current, bodyBlock: event.target.value === "on" }))}
+                  >
+                    <option value="off">OFF</option>
+                    <option value="on">ON</option>
+                  </select>
                 </label>
                 {options.visibility === "private" ? (
                   <label>

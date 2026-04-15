@@ -42,6 +42,8 @@ describe("MultiplayerHomePage", () => {
     expect(screen.getByRole("dialog", { name: "방 만들기 설정" })).toBeTruthy();
     expect(screen.getAllByText("공개방").length).toBeGreaterThan(0);
     expect(screen.getAllByText("비공개방").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.getByLabelText("부딪힘").tagName).toBe("SELECT");
   });
 
   it("renders public and private rooms in one list and joins the selected room correctly", async () => {

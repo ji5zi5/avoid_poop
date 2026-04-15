@@ -2181,12 +2181,6 @@ input {
   background: rgba(255, 252, 248, 0.92);
 }
 
-.multiplayer-home-toggle {
-  display: flex !important;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .multiplayer-lobby-header {
   display: flex;
   align-items: flex-start;
