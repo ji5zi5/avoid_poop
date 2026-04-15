@@ -2279,7 +2279,10 @@ input {
 
 /* Stitch-style UI refresh */
 .auth-screen--studio {
-  place-items: start center;
+  min-height: 100%;
+  place-items: center;
+  align-content: center;
+  padding-block: 0.6rem;
 }
 
 .auth-studio-card {
