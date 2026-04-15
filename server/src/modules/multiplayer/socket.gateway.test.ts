@@ -160,6 +160,59 @@ test('subscribing to a room broadcasts room snapshots to room members', { concur
   await app.close();
 });
 
+test('closing a waiting-room socket removes the player so ghost rooms do not linger', { concurrency: false }, async () => {
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+
+  const hostCookie = await signup(app, 'ghost_room_host');
+
+  const created = await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/rooms',
+    cookies: { avoid_poop_session: hostCookie }
+  });
+  const roomCode = created.json().roomCode as string;
+
+  const { socket: hostSocket } = await connectSocketAndWaitForConnected(port, hostCookie);
+  const hostEvents: Array<any> = [];
+  hostSocket.on('message', (payload: RawData) => hostEvents.push(JSON.parse(payload.toString())));
+  hostSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+
+  await waitFor(() =>
+    hostEvents.some((event) => event.type === 'room_snapshot' && event.room.roomCode === roomCode)
+  );
+
+  await waitFor(async () => {
+    const rooms = await app.inject({
+      method: 'GET',
+      url: '/api/multiplayer/rooms',
+      cookies: { avoid_poop_session: hostCookie }
+    });
+    const list = rooms.json() as Array<{ roomId: string }>;
+    return list.length === 1;
+  });
+
+  await new Promise<void>((resolve) => {
+    hostSocket.once('close', () => resolve());
+    hostSocket.close();
+  });
+
+  const viewerCookie = await signup(app, `ghost${Date.now().toString().slice(-6)}`);
+
+  await waitFor(async () => {
+    const listResponse = await app.inject({
+      method: 'GET',
+      url: '/api/multiplayer/rooms',
+      cookies: { avoid_poop_session: viewerCookie }
+    });
+    const list = listResponse.json() as Array<unknown>;
+    return list.length === 0;
+  });
+
+  await app.close();
+});
+
 test('pre-ready start is rejected before room start', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
@@ -463,9 +516,9 @@ async function connectSocketExpectStatus(
   });
 }
 
-async function waitFor(predicate: () => boolean) {
+async function waitFor(predicate: () => boolean | Promise<boolean>) {
   const startedAt = Date.now();
-  while (!predicate()) {
+  while (!(await predicate())) {
     if (Date.now() - startedAt > 3000) {
       throw new Error('Timed out waiting for condition');
     }

@@ -21,7 +21,6 @@ function debuffTierLabel(debuffTier: RoomSummary["options"]["debuffTier"]) {
 
 export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat, onSetReady, onStart, room, userId }: Props) {
   const currentPlayer = room.players.find((player) => player.userId === userId);
-  const hostPlayer = room.players.find((player) => player.isHost) ?? null;
   const playerColors = getMultiplayerColorMap(room.players);
   const isReady = currentPlayer?.ready ?? false;
   const [message, setMessage] = useState("");
@@ -29,7 +28,6 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
   const allReady = room.players.every((player) => player.ready);
   const canActuallyStart = canStart && enoughPlayers && allReady;
   const readyCount = room.players.filter((player) => player.ready).length;
-  const readinessSummary = allReady ? "바로 시작 가능" : enoughPlayers ? "준비 인원 확인" : "2명부터 시작";
   const lobbyStateLabel = !enoughPlayers
     ? copy.multiplayer.startNeedPlayers
     : !allReady
@@ -62,35 +60,11 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
           <span className="home-status-chip">{room.options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
           <span className="home-status-chip">{room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
           <span className="home-status-chip">{debuffTierLabel(room.options.debuffTier)}</span>
+          <span className="home-status-chip">{room.options.bodyBlock ? "부딪힘 ON" : "부딪힘 OFF"}</span>
         </div>
-
-        <section className="multiplayer-lobby-summary-grid">
-          <article className="multiplayer-lobby-summary-card">
-            <span className="info-card__label">HOST</span>
-            <strong>{hostPlayer?.username ?? "-"}</strong>
-            <p>{hostPlayer?.userId === userId ? "현재 내가 방장" : "방장이 시작 타이밍을 정합니다"}</p>
-          </article>
-          <article className="multiplayer-lobby-summary-card">
-            <span className="info-card__label">READY</span>
-            <strong>{readyCount}/{room.playerCount}</strong>
-            <p>{readinessSummary}</p>
-          </article>
-          <article className="multiplayer-lobby-summary-card">
-            <span className="info-card__label">RULE</span>
-            <strong>{room.options.bodyBlock ? "부딪힘 ON" : "부딪힘 OFF"}</strong>
-            <p>{debuffTierLabel(room.options.debuffTier)} · {room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</p>
-          </article>
-        </section>
 
         <div className="multiplayer-lobby-shell">
           <div className="multiplayer-lobby-main">
-            <div className="multiplayer-lobby-options multiplayer-lobby-options--heroic">
-              <span>{copy.multiplayer.visibility}: {room.options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
-              <span>{copy.multiplayer.difficulty}: {room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
-              <span>{copy.multiplayer.bodyBlock}: {room.options.bodyBlock ? "ON" : "OFF"}</span>
-              <span>{copy.multiplayer.debuffTier}: {debuffTierLabel(room.options.debuffTier)}</span>
-            </div>
-
             <section className="multiplayer-lobby-roster">
               <div className="multiplayer-lobby-section-heading">
                 <div>
@@ -132,7 +106,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
                 <span className="panel-kicker">CHAT</span>
                 <h2>{copy.multiplayer.chat}</h2>
               </div>
-              <span className="home-card__meta">{connected ? "실시간 연결됨" : "연결 복구 중"}</span>
+              <span className="home-card__meta">{connected ? "연결됨" : "복구 중"}</span>
             </div>
             <ul className="multiplayer-chat-log">
               {room.chatMessages.length > 0 ? room.chatMessages.map((entry) => (
@@ -150,13 +124,16 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
         </div>
 
         <div className="multiplayer-lobby-actions multiplayer-lobby-actions--heroic">
-          <button className="ghost-button subtle-button" onClick={() => onSetReady(!isReady)}>{isReady ? copy.multiplayer.cancelReady : copy.multiplayer.ready}</button>
-          <button className="home-start-button home-start-button--hero" onClick={onStart} disabled={!canActuallyStart}>{copy.multiplayer.start}</button>
+          {canStart ? (
+            <button className="home-start-button home-start-button--hero" onClick={onStart} disabled={!canActuallyStart}>{copy.multiplayer.start}</button>
+          ) : (
+            <button className="home-start-button home-start-button--hero" onClick={() => onSetReady(!isReady)}>
+              {isReady ? copy.multiplayer.cancelReady : copy.multiplayer.ready}
+            </button>
+          )}
         </div>
 
-        {!enoughPlayers ? <p className="home-card__meta">{copy.multiplayer.startNeedPlayers}</p> : null}
-        {enoughPlayers && !allReady ? <p className="home-card__meta">{copy.multiplayer.startNeedReady}</p> : null}
-        {canStart ? <p className="home-card__meta">{copy.multiplayer.startHint}</p> : null}
+        <p className="home-card__meta">{lobbyStateLabel}</p>
 
         <button className="ghost-button subtle-button" onClick={onLeave}>{copy.multiplayer.leave}</button>
       </div>

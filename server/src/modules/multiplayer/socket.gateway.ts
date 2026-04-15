@@ -116,6 +116,10 @@ export class MultiplayerSocketGateway {
           if (game) {
             this.gameService.disconnectPlayer(game, context.user.id);
             this.broadcastGameSnapshot(context.roomCode);
+          } else {
+            this.options.roomService.leaveCurrentRoom(context.user.id);
+            this.broadcastRoomSnapshot(context.roomCode);
+            return;
           }
         }
         this.reconnectRecords.set(context.reconnectToken, {
