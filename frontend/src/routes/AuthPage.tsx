@@ -36,10 +36,6 @@ export function AuthPage({ onAuthenticated }: Props) {
         <div className="auth-studio-hero">
           <h1 className="auth-studio-hero__title">{copy.auth.title}</h1>
           <p className="auth-studio-hero__subtitle">{copy.auth.studioHint}</p>
-          <div className="auth-studio-chip-row">
-            <span className="home-status-chip">{copy.auth.featureSave}</span>
-            <span className="home-status-chip">{copy.auth.featureRanking}</span>
-          </div>
         </div>
 
         <div className="segmented-switch auth-mode-switch" role="tablist" aria-label="인증 방식">

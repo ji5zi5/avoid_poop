@@ -2356,12 +2356,6 @@ input {
   gap: 0.8rem;
 }
 
-.auth-studio-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
 .auth-studio-form label {
   display: grid;
   gap: 0.35rem;
