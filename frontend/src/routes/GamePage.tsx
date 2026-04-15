@@ -117,10 +117,12 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
 
     let disposed = false;
     const loop = createLoop((delta) => {
-      replayFramesRef.current.push({
-        deltaMs: Number((delta * 1000).toFixed(3)),
-        direction: directionRef.current as -1 | 0 | 1,
-      });
+      if (delta > 0) {
+        replayFramesRef.current.push({
+          deltaMs: Number((delta * 1000).toFixed(3)),
+          direction: directionRef.current as -1 | 0 | 1,
+        });
+      }
       const state = updateGame(stateRef.current, delta, directionRef.current);
       const canvas = canvasRef.current;
       if (canvas) {
