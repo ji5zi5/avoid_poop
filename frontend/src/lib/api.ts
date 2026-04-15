@@ -27,12 +27,17 @@ export class ApiRequestError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  const hasBody = init?.body !== undefined && init.body !== null;
+  if (hasBody) {
+    headers.set("Content-Type", headers.get("Content-Type") ?? "application/json");
+  } else {
+    headers.delete("Content-Type");
+  }
+
   const response = await fetch(getApiUrl(path), {
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers,
     ...init,
   });
 

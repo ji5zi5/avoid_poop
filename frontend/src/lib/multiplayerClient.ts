@@ -144,7 +144,7 @@ export type ServerSocketEvent =
 type MultiplayerClientOptions = {
   reconnectToken?: string | null;
   url?: string;
-  onClose?: () => void;
+  onClose?: (details: { wasConnected: boolean; code: number; reason: string }) => void;
   onError?: (event: Event) => void;
   onEvent?: (event: ServerSocketEvent) => void;
 };
@@ -158,6 +158,7 @@ export function createMultiplayerClient({
 }: MultiplayerClientOptions) {
   let socket: WebSocket | null = null;
   let activeReconnectToken = reconnectToken;
+  let didConnect = false;
   const pendingMessages: ClientSocketEvent[] = [];
   const listeners = new Set<(event: ServerSocketEvent) => void>();
 
@@ -182,13 +183,19 @@ export function createMultiplayerClient({
     const parsed = JSON.parse(message.data) as ServerSocketEvent;
     if (parsed.type === "connected") {
       activeReconnectToken = parsed.reconnectToken;
+      didConnect = true;
     }
     listeners.forEach((listener) => listener(parsed));
   }
 
-  function handleClose() {
+  function handleClose(event: CloseEvent) {
+    const wasConnected = didConnect;
     cleanup();
-    onClose?.();
+    onClose?.({
+      wasConnected,
+      code: event.code,
+      reason: event.reason,
+    });
   }
 
   function handleError(event: Event) {

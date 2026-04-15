@@ -28,9 +28,11 @@ export default function App() {
   const multiplayerClient = useMemo(
     () =>
       createMultiplayerClient({
-        onClose: () => {
+        onClose: ({ wasConnected }) => {
           setSocketConnected(false);
-          setReconnectSequence((value) => value + 1);
+          if (wasConnected) {
+            setReconnectSequence((value) => value + 1);
+          }
         },
         onEvent: (event) => {
           if (event.type === "connected") {
