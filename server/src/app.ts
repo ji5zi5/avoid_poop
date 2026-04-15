@@ -15,7 +15,7 @@ import {recordsRoutes} from './modules/records/records.routes.js';
 function applyCorsHeaders(reply: { header: (name: string, value: string) => void }, origin: string) {
   reply.header('Access-Control-Allow-Origin', origin);
   reply.header('Access-Control-Allow-Credentials', 'true');
-  reply.header('Access-Control-Allow-Headers', 'Content-Type');
+  reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   reply.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   reply.header('Vary', 'Origin');
 }

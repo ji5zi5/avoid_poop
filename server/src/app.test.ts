@@ -151,6 +151,7 @@ test('cross-origin API preflight succeeds for the configured frontend origin', {
     assert.equal(response.statusCode, 204);
     assert.equal(response.headers['access-control-allow-origin'], 'https://avoid-poop.vercel.app');
     assert.equal(response.headers['access-control-allow-credentials'], 'true');
+    assert.equal(response.headers['access-control-allow-headers'], 'Content-Type, Authorization');
   } finally {
     await app.close();
   }
