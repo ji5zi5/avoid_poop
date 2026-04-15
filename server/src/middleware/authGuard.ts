@@ -12,11 +12,11 @@ declare module 'fastify' {
 }
 
 export async function optionalUser(request: FastifyRequest) {
-  request.user = resolveSessionUser(request);
+  request.user = await resolveSessionUser(request);
 }
 
 export async function requireUser(request: FastifyRequest, reply: FastifyReply) {
-  request.user = resolveSessionUser(request);
+  request.user = await resolveSessionUser(request);
   if (!request.user) {
     return reply.status(401).send({error: 'Authentication required.'});
   }

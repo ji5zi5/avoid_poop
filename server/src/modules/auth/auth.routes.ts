@@ -23,8 +23,8 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     try {
-      const user = signup(parsed.data.username, parsed.data.password);
-      establishSession(reply, user.id);
+      const user = await signup(parsed.data.username, parsed.data.password);
+      await establishSession(reply, user.id);
       request.log.info({event: 'auth_signup', userId: user.id, username: user.username}, 'User signed up');
       return authResponseSchema.parse({user: toPublicUser(user)});
     } catch (error) {
@@ -43,8 +43,8 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     try {
-      const user = login(parsed.data.username, parsed.data.password);
-      establishSession(reply, user.id);
+      const user = await login(parsed.data.username, parsed.data.password);
+      await establishSession(reply, user.id);
       request.log.info({event: 'auth_login', userId: user.id, username: user.username}, 'User logged in');
       return authResponseSchema.parse({user: toPublicUser(user)});
     } catch (error) {
@@ -59,7 +59,7 @@ export async function authRoutes(app: FastifyInstance) {
   app.post('/logout', {preHandler: optionalUser}, async (request, reply) => {
     const rawCookie = request.cookies[config.sessionCookieName];
     const unsigned = rawCookie ? request.unsignCookie(rawCookie) : null;
-    clearSession(reply, unsigned?.valid ? unsigned.value : undefined);
+    await clearSession(reply, unsigned?.valid ? unsigned.value : undefined);
     request.log.info({event: 'auth_logout', userId: request.user?.id ?? null}, 'User logged out');
     return reply.send({ok: true});
   });
@@ -72,7 +72,7 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.get('/session', async (request, reply) => {
-    const user = resolveSessionUser(request);
+    const user = await resolveSessionUser(request);
     if (!user) {
       return reply.send({
         authenticated: false,

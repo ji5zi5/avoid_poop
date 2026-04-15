@@ -20,9 +20,9 @@ services:
       - key: TRUST_PROXY
         value: "true"
       - key: DB_PROVIDER
-        value: sqlite
-      - key: DB_PATH
-        value: /var/data/avoid-poop.sqlite
+        value: postgres
+      - key: DATABASE_URL
+        sync: false
       - key: LOG_ENABLED
         value: "true"
       - key: LOG_LEVEL
@@ -39,7 +39,3 @@ services:
         value: "40"
       - key: RATE_LIMIT_WS_WINDOW_MS
         value: "60000"
-    disk:
-      name: avoid-poop-data
-      mountPath: /var/data
-      sizeGB: 1

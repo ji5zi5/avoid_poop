@@ -10,8 +10,8 @@ const originalDbProvider = process.env.DB_PROVIDER;
 const originalDatabaseUrl = process.env.DATABASE_URL;
 const originalDbPath = process.env.DB_PATH;
 
-test.afterEach(() => {
-  resetDbForTests();
+test.afterEach(async () => {
+  await resetDbForTests();
 
   if (originalDbProvider === undefined) {
     delete process.env.DB_PROVIDER;
@@ -36,13 +36,14 @@ test.afterEach(() => {
   }
 });
 
-test('sqlite remains the default database provider and boots the local schema', () => {
+test('sqlite remains the default database provider and boots the local schema', async () => {
   delete process.env.DB_PROVIDER;
   delete process.env.DATABASE_URL;
   process.env.DB_PATH = dbPath;
 
-  const db = getDb();
-  const tables = db
+  const db = await getDb();
+  assert.equal(db.provider, 'sqlite');
+  const tables = db.db
     .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
     .all() as Array<{name: string}>;
 
@@ -52,24 +53,20 @@ test('sqlite remains the default database provider and boots the local schema', 
   );
 });
 
-test('postgres provider fails fast with a migration-focused message until the runtime driver is added', () => {
+test('postgres schema stays available for runtime bootstrap', () => {
   process.env.DB_PROVIDER = 'postgres';
   process.env.DATABASE_URL = 'postgres://avoid-poop:test@localhost:5432/avoid_poop';
   process.env.DB_PATH = dbPath;
 
-  assert.throws(
-    () => getDb(),
-    /DB_PROVIDER=postgres is scaffolded but no Postgres runtime driver is installed yet/
-  );
   assert.match(getPostgresSchemaSql(), /CREATE TABLE IF NOT EXISTS records/);
   assert.match(getPostgresSchemaSql(), /TIMESTAMPTZ/);
   assert.match(getPostgresSchemaSql(), /BOOLEAN NOT NULL DEFAULT FALSE/);
 });
 
-test('postgres provider requires DATABASE_URL', () => {
+test('postgres provider requires DATABASE_URL', async () => {
   process.env.DB_PROVIDER = 'postgres';
   delete process.env.DATABASE_URL;
   process.env.DB_PATH = dbPath;
 
-  assert.throws(() => getDb(), /DB_PROVIDER=postgres requires DATABASE_URL to be set/);
+  await assert.rejects(() => getDb(), /DB_PROVIDER=postgres requires DATABASE_URL to be set/);
 });

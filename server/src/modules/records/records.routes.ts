@@ -6,7 +6,7 @@ import {recordsResponseSchema, runResultPayloadSchema} from './records.schemas.j
 
 export async function recordsRoutes(app: FastifyInstance) {
   app.get('/', {preHandler: requireUser}, async (request) => {
-    return recordsResponseSchema.parse(getRecordsForUser(request.user!.id));
+    return recordsResponseSchema.parse(await getRecordsForUser(request.user!.id));
   });
 
   app.post('/', {preHandler: requireUser}, async (request, reply) => {
@@ -15,7 +15,7 @@ export async function recordsRoutes(app: FastifyInstance) {
       return reply.status(400).send({error: parsed.error.issues[0]?.message ?? 'Invalid payload.'});
     }
 
-    const stored = saveRunResult(request.user!.id, parsed.data);
+    const stored = await saveRunResult(request.user!.id, parsed.data);
     request.log.info(
       {
         event: 'record_saved',

@@ -9,8 +9,8 @@ import {resetDbForTests} from '../../db/client.js';
 const dbPath = path.join(process.cwd(), 'data', 'avoid-poop-multiplayer-test.sqlite');
 process.env.DB_PATH = dbPath;
 
-test.afterEach(() => {
-  resetDbForTests();
+test.afterEach(async () => {
+  await resetDbForTests();
   if (fs.existsSync(dbPath)) {
     fs.unlinkSync(dbPath);
   }

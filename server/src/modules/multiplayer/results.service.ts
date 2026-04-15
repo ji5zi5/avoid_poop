@@ -3,7 +3,7 @@ import type {MultiplayerRecordEntry, MultiplayerStats} from '../../../../shared/
 import type {MultiplayerGameState} from './game.types.js';
 import {createMultiplayerMatch, getMultiplayerStats, listRecentMultiplayerRecords} from './results.repository.js';
 
-export function saveCompletedMultiplayerGame(game: MultiplayerGameState) {
+export async function saveCompletedMultiplayerGame(game: MultiplayerGameState) {
   const totalPlayers = game.players.length;
   const orderedUserIds = [...game.placementOrder];
   const seen = new Set(orderedUserIds);
@@ -30,9 +30,14 @@ export function saveCompletedMultiplayerGame(game: MultiplayerGameState) {
   });
 }
 
-export function getMultiplayerRecordsForUser(userId: number): {stats: MultiplayerStats; recent: MultiplayerRecordEntry[]} {
+export async function getMultiplayerRecordsForUser(userId: number): Promise<{stats: MultiplayerStats; recent: MultiplayerRecordEntry[]}> {
+  const [stats, recent] = await Promise.all([
+    getMultiplayerStats(userId),
+    listRecentMultiplayerRecords(userId),
+  ]);
+
   return {
-    stats: getMultiplayerStats(userId),
-    recent: listRecentMultiplayerRecords(userId) as MultiplayerRecordEntry[]
+    stats,
+    recent: recent as MultiplayerRecordEntry[]
   };
 }

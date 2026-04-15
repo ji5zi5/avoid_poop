@@ -2,6 +2,7 @@ import cookie from '@fastify/cookie';
 import Fastify from 'fastify';
 
 import {config, resolveConfig, type RuntimeConfig} from './config.js';
+import {closeDbConnection} from './db/client.js';
 import {registerErrorHandler} from './middleware/errorHandler.js';
 import {enforceRateLimit, FixedWindowRateLimiter} from './middleware/rateLimit.js';
 import {authRoutes} from './modules/auth/auth.routes.js';
@@ -131,6 +132,10 @@ export async function createApp(overrides: Partial<RuntimeConfig> = {}) {
   });
 
   registerErrorHandler(app);
+
+  app.addHook('onClose', async () => {
+    await closeDbConnection();
+  });
 
   return app;
 }

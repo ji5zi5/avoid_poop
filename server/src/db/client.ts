@@ -1,17 +1,31 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {DatabaseSync} from 'node:sqlite';
+import { DatabaseSync } from 'node:sqlite';
 
-import {config} from '../config.js';
-import {resolveDatabaseRuntimeConfig} from './provider.js';
-import {postgresSchemaSql, schemaSql} from './schema.js';
+import postgres, { type Sql } from 'postgres';
 
-let dbInstance: DatabaseSync | null = null;
+import { config } from '../config.js';
+import { resolveDatabaseRuntimeConfig } from './provider.js';
+import { postgresSchemaSql, schemaSql } from './schema.js';
+
+export type SqliteDatabaseClient = {
+  provider: 'sqlite';
+  db: DatabaseSync;
+};
+
+export type PostgresDatabaseClient = {
+  provider: 'postgres';
+  sql: Sql;
+};
+
+export type DatabaseClient = SqliteDatabaseClient | PostgresDatabaseClient;
+
+let databaseClientPromise: Promise<DatabaseClient> | null = null;
 
 function migrateRecordsModeSchema(db: DatabaseSync) {
   const createSql = db
     .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'records'")
-    .get() as {sql?: string} | undefined;
+    .get() as { sql?: string } | undefined;
 
   if (!createSql?.sql || createSql.sql.includes("'normal', 'hard'")) {
     return;
@@ -57,7 +71,7 @@ function migrateRecordsModeSchema(db: DatabaseSync) {
 
 function createSqliteDb() {
   const dir = path.dirname(config.dbPath);
-  fs.mkdirSync(dir, {recursive: true});
+  fs.mkdirSync(dir, { recursive: true });
 
   const db = new DatabaseSync(config.dbPath);
   db.exec('PRAGMA foreign_keys = ON;');
@@ -67,41 +81,91 @@ function createSqliteDb() {
   return db;
 }
 
-function createPostgresNotReadyError() {
-  if (!config.databaseUrl) {
-    return new Error('DB_PROVIDER=postgres requires DATABASE_URL to be set.');
-  }
-
-  return new Error(
-    'DB_PROVIDER=postgres is scaffolded but no Postgres runtime driver is installed yet. ' +
-      'Use server/src/db/schema.ts::postgresSchemaSql for migrations and keep DB_PROVIDER=sqlite until the driver/query adapter lands.'
-  );
+function shouldRequirePostgresSsl(databaseUrl: string) {
+  return /supabase\.co|supabase\.in|pooler\.supabase\.com/i.test(databaseUrl);
 }
 
-export function getDb() {
-  if (dbInstance) {
-    return dbInstance;
+function shouldDisablePreparedStatements(databaseUrl: string) {
+  return /pooler\.supabase\.com|:6543(?:\/|$|\?)/i.test(databaseUrl);
+}
+
+async function createPostgresDb(databaseUrl: string) {
+  const sql = postgres(databaseUrl, {
+    ssl: shouldRequirePostgresSsl(databaseUrl) ? 'require' : 'prefer',
+    prepare: !shouldDisablePreparedStatements(databaseUrl),
+    idle_timeout: 20,
+    connect_timeout: 30,
+    max: 10,
+    transform: postgres.camel,
+  });
+
+  try {
+    await sql.unsafe(postgresSchemaSql);
+  } catch (error) {
+    await sql.end({ timeout: 0 }).catch(() => undefined);
+    throw error;
   }
 
+  return sql;
+}
+
+function createPostgresConfigurationError() {
+  return new Error('DB_PROVIDER=postgres requires DATABASE_URL to be set.');
+}
+
+async function createDatabaseClient(): Promise<DatabaseClient> {
   if (config.databaseProvider === 'postgres') {
-    throw createPostgresNotReadyError();
+    if (!config.databaseUrl) {
+      throw createPostgresConfigurationError();
+    }
+
+    return {
+      provider: 'postgres',
+      sql: await createPostgresDb(config.databaseUrl),
+    };
   }
 
-  dbInstance = createSqliteDb();
-  return dbInstance;
+  return {
+    provider: 'sqlite',
+    db: createSqliteDb(),
+  };
+}
+
+export async function closeDbConnection() {
+  if (!databaseClientPromise) {
+    return;
+  }
+
+  const client = await databaseClientPromise.catch(() => null);
+  if (client?.provider === 'sqlite') {
+    client.db.close();
+  } else if (client?.provider === 'postgres') {
+    await client.sql.end({ timeout: 0 }).catch(() => undefined);
+  }
+
+  databaseClientPromise = null;
+}
+
+export async function getDb(): Promise<DatabaseClient> {
+  if (!databaseClientPromise) {
+    databaseClientPromise = createDatabaseClient().catch((error) => {
+      databaseClientPromise = null;
+      throw error;
+    });
+  }
+
+  return databaseClientPromise;
 }
 
 export function getPostgresSchemaSql() {
   return postgresSchemaSql;
 }
 
-export function resetDbForTests() {
-  if (dbInstance) {
-    dbInstance.close();
-    dbInstance = null;
-  }
-
+export async function resetDbForTests() {
   const runtime = resolveDatabaseRuntimeConfig();
+
+  await closeDbConnection();
+
   if (runtime.provider === 'sqlite' && fs.existsSync(runtime.dbPath)) {
     fs.unlinkSync(runtime.dbPath);
   }

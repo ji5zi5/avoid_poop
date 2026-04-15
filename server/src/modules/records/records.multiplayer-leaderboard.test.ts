@@ -11,8 +11,8 @@ import { saveCompletedMultiplayerGame } from '../multiplayer/results.service.js'
 const dbPath = path.join(process.cwd(), 'data', 'avoid-poop-records-leaderboard-test.sqlite');
 process.env.DB_PATH = dbPath;
 
-test.afterEach(() => {
-  resetDbForTests();
+test.afterEach(async () => {
+  await resetDbForTests();
   if (fs.existsSync(dbPath)) {
     fs.unlinkSync(dbPath);
   }
@@ -25,19 +25,19 @@ test('records endpoint ranks multiplayer leaderboard by public-facing standings'
   const beta = await signup(app, 'records_beta');
   const gamma = await signup(app, 'records_gamma');
 
-  persistCompletedGame({
+  await persistCompletedGame({
     roomCode: 'ROOMA1',
     round: 7,
     players: [alpha.user, beta.user, gamma.user],
     eliminatedUserIds: [gamma.user.id, beta.user.id],
   });
-  persistCompletedGame({
+  await persistCompletedGame({
     roomCode: 'ROOMB1',
     round: 6,
     players: [beta.user, alpha.user, gamma.user],
     eliminatedUserIds: [gamma.user.id, alpha.user.id],
   });
-  persistCompletedGame({
+  await persistCompletedGame({
     roomCode: 'ROOMC1',
     round: 8,
     players: [beta.user, alpha.user],
@@ -123,7 +123,7 @@ async function signup(app: Awaited<ReturnType<typeof createApp>>, username: stri
   };
 }
 
-function persistCompletedGame(input: {
+async function persistCompletedGame(input: {
   roomCode: string;
   round: number;
   players: Array<{ id: number; username: string }>;
@@ -156,5 +156,5 @@ function persistCompletedGame(input: {
     gameService.applyPlayerHit(game, userId, 3);
   }
 
-  saveCompletedMultiplayerGame(game);
+  await saveCompletedMultiplayerGame(game);
 }

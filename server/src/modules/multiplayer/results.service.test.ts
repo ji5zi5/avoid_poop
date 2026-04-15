@@ -12,17 +12,17 @@ import {resetDbForTests} from '../../db/client.js';
 const dbPath = path.join(process.cwd(), 'data', 'avoid-poop-results-test.sqlite');
 process.env.DB_PATH = dbPath;
 
-test.afterEach(() => {
-  resetDbForTests();
+test.afterEach(async () => {
+  await resetDbForTests();
   if (fs.existsSync(dbPath)) {
     fs.unlinkSync(dbPath);
   }
 });
 
-test('completed multiplayer games are persisted and exposed as stats/recent records', () => {
-  const alpha = createUser('mp_alpha', hashPassword('secret123'));
-  const beta = createUser('mp_beta', hashPassword('secret123'));
-  const gamma = createUser('mp_gamma', hashPassword('secret123'));
+test('completed multiplayer games are persisted and exposed as stats/recent records', async () => {
+  const alpha = await createUser('mp_alpha', hashPassword('secret123'));
+  const beta = await createUser('mp_beta', hashPassword('secret123'));
+  const gamma = await createUser('mp_gamma', hashPassword('secret123'));
 
   const gameService = new MultiplayerGameService();
   const game = gameService.createGame({
@@ -42,10 +42,10 @@ test('completed multiplayer games are persisted and exposed as stats/recent reco
 
   gameService.applyPlayerHit(game, gamma.id, 3);
   gameService.applyPlayerHit(game, beta.id, 3);
-  saveCompletedMultiplayerGame(game);
+  await saveCompletedMultiplayerGame(game);
 
-  const alphaRecords = getMultiplayerRecordsForUser(alpha.id);
-  const gammaRecords = getMultiplayerRecordsForUser(gamma.id);
+  const alphaRecords = await getMultiplayerRecordsForUser(alpha.id);
+  const gammaRecords = await getMultiplayerRecordsForUser(gamma.id);
 
   assert.equal(alphaRecords.stats.matchesPlayed, 1);
   assert.equal(alphaRecords.stats.wins, 1);

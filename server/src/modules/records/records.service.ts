@@ -5,10 +5,10 @@ import type {
   SingleLeaderboardEntry,
 } from '../../../../shared/src/contracts/records.js';
 import {getMultiplayerRecordsForUser} from '../multiplayer/results.service.js';
-import {listMultiplayerLeaderboard} from '../multiplayer/results.repository.js';
-import {createRecord, findBestRecordByMode, getSinglePlayerProfile, listRecentRecords, listSingleLeaderboard} from './records.repository.js';
+import {listMultiplayerLeaderboard, type DbMultiplayerLeaderboardEntry} from '../multiplayer/results.repository.js';
+import {createRecord, findBestRecordByMode, getSinglePlayerProfile, listRecentRecords, listSingleLeaderboard, type DbSingleLeaderboardEntry} from './records.repository.js';
 
-export function saveRunResult(userId: number, payload: RunResultPayload) {
+export async function saveRunResult(userId: number, payload: RunResultPayload) {
   return createRecord({
     userId,
     mode: payload.mode,
@@ -19,33 +19,44 @@ export function saveRunResult(userId: number, payload: RunResultPayload) {
   });
 }
 
-function rankSingle(entries: ReturnType<typeof listSingleLeaderboard>) {
+function rankSingle(entries: DbSingleLeaderboardEntry[]) {
   return entries.map((entry, index) => ({
     rank: index + 1,
     ...entry
   })) satisfies SingleLeaderboardEntry[];
 }
 
-function rankMultiplayer(entries: ReturnType<typeof listMultiplayerLeaderboard>) {
+function rankMultiplayer(entries: DbMultiplayerLeaderboardEntry[]) {
   return entries.map((entry, index) => ({
     rank: index + 1,
     ...entry
   })) satisfies MultiplayerLeaderboardEntry[];
 }
 
-export function getRecordsForUser(userId: number): RecordsResponse {
+export async function getRecordsForUser(userId: number): Promise<RecordsResponse> {
+  const [profile, normalBest, hardBest, recent, multiplayer, normalLeaderboard, hardLeaderboard, multiplayerLeaderboard] = await Promise.all([
+    getSinglePlayerProfile(userId),
+    findBestRecordByMode(userId, 'normal'),
+    findBestRecordByMode(userId, 'hard'),
+    listRecentRecords(userId),
+    getMultiplayerRecordsForUser(userId),
+    listSingleLeaderboard('normal'),
+    listSingleLeaderboard('hard'),
+    listMultiplayerLeaderboard(),
+  ]);
+
   return {
-    profile: getSinglePlayerProfile(userId),
+    profile,
     best: {
-      normal: findBestRecordByMode(userId, 'normal') ?? undefined,
-      hard: findBestRecordByMode(userId, 'hard') ?? undefined
+      normal: normalBest ?? undefined,
+      hard: hardBest ?? undefined
     },
-    recent: listRecentRecords(userId),
-    multiplayer: getMultiplayerRecordsForUser(userId),
+    recent,
+    multiplayer,
     leaderboard: {
-      normal: rankSingle(listSingleLeaderboard('normal')),
-      hard: rankSingle(listSingleLeaderboard('hard')),
-      multiplayer: rankMultiplayer(listMultiplayerLeaderboard())
+      normal: rankSingle(normalLeaderboard),
+      hard: rankSingle(hardLeaderboard),
+      multiplayer: rankMultiplayer(multiplayerLeaderboard)
     }
   };
 }

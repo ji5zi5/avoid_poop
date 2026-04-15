@@ -1,5 +1,6 @@
 import type {IncomingMessage} from 'node:http';
 import {randomUUID} from 'node:crypto';
+import type {Duplex} from 'node:stream';
 
 import type {FastifyInstance} from 'fastify';
 import {WebSocketServer, type RawData, type WebSocket} from 'ws';
@@ -95,7 +96,7 @@ export class MultiplayerSocketGateway {
       }
 
       socket.on('message', (payload: RawData) => {
-        this.handleMessage(context, payload.toString());
+        void this.handleMessage(context, payload.toString());
       });
 
       socket.on('close', () => {
@@ -128,6 +129,30 @@ export class MultiplayerSocketGateway {
 
   register() {
     this.app.server.on('upgrade', (request, socket, head) => {
+      void this.handleUpgrade(request, socket, head);
+    });
+
+    this.app.addHook('onClose', async () => {
+      for (const interval of this.gameIntervals.values()) {
+        clearInterval(interval);
+      }
+      for (const socket of this.connections.keys()) {
+        socket.close();
+      }
+      await new Promise<void>((resolve, reject) => {
+        this.server.close((error?: Error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
+        });
+      });
+    });
+  }
+
+  private async handleUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer) {
+    try {
       const upgradeUrl = new URL(request.url ?? '/', 'http://localhost');
       if (upgradeUrl.pathname !== this.options.runtimeConfig.multiplayerWebSocketPath) {
         return;
@@ -167,7 +192,7 @@ export class MultiplayerSocketGateway {
         return;
       }
 
-      const user = this.resolveUser(request);
+      const user = await this.resolveUser(request);
       if (!user) {
         socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
         socket.destroy();
@@ -180,25 +205,10 @@ export class MultiplayerSocketGateway {
       this.server.handleUpgrade(request, socket, head, (ws: WebSocket) => {
         this.server.emit('connection', ws, request, connectionMetadata);
       });
-    });
-
-    this.app.addHook('onClose', async () => {
-      for (const interval of this.gameIntervals.values()) {
-        clearInterval(interval);
-      }
-      for (const socket of this.connections.keys()) {
-        socket.close();
-      }
-      await new Promise<void>((resolve, reject) => {
-        this.server.close((error?: Error) => {
-          if (error) {
-            reject(error);
-            return;
-          }
-          resolve();
-        });
-      });
-    });
+    } catch (error) {
+      this.app.log.error({ err: error }, 'Failed during websocket upgrade');
+      socket.destroy();
+    }
   }
 
   leaveUser(userId: number) {
@@ -253,162 +263,167 @@ export class MultiplayerSocketGateway {
     }
   }
 
-  private handleMessage(context: ConnectionContext, raw: string) {
-    let payload: unknown;
+  private async handleMessage(context: ConnectionContext, raw: string) {
     try {
-      payload = JSON.parse(raw);
-    } catch {
-      this.send(context.socket, {type: 'error', error: 'Invalid socket payload.'});
-      return;
-    }
-
-    const parsed = multiplayerClientEventSchema.safeParse(payload);
-    if (!parsed.success) {
-      this.send(context.socket, {type: 'error', error: parsed.error.issues[0]?.message ?? 'Invalid socket payload.'});
-      return;
-    }
-
-    const event = parsed.data satisfies MultiplayerClientEvent;
-    if (event.type === 'ping') {
-      this.send(context.socket, {type: 'pong'});
-      return;
-    }
-
-    if (event.type !== 'player_input' && event.type !== 'jump') {
-      const rateLimitResult = this.messageLimiter.consume(`ws-message:${context.user.id}`);
-      if (!rateLimitResult.allowed) {
-        this.app.log.warn(
-          {
-            event: 'multiplayer_ws_message_rate_limited',
-            userId: context.user.id,
-            messageType: event.type,
-          },
-          'Rejected websocket message due to rate limiting',
-        );
-        this.send(context.socket, {type: 'error', error: 'Too many requests. Try again later.'});
+      let payload: unknown;
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        this.send(context.socket, {type: 'error', error: 'Invalid socket payload.'});
         return;
       }
-    }
 
-    if (event.type === 'subscribe_room') {
-      try {
-        const room = this.options.roomService.getRoomForUser(context.user.id, event.roomCode);
-        context.roomCode = room.roomCode;
+      const parsed = multiplayerClientEventSchema.safeParse(payload);
+      if (!parsed.success) {
+        this.send(context.socket, {type: 'error', error: parsed.error.issues[0]?.message ?? 'Invalid socket payload.'});
+        return;
+      }
+
+      const event = parsed.data satisfies MultiplayerClientEvent;
+      if (event.type === 'ping') {
+        this.send(context.socket, {type: 'pong'});
+        return;
+      }
+
+      if (event.type !== 'player_input' && event.type !== 'jump') {
+        const rateLimitResult = this.messageLimiter.consume(`ws-message:${context.user.id}`);
+        if (!rateLimitResult.allowed) {
+          this.app.log.warn(
+            {
+              event: 'multiplayer_ws_message_rate_limited',
+              userId: context.user.id,
+              messageType: event.type,
+            },
+            'Rejected websocket message due to rate limiting',
+          );
+          this.send(context.socket, {type: 'error', error: 'Too many requests. Try again later.'});
+          return;
+        }
+      }
+
+      if (event.type === 'subscribe_room') {
+        try {
+          const room = this.options.roomService.getRoomForUser(context.user.id, event.roomCode);
+          context.roomCode = room.roomCode;
+          this.app.log.info(
+            {
+              event: 'multiplayer_room_subscribe',
+              userId: context.user.id,
+            },
+            'Subscribed socket to room',
+          );
+          this.broadcastRoomSnapshot(room.roomCode);
+          this.broadcastGameSnapshot(room.roomCode);
+        } catch (error) {
+          if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
+            this.send(context.socket, {type: 'error', error: error.message});
+            return;
+          }
+          throw error;
+        }
+        return;
+      }
+
+      if (!context.roomCode) {
+        this.send(context.socket, {type: 'error', error: 'Subscribe to a room first.'});
+        return;
+      }
+
+      if (event.type === 'set_ready') {
+        try {
+          this.options.roomService.setReady(context.roomCode, context.user.id, event.ready);
+          this.broadcastRoomSnapshot(context.roomCode);
+        } catch (error) {
+          if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
+            this.send(context.socket, {type: 'error', error: error.message});
+            return;
+          }
+          throw error;
+        }
+        return;
+      }
+
+      if (event.type === 'send_chat') {
+        try {
+          const chatMessage = this.options.roomService.appendChatMessage(context.roomCode, context.user, event.message);
+          this.broadcastRoomSnapshot(context.roomCode);
+          for (const connection of this.connections.values()) {
+            if (connection.roomCode === context.roomCode) {
+              this.send(connection.socket, {
+                type: 'chat_message',
+                roomCode: context.roomCode,
+                chatMessage
+              });
+            }
+          }
+        } catch (error) {
+          if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
+            this.send(context.socket, {type: 'error', error: error.message});
+            return;
+          }
+          throw error;
+        }
+        return;
+      }
+
+      if (event.type === 'start_game') {
+        try {
+          this.options.roomService.ensureRoomCanStart(context.roomCode, context.user.id);
+          const startedRoom = this.options.roomService.markRoomInProgress(context.roomCode);
+          const game = this.gameService.createGame(startedRoom);
+          this.activeGames.set(context.roomCode, game);
+          this.ensureGameLoop(context.roomCode);
+          this.app.log.info(
+            {
+              event: 'multiplayer_game_started',
+              hostUserId: context.user.id,
+              playerCount: startedRoom.playerCount,
+            },
+            'Multiplayer game started',
+          );
+          this.broadcastRoomSnapshot(context.roomCode);
+          this.broadcastGameSnapshot(context.roomCode);
+        } catch (error) {
+          if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
+            this.send(context.socket, {type: 'error', error: error.message});
+            return;
+          }
+          throw error;
+        }
+        return;
+      }
+
+      if (event.type === 'leave_room') {
         this.app.log.info(
           {
-            event: 'multiplayer_room_subscribe',
+            event: 'multiplayer_room_leave',
             userId: context.user.id,
           },
-          'Subscribed socket to room',
+          'Player left multiplayer room',
         );
-        this.broadcastRoomSnapshot(room.roomCode);
-        this.broadcastGameSnapshot(room.roomCode);
-      } catch (error) {
-        if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
-          this.send(context.socket, {type: 'error', error: error.message});
-          return;
-        }
-        throw error;
+        this.leaveUser(context.user.id);
+        return;
       }
-      return;
-    }
 
-    if (!context.roomCode) {
-      this.send(context.socket, {type: 'error', error: 'Subscribe to a room first.'});
-      return;
-    }
-
-    if (event.type === 'set_ready') {
-      try {
-        this.options.roomService.setReady(context.roomCode, context.user.id, event.ready);
-        this.broadcastRoomSnapshot(context.roomCode);
-      } catch (error) {
-        if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
-          this.send(context.socket, {type: 'error', error: error.message});
-          return;
-        }
-        throw error;
+      const game = this.activeGames.get(context.roomCode);
+      if (!game) {
+        this.send(context.socket, {type: 'error', error: 'Game has not started.'});
+        return;
       }
-      return;
-    }
 
-    if (event.type === 'send_chat') {
-      try {
-        const chatMessage = this.options.roomService.appendChatMessage(context.roomCode, context.user, event.message);
-        this.broadcastRoomSnapshot(context.roomCode);
-        for (const connection of this.connections.values()) {
-          if (connection.roomCode === context.roomCode) {
-            this.send(connection.socket, {
-              type: 'chat_message',
-              roomCode: context.roomCode,
-              chatMessage
-            });
-          }
-        }
-      } catch (error) {
-        if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
-          this.send(context.socket, {type: 'error', error: error.message});
-          return;
-        }
-        throw error;
-      }
-      return;
-    }
-
-    if (event.type === 'start_game') {
-      try {
-        this.options.roomService.ensureRoomCanStart(context.roomCode, context.user.id);
-        const startedRoom = this.options.roomService.markRoomInProgress(context.roomCode);
-        const game = this.gameService.createGame(startedRoom);
-        this.activeGames.set(context.roomCode, game);
-        this.ensureGameLoop(context.roomCode);
-        this.app.log.info(
-          {
-            event: 'multiplayer_game_started',
-            hostUserId: context.user.id,
-            playerCount: startedRoom.playerCount,
-          },
-          'Multiplayer game started',
-        );
-        this.broadcastRoomSnapshot(context.roomCode);
+      if (event.type === 'player_input') {
+        this.gameService.setPlayerDirection(game, context.user.id, event.direction);
         this.broadcastGameSnapshot(context.roomCode);
-      } catch (error) {
-        if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
-          this.send(context.socket, {type: 'error', error: error.message});
-          return;
-        }
-        throw error;
+        return;
       }
-      return;
-    }
 
-    if (event.type === 'leave_room') {
-      this.app.log.info(
-        {
-          event: 'multiplayer_room_leave',
-          userId: context.user.id,
-        },
-        'Player left multiplayer room',
-      );
-      this.leaveUser(context.user.id);
-      return;
-    }
-
-    const game = this.activeGames.get(context.roomCode);
-    if (!game) {
-      this.send(context.socket, {type: 'error', error: 'Game has not started.'});
-      return;
-    }
-
-    if (event.type === 'player_input') {
-      this.gameService.setPlayerDirection(game, context.user.id, event.direction);
-      this.broadcastGameSnapshot(context.roomCode);
-      return;
-    }
-
-    if (event.type === 'jump') {
-      this.gameService.jumpPlayer(game, context.user.id);
-      this.broadcastGameSnapshot(context.roomCode);
+      if (event.type === 'jump') {
+        this.gameService.jumpPlayer(game, context.user.id);
+        this.broadcastGameSnapshot(context.roomCode);
+      }
+    } catch (error) {
+      this.app.log.error({ err: error, userId: context.user.id }, 'Failed to handle multiplayer socket message');
+      this.send(context.socket, { type: 'error', error: 'Unexpected server error.' });
     }
   }
 
@@ -418,6 +433,14 @@ export class MultiplayerSocketGateway {
     }
 
     const interval = setInterval(() => {
+      void this.tickGameLoop(roomCode, interval);
+    }, 100);
+
+    this.gameIntervals.set(roomCode, interval);
+  }
+
+  private async tickGameLoop(roomCode: string, interval: NodeJS.Timeout) {
+    try {
       const game = this.activeGames.get(roomCode);
       if (!game) {
         clearInterval(interval);
@@ -428,16 +451,18 @@ export class MultiplayerSocketGateway {
       this.gameService.tick(game, 0.1, Date.now());
       this.broadcastGameSnapshot(roomCode);
       if (game.phase === 'complete') {
-        saveCompletedMultiplayerGame(game);
+        await saveCompletedMultiplayerGame(game);
         clearInterval(interval);
         this.gameIntervals.delete(roomCode);
       }
-    }, 100);
-
-    this.gameIntervals.set(roomCode, interval);
+    } catch (error) {
+      this.app.log.error({ err: error, roomCode }, 'Failed during multiplayer game loop');
+      clearInterval(interval);
+      this.gameIntervals.delete(roomCode);
+    }
   }
 
-  private resolveUser(request: IncomingMessage) {
+  private async resolveUser(request: IncomingMessage) {
     const cookieValue = getCookieValue(request.headers.cookie, config.sessionCookieName);
     return resolveSessionUserFromSignedCookie(cookieValue, (value) => this.app.unsignCookie(value));
   }

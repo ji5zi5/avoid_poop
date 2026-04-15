@@ -13,7 +13,7 @@ export type DatabaseRuntimeConfig =
       provider: 'postgres';
       databaseUrl: string | null;
       bootstrapSql: string;
-      migrationState: 'scaffold-only';
+      migrationState: 'runtime-ready';
     };
 
 export function resolveDatabaseRuntimeConfig(): DatabaseRuntimeConfig {
@@ -22,7 +22,7 @@ export function resolveDatabaseRuntimeConfig(): DatabaseRuntimeConfig {
       provider: 'postgres',
       databaseUrl: config.databaseUrl,
       bootstrapSql: postgresSchemaSql,
-      migrationState: 'scaffold-only'
+      migrationState: 'runtime-ready'
     };
   }
 
@@ -35,13 +35,5 @@ export function resolveDatabaseRuntimeConfig(): DatabaseRuntimeConfig {
 }
 
 export function assertSupportedDatabaseRuntime() {
-  const runtime = resolveDatabaseRuntimeConfig();
-
-  if (runtime.provider === 'postgres') {
-    throw new Error(
-      'DATABASE_PROVIDER=postgres is scaffolded for schema planning only. Keep SQLite runtime enabled until a real Postgres runtime adapter and migration path are implemented.'
-    );
-  }
-
-  return runtime;
+  return resolveDatabaseRuntimeConfig();
 }

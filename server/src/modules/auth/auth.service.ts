@@ -1,8 +1,8 @@
-import {FastifyReply, FastifyRequest} from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
 
-import {config} from '../../config.js';
-import {createSessionId} from '../../utils/session.js';
-import {hashPassword, verifyPassword} from '../../utils/password.js';
+import { config } from '../../config.js';
+import { createSessionId } from '../../utils/session.js';
+import { hashPassword, verifyPassword } from '../../utils/password.js';
 import {
   createSession,
   createUser,
@@ -10,21 +10,21 @@ import {
   deleteSession,
   findUserById,
   findUserByUsername,
-  getSession
+  getSession,
 } from './auth.repository.js';
 
 export class AuthConflictError extends Error {}
 export class AuthUnauthorizedError extends Error {}
 
-export function toPublicUser(user: {id: number; username: string}) {
+export function toPublicUser(user: { id: number; username: string }) {
   return {
     id: user.id,
-    username: user.username
+    username: user.username,
   };
 }
 
-export function signup(username: string, password: string) {
-  const existing = findUserByUsername(username);
+export async function signup(username: string, password: string) {
+  const existing = await findUserByUsername(username);
   if (existing) {
     throw new AuthConflictError('Username is already taken.');
   }
@@ -32,8 +32,8 @@ export function signup(username: string, password: string) {
   return createUser(username, hashPassword(password));
 }
 
-export function login(username: string, password: string) {
-  const user = findUserByUsername(username);
+export async function login(username: string, password: string) {
+  const user = await findUserByUsername(username);
   if (!user || !verifyPassword(password, user.passwordHash)) {
     throw new AuthUnauthorizedError('Invalid username or password.');
   }
@@ -41,11 +41,11 @@ export function login(username: string, password: string) {
   return user;
 }
 
-export function establishSession(reply: FastifyReply, userId: number) {
+export async function establishSession(reply: FastifyReply, userId: number) {
   const sessionId = createSessionId();
   const expiresAt = new Date(Date.now() + config.sessionTtlMs);
 
-  createSession(sessionId, userId, expiresAt.toISOString());
+  await createSession(sessionId, userId, expiresAt.toISOString());
 
   reply.setCookie(config.sessionCookieName, sessionId, {
     path: '/',
@@ -53,17 +53,17 @@ export function establishSession(reply: FastifyReply, userId: number) {
     sameSite: config.cookieSameSite,
     secure: config.cookieSecure,
     signed: true,
-    expires: expiresAt
+    expires: expiresAt,
   });
 }
 
-export function clearSession(reply: FastifyReply, sessionId?: string) {
+export async function clearSession(reply: FastifyReply, sessionId?: string) {
   if (sessionId) {
-    deleteSession(sessionId);
+    await deleteSession(sessionId);
   }
 
   reply.clearCookie(config.sessionCookieName, {
-    path: '/'
+    path: '/',
   });
 }
 
@@ -72,11 +72,11 @@ type UnsignCookieResult = {
   value: string | null;
 };
 
-export function resolveSessionUserFromSignedCookie(
+export async function resolveSessionUserFromSignedCookie(
   rawCookie: string | undefined,
-  unsignCookie: (cookieValue: string) => UnsignCookieResult
+  unsignCookie: (cookieValue: string) => UnsignCookieResult,
 ) {
-  deleteExpiredSessions();
+  await deleteExpiredSessions();
 
   if (!rawCookie) {
     return null;
@@ -87,22 +87,22 @@ export function resolveSessionUserFromSignedCookie(
     return null;
   }
 
-  const session = getSession(unsigned.value);
+  const session = await getSession(unsigned.value);
   if (!session) {
     return null;
   }
 
   if (new Date(session.expiresAt).getTime() <= Date.now()) {
-    deleteSession(session.id);
+    await deleteSession(session.id);
     return null;
   }
 
   return findUserById(session.userId);
 }
 
-export function resolveSessionUser(request: FastifyRequest) {
+export async function resolveSessionUser(request: FastifyRequest) {
   return resolveSessionUserFromSignedCookie(
     request.cookies[config.sessionCookieName],
-    (cookieValue) => request.unsignCookie(cookieValue)
+    (cookieValue) => request.unsignCookie(cookieValue),
   );
 }

@@ -250,7 +250,7 @@ async function main() {
     console.log("e2e flow passed");
   } finally {
     await app.close();
-    resetDbForTests();
+    await resetDbForTests();
     if (fs.existsSync(process.env.DB_PATH)) {
       fs.unlinkSync(process.env.DB_PATH);
     }
