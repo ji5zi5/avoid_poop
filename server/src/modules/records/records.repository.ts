@@ -112,7 +112,7 @@ export async function createRecord(input: Omit<DbRecord, 'id' | 'createdAt'>) {
   }
 
   const [row] = await db.sql<DbRecord[]>`
-    INSERT INTO records (user_id, mode, score, reached_round, survival_time, clear, verified)
+    INSERT INTO records (user_id, run_session_id, mode, score, reached_round, survival_time, clear, verified)
     VALUES (${input.userId}, ${input.runSessionId}, ${input.mode}, ${input.score}, ${input.reachedRound}, ${input.survivalTime}, ${input.clear}, ${input.verified})
     RETURNING
       id,
