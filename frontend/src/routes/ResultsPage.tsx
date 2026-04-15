@@ -16,7 +16,8 @@ type Props = {
   embedded?: boolean;
 };
 
-const PENDING_RESULT_KEY = "avoid-poop-pending-result";
+const PENDING_RESULT_KEY = "avoid-poop-pending-result-v2";
+const LEGACY_PENDING_RESULT_KEY = "avoid-poop-pending-result";
 type PendingResultState = {
   result: RunResultPayload;
   runSessionId?: string;
@@ -37,6 +38,11 @@ export function ResultsPage({
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    sessionStorage.removeItem(LEGACY_PENDING_RESULT_KEY);
+  }, []);
+
   const pendingState = useMemo(() => {
     const raw = sessionStorage.getItem(PENDING_RESULT_KEY);
     if (!raw) {
