@@ -16,7 +16,7 @@ export const roomMaxPlayersSchema = z.number().int().min(ROOM_MIN_PLAYERS).max(R
 export const privatePasswordValueSchema = z
   .string()
   .trim()
-  .min(8, 'Private room password must be at least 8 characters.')
+  .min(1, 'Private room password is required.')
   .max(32, 'Private room password must be at most 32 characters.');
 
 export const roomStatusSchema = z.enum(['waiting', 'in_progress']);

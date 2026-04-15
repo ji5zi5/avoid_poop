@@ -60,7 +60,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
   function handlePrivateJoin(event: FormEvent<HTMLFormElement>, roomId: string) {
     event.preventDefault();
     const privatePassword = roomPasswords[roomId]?.trim() ?? "";
-    if (privatePassword.length < 8) {
+    if (privatePassword.length === 0) {
       return;
     }
     onJoinRoom({ roomId, privatePassword });
@@ -180,7 +180,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
                             placeholder={copy.multiplayer.passwordPlaceholder}
                           />
                         </label>
-                        <button className="ghost-button subtle-button" type="submit" disabled={currentPassword.trim().length < 8}>
+                        <button className="ghost-button subtle-button" type="submit" disabled={currentPassword.trim().length === 0}>
                           {copy.multiplayer.joinPrivate}
                         </button>
                       </form>
@@ -247,7 +247,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
               <button
                 className="home-start-button home-start-button--hero"
                 onClick={() => onCreateRoom({ options, maxPlayers, privatePassword: options.visibility === "private" ? createPrivatePassword.trim() : undefined })}
-                disabled={options.visibility === "private" && createPrivatePassword.trim().length < 8}
+                disabled={options.visibility === "private" && createPrivatePassword.trim().length === 0}
               >
                 {copy.multiplayer.createRoom}
               </button>
