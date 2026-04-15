@@ -10,7 +10,7 @@ type Props = {
 };
 
 export function AuthPage({ onAuthenticated }: Props) {
-  const [mode, setMode] = useState<"login" | "signup">("signup");
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
