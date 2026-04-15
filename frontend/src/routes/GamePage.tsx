@@ -42,6 +42,10 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
     directionRef.current = direction;
   }
 
+  function suppressTouchCallout(event: React.SyntheticEvent<HTMLElement>) {
+    event.preventDefault();
+  }
+
   function restartRun() {
     directionRef.current = 0;
     inputTrackerRef.current.clear();
@@ -257,6 +261,7 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
               className="control-button"
               aria-label={copy.game.left}
               disabled={Boolean(result)}
+              onContextMenu={suppressTouchCallout}
               onPointerDown={() => setDirection(inputTrackerRef.current.press(-1))}
               onPointerUp={() => setDirection(inputTrackerRef.current.release(-1))}
               onPointerLeave={() => setDirection(inputTrackerRef.current.release(-1))}
@@ -268,6 +273,7 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
               className="control-button"
               aria-label={copy.game.right}
               disabled={Boolean(result)}
+              onContextMenu={suppressTouchCallout}
               onPointerDown={() => setDirection(inputTrackerRef.current.press(1))}
               onPointerUp={() => setDirection(inputTrackerRef.current.release(1))}
               onPointerLeave={() => setDirection(inputTrackerRef.current.release(1))}

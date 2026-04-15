@@ -23,6 +23,10 @@ export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, on
   const currentDebuffs = me?.activeDebuffs ?? [];
   const jammed = currentDebuffs.some((debuff) => debuff.type === "vision_jam");
 
+  function suppressTouchCallout(event: React.SyntheticEvent<HTMLElement>) {
+    event.preventDefault();
+  }
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) {
@@ -105,9 +109,9 @@ export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, on
             </div>
           ) : null}
           <div className="mobile-controls">
-            <button className="control-button" onPointerDown={() => onDirectionChange(inputTrackerRef.current.press(-1))} onPointerUp={() => onDirectionChange(inputTrackerRef.current.release(-1))} onPointerLeave={() => onDirectionChange(inputTrackerRef.current.release(-1))} onPointerCancel={() => onDirectionChange(inputTrackerRef.current.release(-1))}>◀</button>
-            {game.options.bodyBlock ? <button className="control-button" onPointerDown={onJump}>▲</button> : <span className="control-button control-button--ghost">·</span>}
-            <button className="control-button" onPointerDown={() => onDirectionChange(inputTrackerRef.current.press(1))} onPointerUp={() => onDirectionChange(inputTrackerRef.current.release(1))} onPointerLeave={() => onDirectionChange(inputTrackerRef.current.release(1))} onPointerCancel={() => onDirectionChange(inputTrackerRef.current.release(1))}>▶</button>
+            <button className="control-button" onContextMenu={suppressTouchCallout} onPointerDown={() => onDirectionChange(inputTrackerRef.current.press(-1))} onPointerUp={() => onDirectionChange(inputTrackerRef.current.release(-1))} onPointerLeave={() => onDirectionChange(inputTrackerRef.current.release(-1))} onPointerCancel={() => onDirectionChange(inputTrackerRef.current.release(-1))}>◀</button>
+            {game.options.bodyBlock ? <button className="control-button" onContextMenu={suppressTouchCallout} onPointerDown={onJump}>▲</button> : <span className="control-button control-button--ghost">·</span>}
+            <button className="control-button" onContextMenu={suppressTouchCallout} onPointerDown={() => onDirectionChange(inputTrackerRef.current.press(1))} onPointerUp={() => onDirectionChange(inputTrackerRef.current.release(1))} onPointerLeave={() => onDirectionChange(inputTrackerRef.current.release(1))} onPointerCancel={() => onDirectionChange(inputTrackerRef.current.release(1))}>▶</button>
           </div>
           {game.options.bodyBlock ? <p className="home-card__meta">{copy.multiplayer.jumpHint}</p> : null}
           <button className="ghost-button subtle-button" onClick={onLeave}>{copy.multiplayer.leave}</button>
