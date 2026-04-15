@@ -1,4 +1,5 @@
 import { getDb } from '../../db/client.js';
+import { toIsoTimestamp } from '../../utils/timestamps.js';
 
 export type DbRecord = {
   id: number;
@@ -26,6 +27,20 @@ export type DbSinglePlayerProfile = {
   totalClears: number;
   totalScore: number;
 };
+
+function normalizeRecordRow<T extends { createdAt: string | Date }>(row: T) {
+  return {
+    ...row,
+    createdAt: toIsoTimestamp(row.createdAt),
+  };
+}
+
+function normalizeSingleLeaderboardRow<T extends { createdAt: string | Date; clear: boolean }>(row: T) {
+  return {
+    ...row,
+    createdAt: toIsoTimestamp(row.createdAt),
+  };
+}
 
 export async function createRecord(input: Omit<DbRecord, 'id' | 'createdAt'>) {
   const db = await getDb();
@@ -73,7 +88,7 @@ export async function createRecord(input: Omit<DbRecord, 'id' | 'createdAt'>) {
       created_at AS "createdAt"
   `;
 
-  return row;
+  return normalizeRecordRow(row);
 }
 
 export async function listRecentRecords(userId: number) {
@@ -101,7 +116,7 @@ export async function listRecentRecords(userId: number) {
     })) as DbRecord[];
   }
 
-  return db.sql<DbRecord[]>`
+  const rows = await db.sql<DbRecord[]>`
     SELECT
       id,
       user_id AS "userId",
@@ -116,6 +131,8 @@ export async function listRecentRecords(userId: number) {
     ORDER BY created_at DESC, id DESC
     LIMIT 10
   `;
+
+  return rows.map(normalizeRecordRow);
 }
 
 export async function findBestRecordByMode(userId: number, mode: 'normal' | 'hard') {
@@ -164,7 +181,7 @@ export async function findBestRecordByMode(userId: number, mode: 'normal' | 'har
     LIMIT 1
   `;
 
-  return row ?? null;
+  return row ? normalizeRecordRow(row) : null;
 }
 
 export async function getSinglePlayerProfile(userId: number) {
@@ -228,7 +245,7 @@ export async function listSingleLeaderboard(mode: 'normal' | 'hard', limit = 20)
     })) as DbSingleLeaderboardEntry[];
   }
 
-  return db.sql<DbSingleLeaderboardEntry[]>`
+  const rows = await db.sql<DbSingleLeaderboardEntry[]>`
     WITH ranked AS (
       SELECT
         r.user_id AS "userId",
@@ -252,4 +269,6 @@ export async function listSingleLeaderboard(mode: 'normal' | 'hard', limit = 20)
     ORDER BY score DESC, "reachedRound" DESC, "survivalTime" DESC, "userId" ASC
     LIMIT ${limit}
   `;
+
+  return rows.map(normalizeSingleLeaderboardRow);
 }

@@ -1,4 +1,5 @@
 import { getDb } from '../../db/client.js';
+import { toIsoTimestamp } from '../../utils/timestamps.js';
 
 export type CreateMultiplayerMatchInput = {
   placements: Array<{
@@ -22,6 +23,13 @@ export type DbMultiplayerLeaderboardEntry = {
   bestPlacement: number | null;
   bestReachedRound: number | null;
 };
+
+function normalizeCreatedAtRow<T extends { createdAt: string | Date }>(row: T) {
+  return {
+    ...row,
+    createdAt: toIsoTimestamp(row.createdAt),
+  };
+}
 
 export async function createMultiplayerMatch(input: CreateMultiplayerMatchInput) {
   const db = await getDb();
@@ -66,7 +74,7 @@ export async function createMultiplayerMatch(input: CreateMultiplayerMatchInput)
       `;
     }
 
-    return match;
+    return normalizeCreatedAtRow(match);
   });
 }
 
@@ -129,7 +137,7 @@ export async function listRecentMultiplayerRecords(userId: number) {
     }));
   }
 
-  return db.sql<Array<{
+  const rows = await db.sql<Array<{
     matchId: number;
     placement: number;
     totalPlayers: number;
@@ -149,6 +157,8 @@ export async function listRecentMultiplayerRecords(userId: number) {
     ORDER BY created_at DESC, id DESC
     LIMIT 10
   `;
+
+  return rows.map(normalizeCreatedAtRow);
 }
 
 export async function listMultiplayerLeaderboard(limit = 20) {
