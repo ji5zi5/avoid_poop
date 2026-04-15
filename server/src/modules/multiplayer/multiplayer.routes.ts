@@ -35,7 +35,7 @@ export const multiplayerRoutes: FastifyPluginAsync<MultiplayerRoutesOptions> = a
     }
 
     try {
-      const room = roomService.createRoom(request.user!, parsed.data.options, parsed.data.privatePassword);
+      const room = roomService.createRoom(request.user!, parsed.data.options, parsed.data.privatePassword, parsed.data.maxPlayers);
       request.log.info(
         {
           event: 'multiplayer_room_created',

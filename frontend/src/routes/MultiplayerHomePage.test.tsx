@@ -44,6 +44,22 @@ describe("MultiplayerHomePage", () => {
     expect(screen.getAllByText("비공개방").length).toBeGreaterThan(0);
     expect(screen.queryByRole("checkbox")).toBeNull();
     expect(screen.getByLabelText("부딪힘").tagName).toBe("SELECT");
+    expect(screen.getByLabelText("최대 인원").tagName).toBe("SELECT");
+  });
+
+  it("submits the chosen max player count when creating a room", () => {
+    const onCreateRoom = vi.fn();
+    render(<MultiplayerHomePage onBack={vi.fn()} onCreateRoom={onCreateRoom} onJoinRoom={vi.fn()} loadRooms={vi.fn().mockResolvedValue([])} onQuickJoin={vi.fn()} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "방 만들기" }).at(-1)!);
+    fireEvent.change(screen.getAllByLabelText("최대 인원").at(-1)!, { target: { value: "4" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "방 만들기" }).at(-1)!);
+
+    expect(onCreateRoom).toHaveBeenCalledWith({
+      options: { difficulty: "normal", visibility: "public", bodyBlock: false, debuffTier: 2 },
+      maxPlayers: 4,
+      privatePassword: undefined,
+    });
   });
 
   it("renders public and private rooms in one list and joins the selected room correctly", async () => {

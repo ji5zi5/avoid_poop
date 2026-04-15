@@ -51,6 +51,7 @@ export type RoomListEntry = {
 
 export type CreateRoomPayload = {
   options?: Partial<RoomOptions>;
+  maxPlayers?: number;
   privatePassword?: string;
 };
 

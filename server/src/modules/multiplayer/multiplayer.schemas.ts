@@ -2,6 +2,7 @@ import {z} from 'zod';
 
 export const ROOM_CODE_LENGTH = 6;
 export const ROOM_MAX_PLAYERS = 8;
+export const ROOM_MIN_PLAYERS = 2;
 
 export const roomCodeValueSchema = z
   .string()
@@ -10,6 +11,7 @@ export const roomCodeValueSchema = z
   .regex(/^[a-zA-Z0-9]+$/, 'Room code must contain only letters and numbers.');
 
 export const roomBrowseIdSchema = z.string().uuid();
+export const roomMaxPlayersSchema = z.number().int().min(ROOM_MIN_PLAYERS).max(ROOM_MAX_PLAYERS);
 
 export const privatePasswordValueSchema = z
   .string()
@@ -32,6 +34,7 @@ export const roomOptionsPatchSchema = roomOptionsSchema.partial();
 
 export const createRoomPayloadSchema = z.object({
   options: roomOptionsPatchSchema.optional(),
+  maxPlayers: roomMaxPlayersSchema.optional(),
   privatePassword: privatePasswordValueSchema.optional()
 }).superRefine((value, ctx) => {
   const visibility = value.options?.visibility ?? defaultRoomOptions.visibility;
@@ -90,20 +93,43 @@ export const roomSummarySchema = z.object({
   roomCode: z.string().length(ROOM_CODE_LENGTH).regex(/^[A-Z0-9]+$/),
   hostUserId: z.number().int().positive(),
   status: roomStatusSchema,
-  maxPlayers: z.literal(ROOM_MAX_PLAYERS),
+  maxPlayers: roomMaxPlayersSchema,
   playerCount: z.number().int().min(0).max(ROOM_MAX_PLAYERS),
   players: z.array(lobbyPlayerSchema).max(ROOM_MAX_PLAYERS),
   options: roomOptionsSchema,
   chatMessages: z.array(roomChatMessageSchema).max(80)
+}).superRefine((room, ctx) => {
+  if (room.playerCount > room.maxPlayers) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Player count cannot exceed max players.',
+      path: ['playerCount'],
+    });
+  }
+  if (room.players.length > room.maxPlayers) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Roster cannot exceed max players.',
+      path: ['players'],
+    });
+  }
 });
 
 export const roomListEntrySchema = z.object({
   roomId: roomBrowseIdSchema,
   hostUsername: z.string().min(1),
   status: roomStatusSchema,
-  maxPlayers: z.literal(ROOM_MAX_PLAYERS),
+  maxPlayers: roomMaxPlayersSchema,
   playerCount: z.number().int().min(0).max(ROOM_MAX_PLAYERS),
   options: roomOptionsSchema,
+}).superRefine((room, ctx) => {
+  if (room.playerCount > room.maxPlayers) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Player count cannot exceed max players.',
+      path: ['playerCount'],
+    });
+  }
 });
 
 export const multiplayerActiveDebuffSchema = z.object({

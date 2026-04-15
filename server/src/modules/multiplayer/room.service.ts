@@ -2,6 +2,7 @@ import {randomUUID} from 'node:crypto';
 
 import {
   ROOM_MAX_PLAYERS,
+  ROOM_MIN_PLAYERS,
   defaultRoomOptions,
   type LobbyPlayer,
   type RoomChatMessage,
@@ -10,6 +11,7 @@ import {
   type RoomOptionsPatch,
   type RoomSummary,
   roomListEntrySchema,
+  roomMaxPlayersSchema,
   roomSummarySchema
 } from './multiplayer.schemas.js';
 
@@ -35,6 +37,7 @@ type RoomRecord = {
     ready: boolean;
   }>;
   options: RoomOptions;
+  maxPlayers: number;
   chatMessages: RoomChatMessage[];
 };
 
@@ -48,7 +51,7 @@ export class RoomService {
   private readonly rooms = new Map<string, RoomRecord>();
   private readonly userRoomIndex = new Map<number, string>();
 
-  createRoom(user: RoomUser, options?: RoomOptionsPatch, privatePassword?: string) {
+  createRoom(user: RoomUser, options?: RoomOptionsPatch, privatePassword?: string, maxPlayers?: number) {
     this.removeUserFromCurrentRoom(user.id);
 
     const mergedOptions = {
@@ -63,12 +66,15 @@ export class RoomService {
       throw new RoomAccessError('Private rooms require a password.');
     }
 
+    const normalizedMaxPlayers = roomMaxPlayersSchema.parse(maxPlayers ?? ROOM_MAX_PLAYERS);
+
     const room: RoomRecord = {
       browseId: randomUUID(),
       roomCode: this.generateRoomCode(),
       hostUserId: user.id,
       status: 'waiting',
       privatePassword: normalizedPrivatePassword,
+      maxPlayers: normalizedMaxPlayers,
       players: [
         {
           userId: user.id,
@@ -112,7 +118,7 @@ export class RoomService {
       throw new RoomClosedError('Room is no longer accepting players.');
     }
 
-    if (room.players.length >= ROOM_MAX_PLAYERS) {
+    if (room.players.length >= room.maxPlayers) {
       throw new RoomFullError('Room is full.');
     }
 
@@ -214,7 +220,7 @@ export class RoomService {
     if (room.hostUserId !== userId) {
       throw new RoomStartError('Only the host can start the game.');
     }
-    if (room.playerCount < 2) {
+    if (room.playerCount < ROOM_MIN_PLAYERS) {
       throw new RoomStartError('At least 2 players are required to start.');
     }
     if (!room.players.every((player) => player.ready)) {
@@ -298,7 +304,7 @@ export class RoomService {
 
   findJoinableRoom(options?: RoomOptionsPatch) {
     for (const room of this.rooms.values()) {
-      if (room.status !== 'waiting' || room.players.length >= ROOM_MAX_PLAYERS) {
+      if (room.status !== 'waiting' || room.players.length >= room.maxPlayers) {
         continue;
       }
 
@@ -349,7 +355,7 @@ export class RoomService {
       roomCode: room.roomCode,
       hostUserId: room.hostUserId,
       status: room.status,
-      maxPlayers: ROOM_MAX_PLAYERS,
+      maxPlayers: room.maxPlayers,
       playerCount: players.length,
       players,
       options: room.options,
@@ -362,7 +368,7 @@ export class RoomService {
       roomId: room.browseId,
       hostUsername: room.players.find((player) => player.userId === room.hostUserId)?.username ?? room.players[0]?.username ?? 'HOST',
       status: room.status,
-      maxPlayers: ROOM_MAX_PLAYERS,
+      maxPlayers: room.maxPlayers,
       playerCount: room.players.length,
       options: room.options,
     });

@@ -52,6 +52,7 @@ test('creating a room returns the room code and host assignment', async () => {
         bodyBlock: true,
         debuffTier: 3
       },
+      maxPlayers: 4,
       privatePassword: 'secret-pass'
     }
   });
@@ -61,6 +62,7 @@ test('creating a room returns the room code and host assignment', async () => {
   assert.match(room.roomCode, /^[A-Z0-9]{6}$/);
   assert.equal(room.hostUserId, host.user.id);
   assert.equal(room.status, 'waiting');
+  assert.equal(room.maxPlayers, 4);
   assert.equal(room.playerCount, 1);
   assert.deepEqual(room.options, {difficulty: 'hard', visibility: 'private', bodyBlock: true, debuffTier: 3});
   assert.deepEqual(room.players, [
@@ -83,6 +85,41 @@ test('creating a room returns the room code and host assignment', async () => {
 
   assert.equal(getRoom.statusCode, 200);
   assert.deepEqual(getRoom.json(), room);
+  await app.close();
+});
+
+test('room-specific max players caps joins before the global ceiling', async () => {
+  const app = await createApp();
+  const host = await signupAndGetCookie(app, 'cap_host');
+  const guestOne = await signupAndGetCookie(app, 'cap_guest_one');
+  const guestTwo = await signupAndGetCookie(app, 'cap_guest_two');
+
+  const createRoom = await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/rooms',
+    cookies: { avoid_poop_session: host.cookie },
+    payload: { maxPlayers: 2 },
+  });
+  const room = createRoom.json();
+
+  const firstJoin = await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/join',
+    cookies: { avoid_poop_session: guestOne.cookie },
+    payload: { roomCode: room.roomCode },
+  });
+  assert.equal(firstJoin.statusCode, 200);
+  assert.equal(firstJoin.json().playerCount, 2);
+
+  const secondJoin = await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/join',
+    cookies: { avoid_poop_session: guestTwo.cookie },
+    payload: { roomCode: room.roomCode },
+  });
+  assert.equal(secondJoin.statusCode, 409);
+  assert.equal(secondJoin.json().error, 'Room is full.');
+
   await app.close();
 });
 

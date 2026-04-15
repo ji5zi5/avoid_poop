@@ -18,6 +18,8 @@ const defaultOptions: RoomOptions = {
   debuffTier: 2,
 };
 
+const roomMaxPlayerOptions = [2, 3, 4, 5, 6, 7, 8] as const;
+
 function debuffTierLabel(debuffTier: RoomOptions["debuffTier"]) {
   return debuffTier === 3 ? copy.multiplayer.debuffTierStrong : copy.multiplayer.debuffTierWeak;
 }
@@ -34,6 +36,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
   const [roomPasswords, setRoomPasswords] = useState<Record<string, string>>({});
   const [showCreateSetup, setShowCreateSetup] = useState(false);
   const [options, setOptions] = useState<RoomOptions>(defaultOptions);
+  const [maxPlayers, setMaxPlayers] = useState<number>(8);
   const [loadingRooms, setLoadingRooms] = useState(false);
 
   async function refreshRooms() {
@@ -90,6 +93,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
             <strong>{copy.multiplayer.createRoom}</strong>
             <div className="matchmaking-card__chips">
               <span className="home-status-chip">{options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
+              <span className="home-status-chip">{copy.multiplayer.maxPlayersChip(maxPlayers)}</span>
               <span className="home-status-chip">{copy.multiplayer.bodyBlock} {options.bodyBlock ? "ON" : "OFF"}</span>
               <span className="home-status-chip">{debuffTierLabel(options.debuffTier)}</span>
             </div>
@@ -209,6 +213,14 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
                   </select>
                 </label>
                 <label>
+                  <span>{copy.multiplayer.maxPlayers}</span>
+                  <select value={maxPlayers} onChange={(event) => setMaxPlayers(Number(event.target.value))}>
+                    {roomMaxPlayerOptions.map((value) => (
+                      <option key={value} value={value}>{copy.multiplayer.maxPlayersOption(value)}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
                   <span>{copy.multiplayer.debuffTier}</span>
                   <select value={options.debuffTier} onChange={(event) => setOptions((current) => ({ ...current, debuffTier: Number(event.target.value) as RoomOptions["debuffTier"] }))}>
                     <option value={2}>{copy.multiplayer.debuffTierWeak}</option>
@@ -234,7 +246,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
               </div>
               <button
                 className="home-start-button home-start-button--hero"
-                onClick={() => onCreateRoom({ options, privatePassword: options.visibility === "private" ? createPrivatePassword.trim() : undefined })}
+                onClick={() => onCreateRoom({ options, maxPlayers, privatePassword: options.visibility === "private" ? createPrivatePassword.trim() : undefined })}
                 disabled={options.visibility === "private" && createPrivatePassword.trim().length < 4}
               >
                 {copy.multiplayer.createRoom}

@@ -2157,7 +2157,7 @@ input {
 
 .multiplayer-home-card,
 .multiplayer-lobby-card {
-  width: min(100%, 720px);
+  width: min(100%, 780px);
   padding: 1.1rem;
 }
 
@@ -2211,7 +2211,7 @@ input {
 .multiplayer-chat-panel {
   display: grid;
   gap: 0.75rem;
-  padding: 0.85rem;
+  padding: 1rem;
 }
 
 .multiplayer-chat-panel h2 {
@@ -2226,7 +2226,8 @@ input {
   padding: 0;
   display: grid;
   gap: 0.55rem;
-  max-height: 180px;
+  min-height: 240px;
+  max-height: 320px;
   overflow: auto;
 }
 
@@ -3077,7 +3078,7 @@ input {
 
 .multiplayer-lobby-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr);
   gap: 0.9rem;
 }
 
