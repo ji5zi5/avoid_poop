@@ -4,9 +4,23 @@ function trimTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
 }
 
+function normalizeHostedBase(rawValue: string) {
+  try {
+    const nextUrl = new URL(rawValue);
+    if (nextUrl.hostname.endsWith("-api.onrender.com")) {
+      nextUrl.hostname = nextUrl.hostname.replace(/-api\.onrender\.com$/, ".onrender.com");
+      return trimTrailingSlash(nextUrl.toString());
+    }
+  } catch {
+    return rawValue;
+  }
+
+  return rawValue;
+}
+
 function readEnvValue(value: string | undefined) {
   const normalized = value?.trim() ?? "";
-  return normalized ? trimTrailingSlash(normalized) : null;
+  return normalized ? normalizeHostedBase(trimTrailingSlash(normalized)) : null;
 }
 
 export function getApiBaseUrl() {
