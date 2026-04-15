@@ -79,6 +79,16 @@ button:disabled {
   padding: 0.2rem;
 }
 
+@media (pointer: coarse) {
+  .app-shell,
+  .app-shell * {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
 .app-shell--game {
   padding: 0;
 }

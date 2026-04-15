@@ -78,6 +78,30 @@ export default function App() {
       .catch(() => setScreen("auth"));
   }, []);
 
+  useEffect(() => {
+    const coarsePointer = typeof window.matchMedia === "function"
+      ? window.matchMedia("(pointer: coarse)").matches
+      : false;
+    const isTouchEnvironment = coarsePointer || navigator.maxTouchPoints > 0;
+    if (!isTouchEnvironment) {
+      return undefined;
+    }
+
+    const suppressCallout = (event: Event) => {
+      event.preventDefault();
+    };
+
+    document.addEventListener("contextmenu", suppressCallout);
+    document.addEventListener("selectstart", suppressCallout);
+    document.addEventListener("dragstart", suppressCallout);
+
+    return () => {
+      document.removeEventListener("contextmenu", suppressCallout);
+      document.removeEventListener("selectstart", suppressCallout);
+      document.removeEventListener("dragstart", suppressCallout);
+    };
+  }, []);
+
   const activeMultiplayerRoomCode =
     screen === "multiplayer-lobby" || screen === "multiplayer-game" ? room?.roomCode ?? null : null;
 
