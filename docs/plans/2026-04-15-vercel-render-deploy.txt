@@ -1,0 +1,166 @@
+Avoid Poop - Vercel + Render 배포 메모
+========================================
+
+1. 개요
+- 프론트: Vercel
+- 백엔드/WebSocket: Render
+- 현재 추천 배포 형태: 소규모 베타 / 동접 10 안팎
+- 주의: SQLite + 메모리 기반 멀티 상태라 대형 공개서비스용은 아님
+
+2. 먼저 필요한 것
+- GitHub repo 최신 main push 완료
+- Render 계정
+- Vercel 계정
+- COOKIE_SECRET용 랜덤 문자열
+
+3. COOKIE_SECRET 생성
+터미널에서 둘 중 하나:
+
+openssl rand -base64 48
+
+또는
+
+python - <<'PY'
+import secrets
+print(secrets.token_urlsafe(48))
+PY
+
+출력값을 Render의 COOKIE_SECRET에 넣기.
+
+4. Render 배포
+4-1. 생성
+- Render 로그인
+- New +
+- Web Service
+- GitHub 연결
+- repo: ji5zi5/avoid_poop
+- branch: main
+
+4-2. 기본 설정
+Name:
+avoid-poop-api
+
+Build Command:
+npm ci && npm run build
+
+Start Command:
+node server/dist/server/src/index.js
+
+4-3. Persistent Disk
+- Render 서비스 설정에서 Disks 추가
+- Mount Path:
+/var/data
+
+5. Render 환경변수
+아래 그대로 입력:
+
+NODE_ENV=production
+PORT=10000
+COOKIE_SECRET=<여기에_생성한_값>
+COOKIE_SAME_SITE=none
+APP_ORIGIN=https://<your-vercel-domain>
+TRUST_PROXY=true
+DB_PROVIDER=sqlite
+DB_PATH=/var/data/avoid-poop.sqlite
+LOG_ENABLED=true
+LOG_LEVEL=info
+RATE_LIMIT_AUTH_MAX=12
+RATE_LIMIT_AUTH_WINDOW_MS=60000
+RATE_LIMIT_WRITES_MAX=40
+RATE_LIMIT_WRITES_WINDOW_MS=60000
+RATE_LIMIT_WS_MAX=40
+RATE_LIMIT_WS_WINDOW_MS=60000
+
+주의:
+- APP_ORIGIN은 실제 Vercel 도메인으로 정확히 넣기
+- 처음엔 임시 Vercel 도메인으로 넣고, 나중에 커스텀 도메인 붙이면 다시 수정
+
+6. Vercel 배포
+6-1. 생성
+- Vercel 로그인
+- Add New
+- Project
+- repo: ji5zi5/avoid_poop
+
+6-2. 설정
+Framework:
+Vite
+
+Root Directory:
+frontend
+
+Build Command:
+npm run build
+
+Output Directory:
+dist
+
+7. Vercel 환경변수
+아래 그대로 입력:
+
+VITE_API_BASE_URL=https://<your-render-domain>
+VITE_WS_BASE_URL=wss://<your-render-domain>
+
+예시:
+VITE_API_BASE_URL=https://avoid-poop-api.onrender.com
+VITE_WS_BASE_URL=wss://avoid-poop-api.onrender.com
+
+8. 추천 배포 순서
+1) Render 먼저 배포
+2) Render URL 확인
+3) Vercel 프로젝트 생성
+4) Vercel env에 Render URL 입력
+5) Vercel 배포
+6) 실제 Vercel URL을 Render APP_ORIGIN에 입력
+7) Render 재배포
+
+9. 배포 후 확인
+1) Render health 확인
+https://<render-domain>/api/health
+정상 응답:
+{"ok":true}
+
+2) Vercel 사이트 접속
+https://<vercel-domain>
+
+3) 기능 체크
+- 회원가입
+- 로그인 유지
+- 랭킹 보기
+- 내 전적 보기
+- 공개방 생성/입장
+- 비공개방 생성/비밀번호 입장
+- 멀티 시작
+- 새로고침 후 재접속
+
+10. 문제 생기면 먼저 볼 것
+Render가 안 뜰 때
+- Build logs 확인
+- Start logs 확인
+- COOKIE_SECRET 누락 여부
+- APP_ORIGIN 누락 여부
+- Persistent Disk 붙였는지 확인
+
+로그인이 안 될 때
+- Vercel env 오타 확인
+- Render APP_ORIGIN이 실제 Vercel URL인지 확인
+- 브라우저 devtools에서 /api/auth 요청 주소 확인
+
+멀티가 안 될 때
+- VITE_WS_BASE_URL이 wss:// 인지 확인
+- Render가 WebSocket 연결을 받고 있는지 확인
+- 무료/슬립 플랜이면 첫 연결이 느릴 수 있음
+
+11. 현재 구조상 주의사항
+- 1 인스턴스만 운영 권장
+- 서버 재시작 시 진행 중 멀티방 손실 가능
+- SQLite 기반이라 백업 필요
+- 지금은 hosted beta 용도에 적합
+
+12. 현재 repo 기준 배포 관련 파일
+- render.yaml
+- frontend/vercel.json
+- .env.example
+- frontend/.env.example
+- docs/plans/2026-04-14-beta-deploy-runbook.md
+- docs/plans/2026-04-14-vercel-render-deploy.md
