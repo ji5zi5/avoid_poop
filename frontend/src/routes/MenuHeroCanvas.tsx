@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
-import { largePoopSprite, mediumPoopSprite, playerSprite, spriteHeight, spriteWidth } from "../game/rendering/pixelSprites";
-import { palette } from "../game/rendering/spriteAtlas";
+import { largePoopSprite, mediumPoopSprite, playerSprite, spriteHeight, spriteWidth } from "../game/rendering/pixelSprites.js";
+import { palette } from "../game/rendering/spriteAtlas.js";
 
 function drawPixelShape(
   ctx: CanvasRenderingContext2D,

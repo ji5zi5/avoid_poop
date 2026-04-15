@@ -1,11 +1,11 @@
-import type { GameMode } from "../../../shared/src/contracts/index";
+import type { GameMode } from "../../../shared/src/contracts/index.js";
 
-import { createInitialState } from "./state";
-import type { GameState } from "./state";
-import { resolveCollisions } from "./systems/collision";
-import { runBossPattern } from "./systems/bossPatterns";
-import { updateRounds } from "./systems/rounds";
-import { createCustomHazard, maybeSpawnItem, spawnWavePattern } from "./systems/spawn";
+import { createInitialState } from "./state.js";
+import type { GameState, Hazard, Item } from "./state.js";
+import { resolveCollisions } from "./systems/collision.js";
+import { runBossPattern } from "./systems/bossPatterns.js";
+import { updateRounds } from "./systems/rounds.js";
+import { createCustomHazard, maybeSpawnItem, spawnWavePattern } from "./systems/spawn.js";
 
 function wavePressure(state: GameState) {
   return Math.min(state.mode === "hard" ? 14 : 13, Math.max(0, state.round - 1));
@@ -80,7 +80,7 @@ export function updateGame(state: GameState, delta: number, direction: number) {
   const hazardMultiplier = state.slowMotionTimer > 0 ? 0.5 : 1;
   const groundY = state.height - 32;
 
-  state.hazards.forEach((hazard) => {
+  state.hazards.forEach((hazard: Hazard) => {
     const motionDelta = delta * hazardMultiplier;
     hazard.x += (hazard.velocityX ?? 0) * motionDelta;
     hazard.y += hazard.speed * motionDelta;
@@ -143,7 +143,7 @@ export function updateGame(state: GameState, delta: number, direction: number) {
     }
   });
 
-  state.items.forEach((item) => {
+  state.items.forEach((item: Item) => {
     item.y += item.speed * delta;
   });
 

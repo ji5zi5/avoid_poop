@@ -6,19 +6,19 @@ const { createGameEngine } = vi.hoisted(() => ({
   createGameEngine: vi.fn(),
 }));
 
-vi.mock('../game/engine', () => ({
+vi.mock('../game/engine.js', () => ({
   createGameEngine,
   updateGame: vi.fn((state) => state),
 }));
 
-vi.mock('../game/loop', () => ({
+vi.mock('../game/loop.js', () => ({
   createLoop: () => ({
     start: vi.fn(),
     stop: vi.fn(),
   }),
 }));
 
-vi.mock('../game/rendering/canvasRenderer', () => ({
+vi.mock('../game/rendering/canvasRenderer.js', () => ({
   renderGame: vi.fn(),
 }));
 

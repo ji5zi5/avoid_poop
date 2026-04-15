@@ -1,7 +1,7 @@
-import { createItem } from "../entities/item";
-import { createHazard } from "../entities/poop";
-import { createWaveDirector } from "../state";
-import type { GameState, Hazard, ItemType, WaveDirector, WavePattern } from "../state";
+import { createItem } from "../entities/item.js";
+import { createHazard } from "../entities/poop.js";
+import { createWaveDirector } from "../state.js";
+import type { GameState, Hazard, ItemType, WaveDirector, WavePattern } from "../state.js";
 
 const ITEM_TYPES: ItemType[] = ["invincibility", "speed", "heal", "slow", "clear"];
 const NORMAL_HAZARD_SIZES = [16, 20, 24] as const;

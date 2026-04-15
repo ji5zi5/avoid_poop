@@ -18,6 +18,16 @@ export const singlePlayerRunSessionSchema = z.object({
   startedAt: z.string(),
 });
 
+export const singlePlayerReplayFrameSchema = z.object({
+  deltaMs: z.number().positive().max(40),
+  direction: z.union([z.literal(-1), z.literal(0), z.literal(1)]),
+});
+
+export const rankedRunSubmissionSchema = runResultPayloadSchema.extend({
+  runSessionId: singlePlayerRunSessionSchema.shape.id.optional(),
+  replayFrames: z.array(singlePlayerReplayFrameSchema).max(50000).optional(),
+});
+
 export const recordEntrySchema = runResultPayloadSchema.extend({
   id: z.number().int().positive(),
   userId: z.number().int().positive().optional(),
@@ -88,6 +98,8 @@ export const recordsResponseSchema = z.object({
 export type GameMode = z.infer<typeof gameModeSchema>;
 export type RunResultPayload = z.infer<typeof runResultPayloadSchema>;
 export type SinglePlayerRunSession = z.infer<typeof singlePlayerRunSessionSchema>;
+export type SinglePlayerReplayFrame = z.infer<typeof singlePlayerReplayFrameSchema>;
+export type RankedRunSubmission = z.infer<typeof rankedRunSubmissionSchema>;
 export type RecordEntry = z.infer<typeof recordEntrySchema>;
 export type MultiplayerRecordEntry = z.infer<typeof multiplayerRecordEntrySchema>;
 export type MultiplayerStats = z.infer<typeof multiplayerStatsSchema>;

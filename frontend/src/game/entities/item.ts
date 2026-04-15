@@ -1,4 +1,4 @@
-import type { Item, ItemType } from "../state";
+import type { Item, ItemType } from "../state.js";
 
 export function createItem(id: number, x: number, type: ItemType): Item {
   return {

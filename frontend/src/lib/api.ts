@@ -5,6 +5,7 @@ import type {
   AuthWebSocketTicket,
   RecordEntry,
   RecordsResponse,
+  RankedRunSubmission,
   RunResultPayload,
   SinglePlayerRunSession,
 } from "../../../shared/src/contracts/index";
@@ -101,7 +102,7 @@ export const api = {
     request<SinglePlayerRunSession>("/api/records/run-session", { method: "POST", body: JSON.stringify({ mode }) }),
   heartbeatRunSession: (runSessionId: string) =>
     request<{ ok: true }>(`/api/records/run-session/${encodeURIComponent(runSessionId)}/heartbeat`, { method: "POST" }),
-  saveRecord: (payload: RunResultPayload & { runSessionId?: string }) =>
+  saveRecord: (payload: RankedRunSubmission) =>
     request<RecordEntry>("/api/records", { method: "POST", body: JSON.stringify(payload) }),
   createRoom: (payload?: CreateRoomPayload) =>
     request<RoomSummary>("/api/multiplayer/rooms", {

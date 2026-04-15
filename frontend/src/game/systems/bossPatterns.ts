@@ -1,7 +1,7 @@
-import { BOSS_DURATION } from "../state";
-import type { BossPatternFamily, BossPatternId, BossThemeId, GameState } from "../state";
+import { BOSS_DURATION } from "../state.js";
+import type { BossPatternFamily, BossPatternId, BossThemeId, GameState } from "../state.js";
 
-import { createCustomHazard, spawnCenterHazard, spawnEdgeHazards, spawnGiantHazard, spawnHalfHazard, spawnLaneBarrage } from "./spawn";
+import { createCustomHazard, spawnCenterHazard, spawnEdgeHazards, spawnGiantHazard, spawnHalfHazard, spawnLaneBarrage } from "./spawn.js";
 
 type BossPatternDefinition = {
   archetype: string;

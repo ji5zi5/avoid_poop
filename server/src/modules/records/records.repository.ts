@@ -401,7 +401,7 @@ export async function listSingleLeaderboard(mode: 'normal' | 'hard', limit = 20)
            ) AS rowNumber
          FROM records r
          JOIN users u ON u.id = r.user_id
-         WHERE r.mode = ?
+         WHERE r.mode = ? AND r.verified = 1
        )
        SELECT userId, username, score, reachedRound, survivalTime, clear, createdAt
        FROM ranked
@@ -432,7 +432,7 @@ export async function listSingleLeaderboard(mode: 'normal' | 'hard', limit = 20)
         ) AS "rowNumber"
       FROM records r
       JOIN users u ON u.id = r.user_id
-      WHERE r.mode = ${mode}
+      WHERE r.mode = ${mode} AND r.verified = true
     )
     SELECT "userId", username, score, "reachedRound", "survivalTime", clear, "createdAt"
     FROM ranked

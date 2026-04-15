@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { RecordEntry, RunResultPayload } from "../../../shared/src/contracts/index";
+import type { RecordEntry, RunResultPayload, SinglePlayerReplayFrame } from "../../../shared/src/contracts/index";
 import { copy, formatSecondsLabel, translateErrorMessage } from "../content/copy";
 import { api, ApiRequestError } from "../lib/api";
 
 type Props = {
   result: RunResultPayload;
   runSessionId?: string;
+  replayFrames?: SinglePlayerReplayFrame[];
   onRetry: () => void;
   onBackToMenu: () => void;
   onViewRecords: () => void;
@@ -19,11 +20,13 @@ const PENDING_RESULT_KEY = "avoid-poop-pending-result";
 type PendingResultState = {
   result: RunResultPayload;
   runSessionId?: string;
+  replayFrames?: SinglePlayerReplayFrame[];
 };
 
 export function ResultsPage({
   result,
   runSessionId,
+  replayFrames,
   onRetry,
   onBackToMenu,
   onViewRecords,
@@ -37,7 +40,7 @@ export function ResultsPage({
   const pendingState = useMemo(() => {
     const raw = sessionStorage.getItem(PENDING_RESULT_KEY);
     if (!raw) {
-      return { result, runSessionId } satisfies PendingResultState;
+      return { result, runSessionId, replayFrames } satisfies PendingResultState;
     }
 
     try {
@@ -45,11 +48,11 @@ export function ResultsPage({
       if ("result" in parsed) {
         return parsed;
       }
-      return { result: parsed, runSessionId } satisfies PendingResultState;
+      return { result: parsed, runSessionId, replayFrames } satisfies PendingResultState;
     } catch {
-      return { result, runSessionId } satisfies PendingResultState;
+      return { result, runSessionId, replayFrames } satisfies PendingResultState;
     }
-  }, [result, runSessionId]);
+  }, [result, runSessionId, replayFrames]);
 
   async function handleSave() {
     try {
@@ -58,6 +61,7 @@ export function ResultsPage({
       const entry = await api.saveRecord({
         ...pendingState.result,
         ...(pendingState.runSessionId ? { runSessionId: pendingState.runSessionId } : {}),
+        ...(pendingState.replayFrames ? { replayFrames: pendingState.replayFrames } : {}),
       });
       setSaved(true);
       setError("");

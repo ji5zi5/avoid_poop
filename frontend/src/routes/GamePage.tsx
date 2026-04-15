@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 
-import type { RecordEntry, RunResultPayload, SinglePlayerRunSession } from "../../../shared/src/contracts/index";
+import type { RecordEntry, RunResultPayload, SinglePlayerReplayFrame, SinglePlayerRunSession } from "../../../shared/src/contracts/index";
 import type { GameMode } from "../../../shared/src/contracts/index";
 import { copy, formatSecondsLabel } from "../content/copy";
 import { api, ApiRequestError } from "../lib/api";
-import { createHorizontalInputTracker } from "../lib/horizontalInput";
-import { createGameEngine, updateGame } from "../game/engine";
-import { createLoop } from "../game/loop";
-import { renderGame } from "../game/rendering/canvasRenderer";
-import { toRunResult } from "../game/state";
-import type { GameState } from "../game/state";
+import { createHorizontalInputTracker } from "../lib/horizontalInput.js";
+import { createGameEngine, updateGame } from "../game/engine.js";
+import { createLoop } from "../game/loop.js";
+import { renderGame } from "../game/rendering/canvasRenderer.js";
+import { toRunResult } from "../game/state.js";
+import type { GameState } from "../game/state.js";
 import { ResultsPage } from "./ResultsPage";
 
 type Props = {
@@ -35,8 +35,10 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
   const [runId, setRunId] = useState(0);
   const [result, setResult] = useState<RunResultPayload | null>(null);
   const [resultRunSessionId, setResultRunSessionId] = useState<string | undefined>();
+  const [resultReplayFrames, setResultReplayFrames] = useState<SinglePlayerReplayFrame[]>([]);
   const [runReady, setRunReady] = useState(false);
   const runSessionRef = useRef<SinglePlayerRunSession | null>(null);
+  const replayFramesRef = useRef<SinglePlayerReplayFrame[]>([]);
 
   function setDirection(direction: number) {
     directionRef.current = direction;
@@ -50,9 +52,11 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
     directionRef.current = 0;
     inputTrackerRef.current.clear();
     runSessionRef.current = null;
+    replayFramesRef.current = [];
     stateRef.current = createGameEngine(mode);
     setResult(null);
     setResultRunSessionId(undefined);
+    setResultReplayFrames([]);
     setRunReady(false);
     setRunId((value) => value + 1);
     forceRender((value) => value + 1);
@@ -62,9 +66,11 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
     directionRef.current = 0;
     inputTrackerRef.current.clear();
     runSessionRef.current = null;
+    replayFramesRef.current = [];
     stateRef.current = createGameEngine(mode);
     setResult(null);
     setResultRunSessionId(undefined);
+    setResultReplayFrames([]);
     setRunReady(false);
 
     let heartbeatTimer: number | null = null;
@@ -77,6 +83,11 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
           return;
         }
         runSessionRef.current = runSession;
+        stateRef.current = createGameEngine(mode, {
+          waveSeed: runSession.waveSeed,
+          bossSeed: runSession.bossSeed,
+        });
+        forceRender((value) => value + 1);
         setRunReady(true);
         loop.start();
         loopStarted = true;
@@ -106,6 +117,10 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
 
     let disposed = false;
     const loop = createLoop((delta) => {
+      replayFramesRef.current.push({
+        deltaMs: Number((delta * 1000).toFixed(3)),
+        direction: directionRef.current as -1 | 0 | 1,
+      });
       const state = updateGame(stateRef.current, delta, directionRef.current);
       const canvas = canvasRef.current;
       if (canvas) {
@@ -119,6 +134,7 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
         loop.stop();
         setResult(toRunResult(state));
         setResultRunSessionId(runSessionRef.current?.id);
+        setResultReplayFrames([...replayFramesRef.current]);
       }
     });
 
@@ -246,6 +262,7 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
                   embedded
                   result={result}
                   runSessionId={resultRunSessionId}
+                  replayFrames={resultReplayFrames}
                   onRetry={restartRun}
                   onBackToMenu={onBackToMenu}
                   onSaved={onSaved}

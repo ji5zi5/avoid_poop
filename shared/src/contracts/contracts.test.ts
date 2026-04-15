@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {authCredentialsSchema, authResponseSchema, authWebSocketTicketSchema} from './auth.js';
-import {recordsResponseSchema, runResultPayloadSchema, singlePlayerRunSessionSchema} from './records.js';
+import {recordsResponseSchema, rankedRunSubmissionSchema, runResultPayloadSchema, singlePlayerRunSessionSchema} from './records.js';
 
 test('credentials schema accepts simple valid credentials', () => {
   const parsed = authCredentialsSchema.parse({
@@ -88,4 +88,21 @@ test('single-player run session schema accepts issued seeds', () => {
   });
 
   assert.equal(parsed.mode, 'hard');
+});
+
+test('ranked run submission schema accepts replay frames', () => {
+  const parsed = rankedRunSubmissionSchema.parse({
+    runSessionId: '11111111-1111-4111-8111-111111111111',
+    mode: 'normal',
+    score: 120,
+    reachedRound: 3,
+    survivalTime: 18.2,
+    clear: false,
+    replayFrames: [
+      { deltaMs: 16.6, direction: 1 },
+      { deltaMs: 16.6, direction: 0 },
+    ],
+  });
+
+  assert.equal(parsed.replayFrames?.length, 2);
 });

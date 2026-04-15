@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 
 import { copy } from "../content/copy";
-import { createHorizontalInputTracker } from "../lib/horizontalInput";
-import { getMultiplayerColorMap } from "../lib/multiplayerColors";
-import type { MultiplayerGameSnapshot } from "../lib/multiplayerClient";
-import { renderMultiplayerGame } from "../game/multiplayer/renderMultiplayerGame";
+import { createHorizontalInputTracker } from "../lib/horizontalInput.js";
+import { getMultiplayerColorMap } from "../lib/multiplayerColors.js";
+import type { MultiplayerGameSnapshot } from "../lib/multiplayerClient.js";
+import { renderMultiplayerGame } from "../game/multiplayer/renderMultiplayerGame.js";
 
 type Props = {
   currentUserId: number;

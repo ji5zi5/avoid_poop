@@ -1,9 +1,9 @@
-import { copy } from "../../content/copy";
-import { BOSS_DURATION, ROUND_DURATION } from "../state";
-import type { GameState } from "../state";
-import { getBossThemeLabel, hasBossSequenceRemaining, initializeBossEncounter } from "./bossPatterns";
-import { showToast, triggerScreenShake } from "./items";
-import { syncWaveDirectorForRound } from "./spawn";
+import { copy } from "../../content/copy.js";
+import { BOSS_DURATION, ROUND_DURATION } from "../state.js";
+import type { GameState } from "../state.js";
+import { getBossThemeLabel, hasBossSequenceRemaining, initializeBossEncounter } from "./bossPatterns.js";
+import { showToast, triggerScreenShake } from "./items.js";
+import { syncWaveDirectorForRound } from "./spawn.js";
 
 const PHASE_ANNOUNCEMENT_DURATION = 1.4;
 

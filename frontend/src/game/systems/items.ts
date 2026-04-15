@@ -1,5 +1,5 @@
-import { copy } from "../../content/copy";
-import type { GameState, ItemType, ToastTone } from "../state";
+import { copy } from "../../content/copy.js";
+import type { GameState, ItemType, ToastTone } from "../state.js";
 
 const itemToastMap: Record<ItemType, string> = {
   invincibility: copy.game.itemToast.invincibility,

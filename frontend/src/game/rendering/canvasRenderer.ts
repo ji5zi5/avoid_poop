@@ -1,6 +1,6 @@
-import type { GameState, Hazard, ItemType } from "../state";
-import { getHazardSprite, itemSprites, playerSprite } from "./pixelSprites";
-import { palette } from "./spriteAtlas";
+import type { GameState, Hazard, ItemType } from "../state.js";
+import { getHazardSprite, itemSprites, playerSprite } from "./pixelSprites.js";
+import { palette } from "./spriteAtlas.js";
 
 const itemColorMap = {
   invincibility: palette.invincibility,

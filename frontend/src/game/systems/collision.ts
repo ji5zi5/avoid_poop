@@ -1,6 +1,6 @@
-import { copy } from "../../content/copy";
-import type { GameState, Hazard, Item, Player } from "../state";
-import { applyItemEffect, showToast, triggerDamageFlash, triggerScreenShake } from "./items";
+import { copy } from "../../content/copy.js";
+import type { GameState, Hazard, Item, Player } from "../state.js";
+import { applyItemEffect, showToast, triggerDamageFlash, triggerScreenShake } from "./items.js";
 
 type Rect = {
   x: number;

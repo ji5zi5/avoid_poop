@@ -1,4 +1,4 @@
-import type { GameMode, RunResultPayload } from "../../../shared/src/contracts/index";
+import type { GameMode, RunResultPayload } from "../../../shared/src/contracts/index.js";
 
 export type ItemType = "invincibility" | "speed" | "heal" | "slow" | "clear";
 export type ToastTone = "neutral" | "danger" | "reward" | "boss";

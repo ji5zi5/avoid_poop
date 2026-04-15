@@ -1,4 +1,4 @@
-import type { Hazard, HazardBehavior, HazardOwner, HazardVariant } from "../state";
+import type { Hazard, HazardBehavior, HazardOwner, HazardVariant } from "../state.js";
 
 type CreateHazardOptions = {
   awardOnExit?: boolean;

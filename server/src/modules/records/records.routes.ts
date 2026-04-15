@@ -1,10 +1,10 @@
 import {FastifyInstance} from 'fastify';
 import { z } from 'zod';
 
-import { gameModeSchema, singlePlayerRunSessionSchema } from '../../../../shared/src/contracts/records.js';
+import { gameModeSchema, rankedRunSubmissionSchema, singlePlayerRunSessionSchema } from '../../../../shared/src/contracts/records.js';
 import {requireUser} from '../../middleware/authGuard.js';
 import { createVerifiedRunSession, getRecordsForUser, heartbeatVerifiedRunSession, saveRunResult } from './records.service.js';
-import {recordsResponseSchema, runResultPayloadSchema} from './records.schemas.js';
+import {recordsResponseSchema} from './records.schemas.js';
 
 export async function recordsRoutes(app: FastifyInstance) {
   app.post('/run-session', {preHandler: requireUser}, async (request, reply) => {
@@ -37,9 +37,7 @@ export async function recordsRoutes(app: FastifyInstance) {
   });
 
   app.post('/', {preHandler: requireUser}, async (request, reply) => {
-    const parsed = runResultPayloadSchema.extend({
-      runSessionId: singlePlayerRunSessionSchema.shape.id.optional(),
-    }).safeParse(request.body);
+    const parsed = rankedRunSubmissionSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({error: parsed.error.issues[0]?.message ?? 'Invalid payload.'});
     }
