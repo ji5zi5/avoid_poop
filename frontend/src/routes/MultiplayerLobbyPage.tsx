@@ -21,6 +21,7 @@ function debuffTierLabel(debuffTier: RoomSummary["options"]["debuffTier"]) {
 
 export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat, onSetReady, onStart, room, userId }: Props) {
   const currentPlayer = room.players.find((player) => player.userId === userId);
+  const hostPlayer = room.players.find((player) => player.isHost) ?? null;
   const playerColors = getMultiplayerColorMap(room.players);
   const isReady = currentPlayer?.ready ?? false;
   const [message, setMessage] = useState("");
@@ -28,6 +29,12 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
   const allReady = room.players.every((player) => player.ready);
   const canActuallyStart = canStart && enoughPlayers && allReady;
   const readyCount = room.players.filter((player) => player.ready).length;
+  const readinessSummary = allReady ? "바로 시작 가능" : enoughPlayers ? "준비 인원 확인" : "2명부터 시작";
+  const lobbyStateLabel = !enoughPlayers
+    ? copy.multiplayer.startNeedPlayers
+    : !allReady
+      ? copy.multiplayer.startNeedReady
+      : copy.multiplayer.startHint;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,20 +64,26 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
           <span className="home-status-chip">{debuffTierLabel(room.options.debuffTier)}</span>
         </div>
 
+        <section className="multiplayer-lobby-summary-grid">
+          <article className="multiplayer-lobby-summary-card">
+            <span className="info-card__label">HOST</span>
+            <strong>{hostPlayer?.username ?? "-"}</strong>
+            <p>{hostPlayer?.userId === userId ? "현재 내가 방장" : "방장이 시작 타이밍을 정합니다"}</p>
+          </article>
+          <article className="multiplayer-lobby-summary-card">
+            <span className="info-card__label">READY</span>
+            <strong>{readyCount}/{room.playerCount}</strong>
+            <p>{readinessSummary}</p>
+          </article>
+          <article className="multiplayer-lobby-summary-card">
+            <span className="info-card__label">RULE</span>
+            <strong>{room.options.bodyBlock ? "부딪힘 ON" : "부딪힘 OFF"}</strong>
+            <p>{debuffTierLabel(room.options.debuffTier)} · {room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</p>
+          </article>
+        </section>
+
         <div className="multiplayer-lobby-shell">
           <div className="multiplayer-lobby-main">
-            <div className="multiplayer-lobby-insights">
-              <article className="multiplayer-lobby-insight-card">
-                <span className="info-card__label">READY</span>
-                <strong>{readyCount}/{room.playerCount}</strong>
-              </article>
-              <article className="multiplayer-lobby-insight-card">
-                <span className="info-card__label">RULESET</span>
-                <strong>{room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</strong>
-                <p>{room.options.bodyBlock ? "부딪힘 ON" : "부딪힘 OFF"}</p>
-              </article>
-            </div>
-
             <div className="multiplayer-lobby-options multiplayer-lobby-options--heroic">
               <span>{copy.multiplayer.visibility}: {room.options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
               <span>{copy.multiplayer.difficulty}: {room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
@@ -78,35 +91,48 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
               <span>{copy.multiplayer.debuffTier}: {debuffTierLabel(room.options.debuffTier)}</span>
             </div>
 
-            <ul className="multiplayer-player-list multiplayer-player-list--cards">
-              {room.players.map((player) => (
-                <li
-                  key={player.userId}
-                  className="multiplayer-player-row multiplayer-player-row--card"
-                  data-testid={`lobby-player-${player.userId}`}
-                  style={{
-                    "--player-accent": playerColors.get(player.userId)?.accent,
-                    "--player-soft": playerColors.get(player.userId)?.soft,
-                    "--player-ink": playerColors.get(player.userId)?.ink,
-                  } as React.CSSProperties}
-                >
-                  <div className="lobby-player-identity">
-                    <span className="lobby-player-avatar">{player.username.slice(0, 1).toUpperCase()}</span>
-                    <div className="lobby-player-copy">
-                      <span>{player.username}{player.isHost ? " · HOST" : ""}</span>
-                      <small>{player.userId === userId ? "내 자리" : "대기 중"}</small>
+            <section className="multiplayer-lobby-roster">
+              <div className="multiplayer-lobby-section-heading">
+                <div>
+                  <span className="panel-kicker">PLAYERS</span>
+                  <h2>플레이어</h2>
+                </div>
+                <span className="room-status-chip">{readyCount}/{room.playerCount} 준비</span>
+              </div>
+
+              <ul className="multiplayer-player-list multiplayer-player-list--cards">
+                {room.players.map((player) => (
+                  <li
+                    key={player.userId}
+                    className="multiplayer-player-row multiplayer-player-row--card"
+                    data-testid={`lobby-player-${player.userId}`}
+                    style={{
+                      "--player-accent": playerColors.get(player.userId)?.accent,
+                      "--player-soft": playerColors.get(player.userId)?.soft,
+                      "--player-ink": playerColors.get(player.userId)?.ink,
+                    } as React.CSSProperties}
+                  >
+                    <div className="lobby-player-identity">
+                      <span className="lobby-player-avatar">{player.username.slice(0, 1).toUpperCase()}</span>
+                      <div className="lobby-player-copy">
+                        <span>{player.username}{player.isHost ? " · HOST" : ""}</span>
+                        <small>{player.userId === userId ? "내 자리" : player.ready ? "준비 완료" : "대기 중"}</small>
+                      </div>
                     </div>
-                  </div>
-                  <strong className={`room-status-chip ${player.ready ? "is-live" : ""}`}>{player.ready ? copy.multiplayer.ready : copy.multiplayer.waitingRoom}</strong>
-                </li>
-              ))}
-            </ul>
+                    <strong className={`room-status-chip ${player.ready ? "is-live" : ""}`}>{player.ready ? copy.multiplayer.ready : copy.multiplayer.waitingRoom}</strong>
+                  </li>
+                ))}
+              </ul>
+            </section>
           </div>
 
           <div className="multiplayer-chat-panel multiplayer-chat-panel--heroic">
             <div className="multiplayer-chat-heading">
-              <h2>{copy.multiplayer.chat}</h2>
-              <span className="home-card__meta">{readyCount}/{room.playerCount}</span>
+              <div>
+                <span className="panel-kicker">CHAT</span>
+                <h2>{copy.multiplayer.chat}</h2>
+              </div>
+              <span className="home-card__meta">{connected ? "실시간 연결됨" : "연결 복구 중"}</span>
             </div>
             <ul className="multiplayer-chat-log">
               {room.chatMessages.length > 0 ? room.chatMessages.map((entry) => (
