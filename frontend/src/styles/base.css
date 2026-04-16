@@ -2798,7 +2798,8 @@ input {
 }
 
 .multiplayer-lobby-actions--heroic {
-  grid-template-columns: 1fr 1.3fr;
+  grid-template-columns: minmax(0, 1.35fr) auto;
+  align-items: stretch;
 }
 
 .multiplayer-lobby-insights {
@@ -3199,9 +3200,71 @@ input {
   gap: 0.12rem;
 }
 
+.lobby-player-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.lobby-player-title-row > span:first-child {
+  min-width: 0;
+  color: var(--tone-4);
+  font-weight: 700;
+}
+
+.lobby-player-role {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(74, 52, 31, 0.08);
+  color: rgba(74, 52, 31, 0.78);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+}
+
+.lobby-player-role.is-host {
+  background: rgba(208, 122, 99, 0.16);
+  color: rgba(126, 48, 28, 0.92);
+}
+
 .lobby-player-copy small {
   color: rgba(74, 52, 31, 0.62);
   font-size: 0.72rem;
+}
+
+.multiplayer-lobby-footer {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.multiplayer-lobby-action-card {
+  display: grid;
+  gap: 0.95rem;
+  padding: 1rem 1.05rem;
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(255, 252, 247, 0.96) 0%, rgba(247, 236, 226, 0.92) 100%);
+  box-shadow: 0 16px 28px rgba(43, 30, 18, 0.08);
+}
+
+.multiplayer-lobby-action-card__copy {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.multiplayer-lobby-action-card__copy h2 {
+  margin: 0;
+  color: var(--tone-4);
+  font-size: 1.15rem;
+}
+
+.multiplayer-lobby-action-card__copy p {
+  margin: 0.28rem 0 0;
+  color: rgba(74, 52, 31, 0.72);
+  line-height: 1.45;
 }
 
 @media (max-width: 880px) {
@@ -3223,6 +3286,10 @@ input {
   .multiplayer-lobby-actions--heroic {
     display: grid;
     justify-content: stretch;
+  }
+
+  .multiplayer-lobby-actions--heroic {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -23,6 +23,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
   const currentPlayer = room.players.find((player) => player.userId === userId);
   const playerColors = getMultiplayerColorMap(room.players);
   const isReady = currentPlayer?.ready ?? false;
+  const isHost = currentPlayer?.isHost ?? canStart;
   const [message, setMessage] = useState("");
   const chatLogRef = useRef<HTMLUListElement | null>(null);
   const enoughPlayers = room.playerCount >= 2;
@@ -34,6 +35,22 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
     : !allReady
       ? copy.multiplayer.startNeedReady
       : copy.multiplayer.startHint;
+  const actionTitle = isHost ? "방장 권한" : isReady ? "준비 완료" : "준비 필요";
+  const actionSummary = isHost
+    ? canActuallyStart
+      ? "지금 바로 시작할 수 있습니다."
+      : `${readyCount}/${room.playerCount}명 준비 · 전원이 준비되면 시작 가능합니다.`
+    : isReady
+      ? "방장이 시작하면 바로 입장합니다."
+      : "준비를 눌러야 방장이 게임을 시작할 수 있습니다.";
+  const primaryActionLabel = isHost ? copy.multiplayer.start : isReady ? copy.multiplayer.cancelReady : copy.multiplayer.ready;
+  const primaryAction = () => {
+    if (isHost) {
+      onStart();
+      return;
+    }
+    onSetReady(!isReady);
+  };
 
   useEffect(() => {
     const chatLog = chatLogRef.current;
@@ -98,8 +115,11 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
                     <div className="lobby-player-identity">
                       <span className="lobby-player-avatar">{player.username.slice(0, 1).toUpperCase()}</span>
                       <div className="lobby-player-copy">
-                        <span>{player.username}{player.isHost ? " · HOST" : ""}</span>
-                        <small>{player.userId === userId ? "내 자리" : player.ready ? "준비 완료" : "대기 중"}</small>
+                        <div className="lobby-player-title-row">
+                          <span>{player.username}</span>
+                          <span className={`lobby-player-role ${player.isHost ? "is-host" : ""}`}>{player.isHost ? "방장" : "참가자"}</span>
+                        </div>
+                        <small>{player.userId === userId ? (player.isHost ? "내 방" : "내 자리") : player.ready ? "준비 완료" : "대기 중"}</small>
                       </div>
                     </div>
                     <strong className={`room-status-chip ${player.ready ? "is-live" : ""}`}>{player.ready ? copy.multiplayer.ready : copy.multiplayer.waitingRoom}</strong>
@@ -132,19 +152,24 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
           </div>
         </div>
 
-        <div className="multiplayer-lobby-actions multiplayer-lobby-actions--heroic">
-          {canStart ? (
-            <button className="home-start-button home-start-button--hero" onClick={onStart} disabled={!canActuallyStart}>{copy.multiplayer.start}</button>
-          ) : (
-            <button className="home-start-button home-start-button--hero" onClick={() => onSetReady(!isReady)}>
-              {isReady ? copy.multiplayer.cancelReady : copy.multiplayer.ready}
-            </button>
-          )}
+        <div className="multiplayer-lobby-footer">
+          <div className="multiplayer-lobby-action-card">
+            <div className="multiplayer-lobby-action-card__copy">
+              <span className="panel-kicker">{isHost ? "HOST" : "PLAYER"}</span>
+              <div>
+                <h2>{actionTitle}</h2>
+                <p>{actionSummary}</p>
+              </div>
+            </div>
+            <div className="multiplayer-lobby-actions multiplayer-lobby-actions--heroic">
+              <button className="home-start-button home-start-button--hero" onClick={primaryAction} disabled={isHost ? !canActuallyStart : false}>
+                {primaryActionLabel}
+              </button>
+              <button className="ghost-button subtle-button multiplayer-lobby-leave-button" onClick={onLeave}>{copy.multiplayer.leave}</button>
+            </div>
+          </div>
+          <p className="home-card__meta">{lobbyStateLabel}</p>
         </div>
-
-        <p className="home-card__meta">{lobbyStateLabel}</p>
-
-        <button className="ghost-button subtle-button" onClick={onLeave}>{copy.multiplayer.leave}</button>
       </div>
     </section>
   );

@@ -24,6 +24,7 @@ describe('MultiplayerLobbyPage', () => {
   it('shows room options and only the host start action until all players are ready', () => {
     render(<MultiplayerLobbyPage canStart connected room={room} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onStart={vi.fn()} />);
     expect(screen.getAllByText('비공개방').length).toBeGreaterThan(0);
+    expect(screen.getByText('방장 권한')).toBeTruthy();
     expect(screen.getByText('전원이 준비해야 시작 가능').textContent).toBe('전원이 준비해야 시작 가능');
     expect((screen.getByText('시작') as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByText('준비 해제')).toBeNull();
@@ -31,6 +32,7 @@ describe('MultiplayerLobbyPage', () => {
 
   it('shows only the ready action for non-host participants', () => {
     render(<MultiplayerLobbyPage canStart={false} connected room={room} userId={2} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onStart={vi.fn()} />);
+    expect(screen.getByText('준비 필요')).toBeTruthy();
     expect(screen.getByRole('button', { name: '준비' }).textContent).toBe('준비');
     expect(screen.queryByText('시작')).toBeNull();
   });
