@@ -51,15 +51,25 @@ type ConnectionMetadata = {
   user: ConnectedUser;
 };
 
+type StartCountdownRecord = {
+  hostUserId: number;
+  timeout: NodeJS.Timeout;
+  tickInterval: NodeJS.Timeout;
+  endsAt: number;
+};
+
 const gameplayInputBucket = {
   max: 30,
   windowMs: 1000,
 } as const;
 
+const START_COUNTDOWN_SECONDS = config.isTest ? 1 : 3;
+
 export class MultiplayerSocketGateway {
   private readonly connections = new Map<WebSocket, ConnectionContext>();
   private readonly reconnectRecords = new Map<string, ReconnectRecord>();
   private readonly gameIntervals = new Map<string, NodeJS.Timeout>();
+  private readonly startCountdowns = new Map<string, StartCountdownRecord>();
   private readonly activeGames = new Map<string, MultiplayerGameState>();
   private readonly gameService = new MultiplayerGameService();
   private readonly server = new WebSocketServer({noServer: true});
@@ -94,6 +104,7 @@ export class MultiplayerSocketGateway {
       });
       if (context.roomCode) {
         const game = this.activeGames.get(context.roomCode);
+        this.sendCountdownSnapshot(context.socket, context.roomCode);
         if (metadata.reconnected && game) {
           this.gameService.reconnectPlayer(game, context.user.id);
         }
@@ -123,6 +134,7 @@ export class MultiplayerSocketGateway {
             this.gameService.disconnectPlayer(game, context.user.id);
             this.broadcastGameSnapshot(context.roomCode);
           } else {
+            this.cancelStartCountdown(context.roomCode, '시작 카운트다운이 취소되었습니다.');
             this.options.roomService.leaveCurrentRoom(context.user.id);
             this.broadcastRoomSnapshot(context.roomCode);
             return;
@@ -145,6 +157,10 @@ export class MultiplayerSocketGateway {
     this.app.addHook('onClose', async () => {
       for (const interval of this.gameIntervals.values()) {
         clearInterval(interval);
+      }
+      for (const countdown of this.startCountdowns.values()) {
+        clearTimeout(countdown.timeout);
+        clearInterval(countdown.tickInterval);
       }
       for (const socket of this.connections.keys()) {
         socket.close();
@@ -226,6 +242,7 @@ export class MultiplayerSocketGateway {
     const roomCode = contexts[0]?.roomCode ?? this.options.roomService.getRoomForUserId(userId)?.roomCode ?? null;
     const nextRoom = this.options.roomService.leaveCurrentRoom(userId);
     if (roomCode) {
+      this.cancelStartCountdown(roomCode, '시작 카운트다운이 취소되었습니다.');
       const game = this.activeGames.get(roomCode);
       if (game) {
         this.gameService.applyPlayerHit(game, userId, 99);
@@ -254,6 +271,51 @@ export class MultiplayerSocketGateway {
         });
       }
     }
+  }
+
+  private broadcastRoomCountdown(roomCode: string, secondsRemaining: number) {
+    for (const context of this.connections.values()) {
+      if (context.roomCode === roomCode) {
+        this.send(context.socket, {
+          type: 'room_countdown',
+          countdown: {
+            roomCode,
+            secondsRemaining,
+          },
+        });
+      }
+    }
+  }
+
+  private broadcastLobbyNotice(roomCode: string, message: string, tone: 'success' | 'accent' | 'danger') {
+    for (const context of this.connections.values()) {
+      if (context.roomCode === roomCode) {
+        this.send(context.socket, {
+          type: 'lobby_notice',
+          notice: {
+            roomCode,
+            message,
+            tone,
+          },
+        });
+      }
+    }
+  }
+
+  private sendCountdownSnapshot(socket: WebSocket, roomCode: string) {
+    const countdown = this.startCountdowns.get(roomCode);
+    if (!countdown) {
+      return;
+    }
+
+    const secondsRemaining = Math.max(1, Math.ceil((countdown.endsAt - Date.now()) / 1000));
+    this.send(socket, {
+      type: 'room_countdown',
+      countdown: {
+        roomCode,
+        secondsRemaining,
+      },
+    });
   }
 
   broadcastGameSnapshot(roomCode: string) {
@@ -338,6 +400,7 @@ export class MultiplayerSocketGateway {
             'Subscribed socket to room',
           );
           this.broadcastRoomSnapshot(room.roomCode);
+          this.sendCountdownSnapshot(context.socket, room.roomCode);
           this.broadcastGameSnapshot(room.roomCode);
         } catch (error) {
           if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
@@ -357,6 +420,9 @@ export class MultiplayerSocketGateway {
       if (event.type === 'set_ready') {
         try {
           this.options.roomService.setReady(context.roomCode, context.user.id, event.ready);
+          if (this.startCountdowns.has(context.roomCode)) {
+            this.cancelStartCountdown(context.roomCode, '시작 카운트다운이 취소되었습니다.');
+          }
           this.broadcastRoomSnapshot(context.roomCode);
         } catch (error) {
           if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
@@ -395,6 +461,10 @@ export class MultiplayerSocketGateway {
         try {
           const managedRoomCode = context.roomCode;
           const targetUserId = event.targetUserId;
+          const targetUser = this.options.roomService.getRoom(managedRoomCode).players.find((player) => player.userId === targetUserId)?.username ?? '플레이어';
+          if (this.startCountdowns.has(managedRoomCode)) {
+            this.cancelStartCountdown(managedRoomCode, '시작 카운트다운이 취소되었습니다.');
+          }
           this.options.roomService.kickPlayer(managedRoomCode, context.user.id, targetUserId);
 
           for (const connection of this.connections.values()) {
@@ -418,6 +488,7 @@ export class MultiplayerSocketGateway {
             },
             'Host removed a player from the lobby',
           );
+          this.broadcastLobbyNotice(managedRoomCode, `${targetUser}님이 추방되었습니다.`, 'danger');
           this.broadcastRoomSnapshot(managedRoomCode);
         } catch (error) {
           if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
@@ -433,6 +504,9 @@ export class MultiplayerSocketGateway {
         try {
           const managedRoomCode = context.roomCode;
           const targetUserId = event.targetUserId;
+          if (this.startCountdowns.has(managedRoomCode)) {
+            this.cancelStartCountdown(managedRoomCode, '시작 카운트다운이 취소되었습니다.');
+          }
           this.options.roomService.transferHost(managedRoomCode, context.user.id, targetUserId);
           this.app.log.info(
             {
@@ -443,6 +517,7 @@ export class MultiplayerSocketGateway {
             },
             'Host ownership transferred inside the lobby',
           );
+          this.broadcastLobbyNotice(managedRoomCode, '방장이 변경되었습니다.', 'accent');
           this.broadcastRoomSnapshot(managedRoomCode);
         } catch (error) {
           if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
@@ -457,6 +532,9 @@ export class MultiplayerSocketGateway {
       if (event.type === 'update_room_settings') {
         try {
           const managedRoomCode = context.roomCode;
+          if (this.startCountdowns.has(managedRoomCode)) {
+            this.cancelStartCountdown(managedRoomCode, '시작 카운트다운이 취소되었습니다.');
+          }
           this.options.roomService.updateRoomSettings(managedRoomCode, context.user.id, event.settings);
           this.app.log.info(
             {
@@ -469,6 +547,7 @@ export class MultiplayerSocketGateway {
             },
             'Host updated lobby room settings',
           );
+          this.broadcastLobbyNotice(managedRoomCode, '방 설정이 변경되었습니다.', 'success');
           this.broadcastRoomSnapshot(managedRoomCode);
         } catch (error) {
           if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
@@ -482,21 +561,22 @@ export class MultiplayerSocketGateway {
 
       if (event.type === 'start_game') {
         try {
+          if (this.startCountdowns.has(context.roomCode)) {
+            this.send(context.socket, {type: 'error', error: 'Game is already starting.'});
+            return;
+          }
           this.options.roomService.ensureRoomCanStart(context.roomCode, context.user.id);
-          const startedRoom = this.options.roomService.markRoomInProgress(context.roomCode);
-          const game = this.gameService.createGame(startedRoom);
-          this.activeGames.set(context.roomCode, game);
-          this.ensureGameLoop(context.roomCode);
+          this.options.roomService.markRoomStarting(context.roomCode);
+          this.beginStartCountdown(context.roomCode, context.user.id);
           this.app.log.info(
             {
               event: 'multiplayer_game_started',
               hostUserId: context.user.id,
-              playerCount: startedRoom.playerCount,
+              playerCount: this.options.roomService.getRoom(context.roomCode).playerCount,
             },
-            'Multiplayer game started',
+            'Multiplayer game countdown started',
           );
           this.broadcastRoomSnapshot(context.roomCode);
-          this.broadcastGameSnapshot(context.roomCode);
         } catch (error) {
           if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
             this.send(context.socket, {type: 'error', error: error.message});
@@ -552,6 +632,78 @@ export class MultiplayerSocketGateway {
     }, 100);
 
     this.gameIntervals.set(roomCode, interval);
+  }
+
+  private beginStartCountdown(roomCode: string, hostUserId: number) {
+    const endsAt = Date.now() + START_COUNTDOWN_SECONDS * 1000;
+    let lastBroadcastSecond = START_COUNTDOWN_SECONDS;
+    this.broadcastRoomCountdown(roomCode, START_COUNTDOWN_SECONDS);
+
+    const tickInterval = setInterval(() => {
+      const secondsRemaining = Math.max(1, Math.ceil((endsAt - Date.now()) / 1000));
+      if (secondsRemaining !== lastBroadcastSecond) {
+        lastBroadcastSecond = secondsRemaining;
+        this.broadcastRoomCountdown(roomCode, secondsRemaining);
+      }
+    }, 150);
+
+    const timeout = setTimeout(() => {
+      void this.finishStartCountdown(roomCode);
+    }, START_COUNTDOWN_SECONDS * 1000);
+
+    this.startCountdowns.set(roomCode, {
+      hostUserId,
+      endsAt,
+      tickInterval,
+      timeout,
+    });
+  }
+
+  private async finishStartCountdown(roomCode: string) {
+    const countdown = this.startCountdowns.get(roomCode);
+    if (!countdown) {
+      return;
+    }
+
+    clearTimeout(countdown.timeout);
+    clearInterval(countdown.tickInterval);
+
+    try {
+      this.options.roomService.ensureRoomCountdownCanFinish(roomCode, countdown.hostUserId);
+      const startedRoom = this.options.roomService.markRoomInProgress(roomCode);
+      const game = this.gameService.createGame(startedRoom);
+      this.activeGames.set(roomCode, game);
+      this.ensureGameLoop(roomCode);
+      this.startCountdowns.delete(roomCode);
+      this.broadcastRoomSnapshot(roomCode);
+      this.broadcastGameSnapshot(roomCode);
+    } catch (error) {
+      if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
+        this.cancelStartCountdown(roomCode, '시작 카운트다운이 취소되었습니다.');
+        return;
+      }
+      throw error;
+    }
+  }
+
+  private cancelStartCountdown(roomCode: string, message?: string) {
+    const countdown = this.startCountdowns.get(roomCode);
+    if (!countdown) {
+      return;
+    }
+
+    clearTimeout(countdown.timeout);
+    clearInterval(countdown.tickInterval);
+    this.startCountdowns.delete(roomCode);
+    try {
+      this.options.roomService.cancelRoomStart(roomCode);
+      this.broadcastRoomSnapshot(roomCode);
+      if (message) {
+        this.broadcastLobbyNotice(roomCode, message, 'accent');
+      }
+    } catch {
+      return;
+    }
   }
 
   private async tickGameLoop(roomCode: string, interval: NodeJS.Timeout) {

@@ -160,6 +160,7 @@ describe('MultiplayerLobbyPage', () => {
         canStart
         connected
         room={{ ...room, maxPlayers: 4, options: { ...room.options, difficulty: 'normal', bodyBlock: false } }}
+        toastSignal={{ message: '방 설정이 변경되었습니다.', tone: 'success', issuedAt: Date.now() }}
         userId={1}
         onLeave={vi.fn()}
         onSendChat={vi.fn()}
@@ -171,6 +172,29 @@ describe('MultiplayerLobbyPage', () => {
       />,
     );
 
-    expect(screen.getByRole('status').textContent).toContain('설정이 저장되었습니다.');
+    expect(screen.getByRole('status').textContent).toContain('방 설정이 변경되었습니다.');
+  });
+
+  it('shows the start countdown and disables lobby controls while the room is starting', () => {
+    render(
+      <MultiplayerLobbyPage
+        canStart
+        connected
+        countdownSignal={{ secondsRemaining: 3, issuedAt: Date.now() }}
+        room={{ ...room, status: 'starting' as const, players: room.players.map((player) => ({ ...player, ready: true })) }}
+        userId={1}
+        onLeave={vi.fn()}
+        onSendChat={vi.fn()}
+        onSetReady={vi.fn()}
+        onKickPlayer={vi.fn()}
+        onTransferHost={vi.fn()}
+        onUpdateRoomSettings={vi.fn()}
+        onStart={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('status').textContent).toContain('3초 후 시작');
+    expect((screen.getByRole('button', { name: '시작' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: '방 설정' }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

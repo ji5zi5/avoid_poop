@@ -24,7 +24,7 @@ export type RoomUser = {
   username: string;
 };
 
-type RoomStatus = 'waiting' | 'in_progress';
+type RoomStatus = 'waiting' | 'starting' | 'in_progress';
 
 type RoomRecord = {
   browseId: string;
@@ -215,18 +215,13 @@ export class RoomService {
 
   ensureRoomCanStart(roomCode: string, userId: number) {
     const room = this.getRoomForUser(userId, roomCode);
-    if (room.status !== 'waiting') {
-      throw new RoomStartError('Game has already started.');
-    }
-    if (room.hostUserId !== userId) {
-      throw new RoomStartError('Only the host can start the game.');
-    }
-    if (room.playerCount < ROOM_MIN_PLAYERS) {
-      throw new RoomStartError('At least 2 players are required to start.');
-    }
-    if (!room.players.every((player) => player.ready)) {
-      throw new RoomStartError('All players must be ready before starting.');
-    }
+    this.assertRoomCanStart(room, userId, ['waiting']);
+    return room;
+  }
+
+  ensureRoomCountdownCanFinish(roomCode: string, userId: number) {
+    const room = this.getRoomForUser(userId, roomCode);
+    this.assertRoomCanStart(room, userId, ['starting']);
     return room;
   }
 
@@ -241,6 +236,10 @@ export class RoomService {
     const player = room.players.find((entry) => entry.userId === userId);
     if (!player) {
       throw new RoomAccessError('You are not a member of this room.');
+    }
+
+    if (room.status !== 'waiting') {
+      throw new RoomStartError('Game is already starting.');
     }
 
     if (player.userId === room.hostUserId) {
@@ -283,6 +282,30 @@ export class RoomService {
     room.maxPlayers = normalizedNextMaxPlayers;
     room.privatePassword = nextPrivatePassword;
 
+    return this.toSummary(room);
+  }
+
+  markRoomStarting(roomCode: string) {
+    const normalizedRoomCode = normalizeRoomCode(roomCode);
+    const room = this.rooms.get(normalizedRoomCode);
+
+    if (!room) {
+      throw new RoomNotFoundError('Room not found.');
+    }
+
+    room.status = 'starting';
+    return this.toSummary(room);
+  }
+
+  cancelRoomStart(roomCode: string) {
+    const normalizedRoomCode = normalizeRoomCode(roomCode);
+    const room = this.rooms.get(normalizedRoomCode);
+
+    if (!room) {
+      throw new RoomNotFoundError('Room not found.');
+    }
+
+    room.status = 'waiting';
     return this.toSummary(room);
   }
 
@@ -399,6 +422,21 @@ export class RoomService {
 
   private removeUserFromCurrentRoom(userId: number) {
     this.leaveCurrentRoom(userId);
+  }
+
+  private assertRoomCanStart(room: RoomSummary, userId: number, allowedStatuses: RoomStatus[]) {
+    if (!allowedStatuses.includes(room.status)) {
+      throw new RoomStartError(room.status === 'starting' ? 'Game is already starting.' : 'Game has already started.');
+    }
+    if (room.hostUserId !== userId) {
+      throw new RoomStartError('Only the host can start the game.');
+    }
+    if (room.playerCount < ROOM_MIN_PLAYERS) {
+      throw new RoomStartError('At least 2 players are required to start.');
+    }
+    if (!room.players.every((player) => player.ready)) {
+      throw new RoomStartError('All players must be ready before starting.');
+    }
   }
 
   private getMutableRoomForHostAction(roomCode: string, actorUserId: number) {

@@ -1,12 +1,13 @@
 import { api } from "./api";
 import { getWebSocketUrl } from "./runtimeConfig";
 
-export type RoomStatus = "waiting" | "in_progress";
+export type RoomStatus = "waiting" | "starting" | "in_progress";
 export type RoomDifficulty = "normal" | "hard";
 export type RoomVisibility = "public" | "private";
 export type MultiplayerPhase = "wave" | "boss" | "complete";
 export type MultiplayerPlayerStatus = "alive" | "spectator" | "disconnected";
 export type MultiplayerDebuffType = "slow" | "reverse" | "input_delay" | "vision_jam" | "item_lock";
+export type LobbyNoticeTone = "success" | "accent" | "danger";
 
 export type RoomOptions = {
   difficulty: RoomDifficulty;
@@ -39,6 +40,17 @@ export type RoomSummary = {
   players: LobbyPlayer[];
   options: RoomOptions;
   chatMessages: RoomChatMessage[];
+};
+
+export type RoomCountdown = {
+  roomCode: string;
+  secondsRemaining: number;
+};
+
+export type LobbyNotice = {
+  roomCode: string;
+  tone: LobbyNoticeTone;
+  message: string;
 };
 
 export type RoomListEntry = {
@@ -146,9 +158,11 @@ export type ServerSocketEvent =
       reconnected: boolean;
     }
   | { type: "room_snapshot"; room: RoomSummary }
+  | { type: "room_countdown"; countdown: RoomCountdown }
   | { type: "game_snapshot"; game: MultiplayerGameSnapshot }
   | { type: "chat_message"; roomCode: string; chatMessage: RoomChatMessage }
   | { type: "room_departed"; roomCode: string; reason: "kicked"; message: string }
+  | { type: "lobby_notice"; notice: LobbyNotice }
   | { type: "pong" }
   | { type: "error"; error: string };
 

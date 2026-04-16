@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { AuthUser, GameMode, RecordEntry } from "../../shared/src/contracts/index";
 import { copy, translateErrorMessage } from "./content/copy";
 import { api, clearStoredSessionToken } from "./lib/api";
-import { createMultiplayerClient, type MultiplayerGameSnapshot, type RoomSummary } from "./lib/multiplayerClient";
+import { createMultiplayerClient, type LobbyNoticeTone, type MultiplayerGameSnapshot, type RoomSummary } from "./lib/multiplayerClient";
 import { AuthPage } from "./routes/AuthPage";
 import { CareerPage } from "./routes/CareerPage";
 import { GamePage } from "./routes/GamePage";
@@ -25,7 +25,8 @@ export default function App() {
   const [socketConnected, setSocketConnected] = useState(false);
   const [reconnectSequence, setReconnectSequence] = useState(0);
   const [multiplayerNotice, setMultiplayerNotice] = useState<string | null>(null);
-  const [multiplayerLobbyToast, setMultiplayerLobbyToast] = useState<{ message: string; tone: "success" | "danger"; issuedAt: number } | null>(null);
+  const [multiplayerLobbyToast, setMultiplayerLobbyToast] = useState<{ message: string; tone: LobbyNoticeTone; issuedAt: number } | null>(null);
+  const [multiplayerCountdown, setMultiplayerCountdown] = useState<{ secondsRemaining: number; issuedAt: number } | null>(null);
 
   const multiplayerClient = useMemo(
     () =>
@@ -43,9 +44,19 @@ export default function App() {
           }
           if (event.type === "room_snapshot") {
             setRoom(event.room);
+            if (event.room.status !== "starting") {
+              setMultiplayerCountdown(null);
+            }
             if (event.room.status === "in_progress") {
               setScreen("multiplayer-game");
             }
+            return;
+          }
+          if (event.type === "room_countdown") {
+            setMultiplayerCountdown({
+              secondsRemaining: event.countdown.secondsRemaining,
+              issuedAt: Date.now(),
+            });
             return;
           }
           if (event.type === "chat_message") {
@@ -64,10 +75,19 @@ export default function App() {
           if (event.type === "room_departed") {
             setMultiplayerNotice(event.message);
             setMultiplayerLobbyToast(null);
+            setMultiplayerCountdown(null);
             setRoom(null);
             setGame(null);
             setSocketConnected(false);
             setScreen("multiplayer-home");
+            return;
+          }
+          if (event.type === "lobby_notice") {
+            setMultiplayerLobbyToast({
+              message: event.notice.message,
+              tone: event.notice.tone,
+              issuedAt: Date.now(),
+            });
             return;
           }
           if (event.type === "error") {
@@ -79,6 +99,7 @@ export default function App() {
             return;
           }
           if (event.type === "game_snapshot") {
+            setMultiplayerCountdown(null);
             setGame(event.game);
             setScreen("multiplayer-game");
           }
@@ -160,6 +181,7 @@ export default function App() {
     const nextRoom = await loadRoom;
     setMultiplayerNotice(null);
     setMultiplayerLobbyToast(null);
+    setMultiplayerCountdown(null);
     setRoom(nextRoom);
     setGame(null);
     setSocketConnected(false);
@@ -171,6 +193,7 @@ export default function App() {
     multiplayerClient.disconnect();
     setMultiplayerNotice(null);
     setMultiplayerLobbyToast(null);
+    setMultiplayerCountdown(null);
     setRoom(null);
     setGame(null);
     setSocketConnected(false);
@@ -238,6 +261,7 @@ export default function App() {
             <MultiplayerLobbyPage
               canStart={room.hostUserId === user.id}
               connected={socketConnected}
+              countdownSignal={multiplayerCountdown}
               room={room}
               toastSignal={multiplayerLobbyToast}
               userId={user.id}

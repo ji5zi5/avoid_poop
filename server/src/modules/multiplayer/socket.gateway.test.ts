@@ -283,7 +283,7 @@ test('pre-ready start is rejected before room start', { concurrency: false }, as
   await app.close();
 });
 
-test('host can start a game and clients receive game snapshots', { concurrency: false }, async () => {
+test('host can start a game and clients receive a countdown before game snapshots', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});
   const port = Number((app.server.address() as {port: number}).port);
@@ -327,6 +327,9 @@ test('host can start a game and clients receive game snapshots', { concurrency: 
 
   hostSocket.send(JSON.stringify({type: 'start_game'}));
 
+  await waitFor(() => hostEvents.some((event) => event.type === 'room_snapshot' && event.room.status === 'starting'));
+  await waitFor(() => hostEvents.some((event) => event.type === 'room_countdown'));
+  await waitFor(() => guestEvents.some((event) => event.type === 'room_countdown'));
   await waitFor(() => hostEvents.some((event) => event.type === 'game_snapshot'));
   await waitFor(() => guestEvents.some((event) => event.type === 'game_snapshot'));
 
@@ -334,6 +337,7 @@ test('host can start a game and clients receive game snapshots', { concurrency: 
   assert.equal(gameSnapshot.game.roomCode, roomCode);
   assert.equal(gameSnapshot.game.phase, 'wave');
   assert.equal(gameSnapshot.game.players.length, 2);
+  assert.ok(hostEvents.some((event) => event.type === 'room_countdown' && event.countdown.secondsRemaining >= 1));
 
   hostSocket.close();
   guestSocket.close();
@@ -574,7 +578,7 @@ async function connectSocketExpectStatus(
 async function waitFor(predicate: () => boolean | Promise<boolean>) {
   const startedAt = Date.now();
   while (!(await predicate())) {
-    if (Date.now() - startedAt > 3000) {
+    if (Date.now() - startedAt > 5000) {
       throw new Error('Timed out waiting for condition');
     }
     await new Promise((resolve) => setTimeout(resolve, 25));
@@ -736,6 +740,7 @@ test('host can transfer host ownership inside the lobby', { concurrency: false }
       && event.room.players.some((player: {userId: number; isHost: boolean; ready: boolean}) => player.userId === 2 && player.isHost && player.ready)
     )
   );
+  await waitFor(() => hostEvents.some((event) => event.type === 'lobby_notice' && event.notice.message === '방장이 변경되었습니다.' && event.notice.tone === 'accent'));
 
   hostSocket.close();
   guestSocket.close();
@@ -777,6 +782,7 @@ test('host can update room settings inside the lobby before the game starts', { 
     },
   }));
 
+  await waitFor(() => hostEvents.some((event) => event.type === 'lobby_notice' && event.notice.message === '방 설정이 변경되었습니다.' && event.notice.tone === 'success'));
   await waitFor(() =>
     guestEvents.some((event) =>
       event.type === 'room_snapshot'
@@ -818,6 +824,7 @@ test('host can kick a player out of the lobby and the kicked client is detached'
 
   await waitFor(() => guestEvents.some((event) => event.type === 'room_departed' && event.reason === 'kicked'));
   await waitFor(() => hostEvents.some((event) => event.type === 'room_snapshot' && event.room.playerCount === 1));
+  await waitFor(() => hostEvents.some((event) => event.type === 'lobby_notice' && event.notice.message === 'kick_host_guest님이 추방되었습니다.' && event.notice.tone === 'danger'));
 
   guestSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
   await waitFor(() => guestEvents.some((event) => event.type === 'error' && event.error === 'You are not a member of this room.'));

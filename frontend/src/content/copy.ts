@@ -245,6 +245,11 @@ export const copy = {
     startHint: '방장만 시작할 수 있습니다',
     startNeedPlayers: '2명 이상 있어야 시작 가능',
     startNeedReady: '전원이 준비해야 시작 가능',
+    startingSoon: (seconds: number) => `${seconds}초 후 시작`,
+    settingsUpdatedToast: '방 설정이 변경되었습니다.',
+    hostTransferredToast: '방장이 변경되었습니다.',
+    playerKickedToast: (username: string) => `${username}님이 추방되었습니다.`,
+    countdownCancelledToast: '시작 카운트다운이 취소되었습니다.',
     difficultyNormal: '일반',
     difficultyHard: '하드',
     chat: '채팅',
@@ -301,6 +306,7 @@ const errorTranslations: Record<string, string> = {
   "Lobby management is only available before the game starts.": "게임 시작 전 대기방에서만 변경할 수 있습니다.",
   "Only the host can manage players.": "방장만 이 기능을 사용할 수 있습니다.",
   "Choose a player who is still in the room.": "아직 방에 있는 플레이어만 선택할 수 있습니다.",
+  "Game is already starting.": "게임 시작 카운트다운이 진행 중입니다.",
 };
 
 export function translateErrorMessage(message: string) {

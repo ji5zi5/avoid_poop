@@ -19,9 +19,10 @@ export const privatePasswordValueSchema = z
   .min(1, 'Private room password is required.')
   .max(32, 'Private room password must be at most 32 characters.');
 
-export const roomStatusSchema = z.enum(['waiting', 'in_progress']);
+export const roomStatusSchema = z.enum(['waiting', 'starting', 'in_progress']);
 export const roomDifficultySchema = z.enum(['normal', 'hard']);
 export const roomVisibilitySchema = z.enum(['public', 'private']);
+export const lobbyNoticeToneSchema = z.enum(['success', 'accent', 'danger']);
 
 export const roomOptionsSchema = z.object({
   difficulty: roomDifficultySchema,
@@ -197,6 +198,17 @@ export const multiplayerGameSnapshotSchema = z.object({
   winnerUserId: z.number().int().positive().nullable()
 });
 
+export const roomCountdownSchema = z.object({
+  roomCode: z.string().length(ROOM_CODE_LENGTH).regex(/^[A-Z0-9]+$/),
+  secondsRemaining: z.number().int().positive().max(9),
+});
+
+export const lobbyNoticeSchema = z.object({
+  roomCode: z.string().length(ROOM_CODE_LENGTH).regex(/^[A-Z0-9]+$/),
+  tone: lobbyNoticeToneSchema,
+  message: z.string().min(1).max(120),
+});
+
 export const multiplayerClientEventSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('subscribe_room'),
@@ -256,6 +268,10 @@ export const multiplayerServerEventSchema = z.discriminatedUnion('type', [
     room: roomSummarySchema
   }),
   z.object({
+    type: z.literal('room_countdown'),
+    countdown: roomCountdownSchema
+  }),
+  z.object({
     type: z.literal('game_snapshot'),
     game: multiplayerGameSnapshotSchema
   }),
@@ -269,6 +285,10 @@ export const multiplayerServerEventSchema = z.discriminatedUnion('type', [
     roomCode: z.string().length(ROOM_CODE_LENGTH).regex(/^[A-Z0-9]+$/),
     reason: z.literal('kicked'),
     message: z.string().min(1)
+  }),
+  z.object({
+    type: z.literal('lobby_notice'),
+    notice: lobbyNoticeSchema
   }),
   z.object({
     type: z.literal('pong')
@@ -293,5 +313,7 @@ export type LobbyPlayer = z.infer<typeof lobbyPlayerSchema>;
 export type RoomChatMessage = z.infer<typeof roomChatMessageSchema>;
 export type RoomSummary = z.infer<typeof roomSummarySchema>;
 export type RoomListEntry = z.infer<typeof roomListEntrySchema>;
+export type RoomCountdown = z.infer<typeof roomCountdownSchema>;
+export type LobbyNotice = z.infer<typeof lobbyNoticeSchema>;
 export type MultiplayerClientEvent = z.infer<typeof multiplayerClientEventSchema>;
 export type MultiplayerServerEvent = z.infer<typeof multiplayerServerEventSchema>;

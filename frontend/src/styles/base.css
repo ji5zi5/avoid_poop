@@ -2279,10 +2279,37 @@ input {
   border: 1px solid rgba(126, 153, 105, 0.28);
 }
 
+.multiplayer-lobby-toast--accent {
+  background: rgba(213, 167, 91, 0.18);
+  color: #6f4d17;
+  border: 1px solid rgba(213, 167, 91, 0.3);
+}
+
 .multiplayer-lobby-toast--danger {
   background: rgba(208, 122, 99, 0.16);
   color: rgba(126, 48, 28, 0.92);
   border: 1px solid rgba(208, 122, 99, 0.24);
+}
+
+.multiplayer-lobby-countdown {
+  justify-self: center;
+  display: grid;
+  justify-items: center;
+  gap: 0.14rem;
+  min-width: 10rem;
+  padding: 0.72rem 1rem;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.55), transparent 55%),
+    linear-gradient(180deg, rgba(255, 245, 236, 0.98) 0%, rgba(249, 232, 215, 0.98) 100%);
+  box-shadow: 0 16px 34px rgba(43, 30, 18, 0.12);
+  border: 1px solid rgba(213, 167, 91, 0.24);
+  text-align: center;
+}
+
+.multiplayer-lobby-countdown strong {
+  color: var(--tone-4);
+  font-size: 1.12rem;
 }
 
 .multiplayer-lobby-options {

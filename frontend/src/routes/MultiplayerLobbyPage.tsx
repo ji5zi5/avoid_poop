@@ -1,6 +1,6 @@
 import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
 
-import type { RoomOptions, RoomSummary, UpdateRoomSettingsPayload } from "../lib/multiplayerClient";
+import type { LobbyNoticeTone, RoomOptions, RoomSummary, UpdateRoomSettingsPayload } from "../lib/multiplayerClient";
 import { copy } from "../content/copy";
 import { getMultiplayerColorMap } from "../lib/multiplayerColors";
 
@@ -14,8 +14,9 @@ type Props = {
   onTransferHost: (userId: number) => void;
   onUpdateRoomSettings: (settings: UpdateRoomSettingsPayload) => void;
   onStart: () => void;
+  countdownSignal?: { secondsRemaining: number; issuedAt: number } | null;
   room: RoomSummary;
-  toastSignal?: { message: string; tone: "success" | "danger"; issuedAt: number } | null;
+  toastSignal?: { message: string; tone: LobbyNoticeTone; issuedAt: number } | null;
   userId: number;
 };
 
@@ -31,7 +32,7 @@ type PendingModerationAction = {
   type: "kick" | "transfer";
 };
 
-export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat, onSetReady, onKickPlayer, onTransferHost, onUpdateRoomSettings, onStart, room, toastSignal = null, userId }: Props) {
+export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat, onSetReady, onKickPlayer, onTransferHost, onUpdateRoomSettings, onStart, countdownSignal = null, room, toastSignal = null, userId }: Props) {
   const currentPlayer = room.players.find((player) => player.userId === userId);
   const playerColors = getMultiplayerColorMap(room.players);
   const isReady = currentPlayer?.ready ?? false;
@@ -41,29 +42,34 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
   const [settingsOptions, setSettingsOptions] = useState<RoomOptions>(room.options);
   const [settingsMaxPlayers, setSettingsMaxPlayers] = useState<number>(room.maxPlayers);
   const [settingsPrivatePassword, setSettingsPrivatePassword] = useState("");
-  const [settingsSavePending, setSettingsSavePending] = useState(false);
   const [openManagePlayerId, setOpenManagePlayerId] = useState<number | null>(null);
   const [pendingModerationAction, setPendingModerationAction] = useState<PendingModerationAction | null>(null);
-  const [toast, setToast] = useState<{ message: string; tone: "success" | "danger" } | null>(null);
+  const [toast, setToast] = useState<{ message: string; tone: LobbyNoticeTone } | null>(null);
   const chatLogRef = useRef<HTMLUListElement | null>(null);
   const managePopoverRef = useRef<HTMLDivElement | null>(null);
   const enoughPlayers = room.playerCount >= 2;
   const allReady = room.players.every((player) => player.ready);
   const canActuallyStart = canStart && enoughPlayers && allReady;
   const readyCount = room.players.filter((player) => player.ready).length;
-  const lobbyStateLabel = !enoughPlayers
-    ? copy.multiplayer.startNeedPlayers
-    : !allReady
-      ? copy.multiplayer.startNeedReady
-      : copy.multiplayer.startHint;
-  const actionTitle = isHost ? "방장 권한" : isReady ? "준비 완료" : "준비 필요";
-  const actionSummary = isHost
-    ? canActuallyStart
-      ? "지금 바로 시작할 수 있습니다."
-      : `${readyCount}/${room.playerCount}명 준비 · 전원이 준비되면 시작 가능합니다.`
-    : isReady
-      ? "방장이 시작하면 바로 입장합니다."
-      : "준비를 눌러야 방장이 게임을 시작할 수 있습니다.";
+  const countdownSecondsRemaining = countdownSignal?.secondsRemaining ?? null;
+  const countdownActive = room.status === "starting" && countdownSecondsRemaining !== null;
+  const lobbyStateLabel = countdownActive
+    ? copy.multiplayer.startingSoon(countdownSecondsRemaining)
+    : !enoughPlayers
+      ? copy.multiplayer.startNeedPlayers
+      : !allReady
+        ? copy.multiplayer.startNeedReady
+        : copy.multiplayer.startHint;
+  const actionTitle = countdownActive ? "곧 시작" : isHost ? "방장 권한" : isReady ? "준비 완료" : "준비 필요";
+  const actionSummary = countdownActive
+    ? "카운트다운이 끝나면 바로 게임 화면으로 넘어갑니다."
+    : isHost
+      ? canActuallyStart
+        ? "지금 바로 시작할 수 있습니다."
+        : `${readyCount}/${room.playerCount}명 준비 · 전원이 준비되면 시작 가능합니다.`
+      : isReady
+        ? "방장이 시작하면 바로 입장합니다."
+        : "준비를 눌러야 방장이 게임을 시작할 수 있습니다.";
   const primaryActionLabel = isHost ? copy.multiplayer.start : isReady ? copy.multiplayer.cancelReady : copy.multiplayer.ready;
   const primaryAction = () => {
     if (isHost) {
@@ -100,7 +106,6 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
   useEffect(() => {
     if (!isHost) {
       setShowSettingsSheet(false);
-      setSettingsSavePending(false);
       return;
     }
     if (!showSettingsSheet) {
@@ -109,6 +114,12 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
       setSettingsPrivatePassword("");
     }
   }, [isHost, room.maxPlayers, room.options, showSettingsSheet]);
+
+  useEffect(() => {
+    if (countdownActive && showSettingsSheet) {
+      setShowSettingsSheet(false);
+    }
+  }, [countdownActive, showSettingsSheet]);
 
   useEffect(() => {
     if (!openManagePlayerId) {
@@ -156,19 +167,8 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
   }, [pendingModerationAction]);
 
   useEffect(() => {
-    if (!settingsSavePending) {
-      return;
-    }
-    setToast({ message: copy.multiplayer.settingsSavedToast, tone: "success" });
-    setSettingsSavePending(false);
-  }, [room, settingsSavePending]);
-
-  useEffect(() => {
     if (!toastSignal) {
       return;
-    }
-    if (toastSignal.tone === "danger") {
-      setSettingsSavePending(false);
     }
     setToast({ message: toastSignal.message, tone: toastSignal.tone });
   }, [toastSignal]);
@@ -232,7 +232,6 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
         ? settingsPrivatePassword.trim()
         : undefined,
     });
-    setSettingsSavePending(true);
     setShowSettingsSheet(false);
   }
 
@@ -247,6 +246,12 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
             {toast.message}
           </div>
         ) : null}
+        {countdownActive ? (
+          <div className="multiplayer-lobby-countdown" role="status" aria-live="assertive">
+            <span className="panel-kicker">COUNTDOWN</span>
+            <strong>{copy.multiplayer.startingSoon(countdownSecondsRemaining)}</strong>
+          </div>
+        ) : null}
         <div className="multiplayer-lobby-header multiplayer-lobby-header--heroic">
           <div>
             <p className="panel-kicker">{copy.multiplayer.entry}</p>
@@ -256,7 +261,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
           <div className="multiplayer-lobby-header__aside">
             <strong className={`room-status-chip ${connected ? "is-live" : ""}`}>{connected ? copy.multiplayer.statusConnected : copy.multiplayer.statusConnecting}</strong>
             {isHost ? (
-              <button type="button" className="ghost-button subtle-button" onClick={openSettingsSheet}>
+              <button type="button" className="ghost-button subtle-button" onClick={openSettingsSheet} disabled={countdownActive}>
                 {copy.multiplayer.editRoomSetup}
               </button>
             ) : null}
@@ -389,7 +394,11 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
               </div>
             </div>
             <div className="multiplayer-lobby-actions multiplayer-lobby-actions--heroic">
-              <button className="home-start-button home-start-button--hero" onClick={primaryAction} disabled={isHost ? !canActuallyStart : false}>
+              <button
+                className="home-start-button home-start-button--hero"
+                onClick={primaryAction}
+                disabled={isHost ? !canActuallyStart || countdownActive : countdownActive}
+              >
                 {primaryActionLabel}
               </button>
               <button className="ghost-button subtle-button multiplayer-lobby-leave-button" onClick={onLeave}>{copy.multiplayer.leave}</button>
