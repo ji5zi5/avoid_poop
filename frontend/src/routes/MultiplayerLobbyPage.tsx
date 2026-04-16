@@ -21,6 +21,12 @@ function debuffTierLabel(debuffTier: RoomSummary["options"]["debuffTier"]) {
   return debuffTier === 3 ? copy.multiplayer.debuffTierStrong : copy.multiplayer.debuffTierWeak;
 }
 
+type PendingModerationAction = {
+  playerId: number;
+  playerName: string;
+  type: "kick" | "transfer";
+};
+
 export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat, onSetReady, onKickPlayer, onTransferHost, onStart, room, userId }: Props) {
   const currentPlayer = room.players.find((player) => player.userId === userId);
   const playerColors = getMultiplayerColorMap(room.players);
@@ -28,7 +34,9 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
   const isHost = currentPlayer?.isHost ?? canStart;
   const [message, setMessage] = useState("");
   const [openManagePlayerId, setOpenManagePlayerId] = useState<number | null>(null);
+  const [pendingModerationAction, setPendingModerationAction] = useState<PendingModerationAction | null>(null);
   const chatLogRef = useRef<HTMLUListElement | null>(null);
+  const managePopoverRef = useRef<HTMLDivElement | null>(null);
   const enoughPlayers = room.playerCount >= 2;
   const allReady = room.players.every((player) => player.ready);
   const canActuallyStart = canStart && enoughPlayers && allReady;
@@ -79,6 +87,51 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
     }
   }, [canManagePlayers, openManagePlayerId]);
 
+  useEffect(() => {
+    if (!openManagePlayerId) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      const surface = managePopoverRef.current;
+      if (!surface) {
+        return;
+      }
+      if (event.target instanceof Node && surface.contains(event.target)) {
+        return;
+      }
+      setOpenManagePlayerId(null);
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpenManagePlayerId(null);
+      }
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [openManagePlayerId]);
+
+  useEffect(() => {
+    if (!pendingModerationAction) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setPendingModerationAction(null);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [pendingModerationAction]);
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!message.trim()) {
@@ -93,7 +146,26 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
     if (!canManagePlayers) {
       return;
     }
+    setPendingModerationAction(null);
     setOpenManagePlayerId((current) => current === targetUserId ? null : targetUserId);
+  }
+
+  function requestModerationAction(type: PendingModerationAction["type"], playerId: number, playerName: string) {
+    setOpenManagePlayerId(null);
+    setPendingModerationAction({ type, playerId, playerName });
+  }
+
+  function confirmModerationAction() {
+    if (!pendingModerationAction) {
+      return;
+    }
+
+    if (pendingModerationAction.type === "transfer") {
+      onTransferHost(pendingModerationAction.playerId);
+    } else {
+      onKickPlayer(pendingModerationAction.playerId);
+    }
+    setPendingModerationAction(null);
   }
 
   return (
@@ -158,40 +230,43 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
                     <div className="lobby-player-actions">
                       <strong className={`room-status-chip ${player.ready ? "is-live" : ""}`}>{player.ready ? copy.multiplayer.ready : copy.multiplayer.waitingRoom}</strong>
                       {canManagePlayers && player.userId !== userId ? (
-                        <button
-                          type="button"
-                          className={`ghost-button subtle-button lobby-player-manage-button ${openManagePlayerId === player.userId ? "is-open" : ""}`}
-                          onClick={(event) => openManageMenu(event, player.userId)}
-                          aria-label={`${player.username} ${copy.multiplayer.manage}`}
+                        <div
+                          className="lobby-player-manage-shell"
+                          ref={openManagePlayerId === player.userId ? managePopoverRef : null}
                         >
-                          ⋯
-                        </button>
+                          <button
+                            type="button"
+                            className={`ghost-button subtle-button lobby-player-manage-button ${openManagePlayerId === player.userId ? "is-open" : ""}`}
+                            onClick={(event) => openManageMenu(event, player.userId)}
+                            aria-label={`${player.username} ${copy.multiplayer.manage}`}
+                          >
+                            ⋯
+                          </button>
+                          {openManagePlayerId === player.userId ? (
+                            <div className="lobby-player-manage-popover" role="menu" aria-label={copy.multiplayer.moderationMenuHint}>
+                              <div className="lobby-player-manage-popover__header">
+                                <span className="panel-kicker">{copy.multiplayer.manage}</span>
+                                <strong>{player.username}</strong>
+                              </div>
+                              <button
+                                type="button"
+                                className="ghost-button subtle-button lobby-player-manage-popover__action"
+                                onClick={() => requestModerationAction("transfer", player.userId, player.username)}
+                              >
+                                {copy.multiplayer.transferHost}
+                              </button>
+                              <button
+                                type="button"
+                                className="ghost-button subtle-button lobby-player-manage-popover__action lobby-player-manage-popover__action--danger"
+                                onClick={() => requestModerationAction("kick", player.userId, player.username)}
+                              >
+                                {copy.multiplayer.kickPlayer}
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
                       ) : null}
                     </div>
-                    {canManagePlayers && openManagePlayerId === player.userId ? (
-                      <div className="lobby-player-manage-menu">
-                        <button
-                          type="button"
-                          className="ghost-button subtle-button"
-                          onClick={() => {
-                            setOpenManagePlayerId(null);
-                            onTransferHost(player.userId);
-                          }}
-                        >
-                          {copy.multiplayer.transferHost}
-                        </button>
-                        <button
-                          type="button"
-                          className="ghost-button subtle-button lobby-player-manage-menu__danger"
-                          onClick={() => {
-                            setOpenManagePlayerId(null);
-                            onKickPlayer(player.userId);
-                          }}
-                        >
-                          {copy.multiplayer.kickPlayer}
-                        </button>
-                      </div>
-                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -240,6 +315,42 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
           <p className="home-card__meta">{lobbyStateLabel}</p>
         </div>
       </div>
+
+      {pendingModerationAction ? (
+        <div className="menu-selection-sheet menu-selection-sheet--centered" role="dialog" aria-modal="true" aria-label={pendingModerationAction.type === "transfer" ? copy.multiplayer.moderationTransferTitle : copy.multiplayer.moderationKickTitle}>
+          <div className="menu-selection-sheet__scrim" onClick={() => setPendingModerationAction(null)} />
+          <div className="menu-selection-sheet__panel multiplayer-moderation-modal">
+            <span className="panel-kicker">{copy.multiplayer.manage}</span>
+            <div className="multiplayer-moderation-modal__copy">
+              <h2>{pendingModerationAction.type === "transfer" ? copy.multiplayer.moderationTransferTitle : copy.multiplayer.moderationKickTitle}</h2>
+              <p>
+                {pendingModerationAction.type === "transfer"
+                  ? copy.multiplayer.moderationTransferMessage(pendingModerationAction.playerName)
+                  : copy.multiplayer.moderationKickMessage(pendingModerationAction.playerName)}
+              </p>
+            </div>
+            <div className="multiplayer-moderation-target">
+              <span className="lobby-player-avatar">{pendingModerationAction.playerName.slice(0, 1).toUpperCase()}</span>
+              <div>
+                <strong>{pendingModerationAction.playerName}</strong>
+                <p>{pendingModerationAction.type === "transfer" ? "새 방장으로 지정" : "대기방에서 즉시 제외"}</p>
+              </div>
+            </div>
+            <div className="multiplayer-moderation-modal__actions">
+              <button type="button" className="ghost-button subtle-button" onClick={() => setPendingModerationAction(null)}>
+                {copy.multiplayer.moderationCancel}
+              </button>
+              <button
+                type="button"
+                className={`home-start-button multiplayer-moderation-modal__confirm ${pendingModerationAction.type === "kick" ? "is-danger" : ""}`}
+                onClick={confirmModerationAction}
+              >
+                {pendingModerationAction.type === "transfer" ? copy.multiplayer.moderationTransferConfirm : copy.multiplayer.moderationKickConfirm}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

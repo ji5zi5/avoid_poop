@@ -109,10 +109,14 @@ describe('MultiplayerLobbyPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'guest 관리' }));
     fireEvent.click(screen.getByRole('button', { name: '방장 넘기기' }));
+    expect(screen.getByRole('dialog', { name: '방장 넘기기' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '방장 넘기기' }));
     expect(onTransferHost).toHaveBeenCalledWith(2);
 
     fireEvent.click(screen.getByRole('button', { name: 'guest 관리' }));
     fireEvent.click(screen.getByRole('button', { name: '추방' }));
+    expect(screen.getByRole('dialog', { name: '유저 추방' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '추방하기' }));
     expect(onKickPlayer).toHaveBeenCalledWith(2);
   });
 });
