@@ -64,6 +64,8 @@ const gameplayInputBucket = {
 } as const;
 
 const START_COUNTDOWN_SECONDS = config.isTest ? 1 : 3;
+const GAME_TICK_MS = 1000 / 60;
+const GAME_TICK_DELTA_SECONDS = 1 / 60;
 
 export class MultiplayerSocketGateway {
   private readonly connections = new Map<WebSocket, ConnectionContext>();
@@ -629,7 +631,7 @@ export class MultiplayerSocketGateway {
 
     const interval = setInterval(() => {
       void this.tickGameLoop(roomCode, interval);
-    }, 100);
+    }, GAME_TICK_MS);
 
     this.gameIntervals.set(roomCode, interval);
   }
@@ -715,7 +717,7 @@ export class MultiplayerSocketGateway {
         return;
       }
 
-      this.gameService.tick(game, 0.1, Date.now());
+      this.gameService.tick(game, GAME_TICK_DELTA_SECONDS, Date.now());
       this.broadcastGameSnapshot(roomCode);
       if (game.phase === 'complete') {
         await saveCompletedMultiplayerGame(game);
