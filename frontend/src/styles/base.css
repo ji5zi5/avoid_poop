@@ -1130,6 +1130,20 @@ input {
 }
 
 @media (max-width: 760px) {
+  .console-stage--game {
+    display: grid;
+    align-items: center;
+  }
+
+  .game-screen {
+    align-content: center;
+    padding-block: 0.35rem 0.85rem;
+  }
+
+  .game-stage-panel {
+    align-content: center;
+  }
+
   .game-canvas {
     max-height: calc(100dvh - 216px);
   }
