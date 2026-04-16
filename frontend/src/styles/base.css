@@ -663,6 +663,7 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: min(100%, 640px);
   padding: 0.18rem;
   background: rgba(96, 73, 44, 0.06);
   border: 2px solid rgba(70, 63, 26, 0.12);
@@ -672,7 +673,7 @@ input {
 }
 
 .game-canvas {
-  width: min(100%, 420px);
+  width: min(100%, 640px);
   height: auto;
   max-height: calc(100dvh - 150px);
   aspect-ratio: 360 / 520;
@@ -694,7 +695,7 @@ input {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.45rem;
-  width: min(100%, 420px);
+  width: min(100%, 640px);
   margin: 0 auto;
 }
 
@@ -967,7 +968,7 @@ input {
 
 
 .game-canvas {
-  width: min(100%, 430px);
+  width: min(100%, 640px);
   max-height: calc(100dvh - 188px);
   border-width: 3px;
   border-radius: 14px;
@@ -1139,6 +1140,15 @@ input {
 
   .readout-panel--lives {
     order: -1;
+  }
+}
+
+@media (max-width: 1024px) and (min-width: 761px) {
+  .game-frame,
+  .mobile-controls,
+  .game-canvas {
+    width: min(100%, 720px);
+    max-width: 720px;
   }
 }
 
