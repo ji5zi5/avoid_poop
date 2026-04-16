@@ -71,7 +71,7 @@ test('creating a room returns the room code and host assignment', async () => {
       userId: host.user.id,
       username: host.user.username,
       isHost: true,
-      ready: false
+      ready: true
     }
   ]);
   assert.deepEqual(room.chatMessages, []);
@@ -159,7 +159,7 @@ test('joining by room code adds the authenticated player to the room', async () 
       userId: host.user.id,
       username: host.user.username,
       isHost: true,
-      ready: false
+      ready: true
     },
     {
       userId: guest.user.id,
@@ -347,7 +347,7 @@ test('quick join reuses a waiting room and creates one when none exist', async (
       userId: firstPlayer.user.id,
       username: firstPlayer.user.username,
       isHost: true,
-      ready: false
+      ready: true
     },
     {
       userId: secondPlayer.user.id,

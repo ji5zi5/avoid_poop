@@ -50,6 +50,12 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
 
   useEffect(() => {
     void refreshRooms();
+
+    const interval = window.setInterval(() => {
+      void refreshRooms();
+    }, 5000);
+
+    return () => window.clearInterval(interval);
   }, []);
 
   const roomGroups = useMemo(() => ({

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { MultiplayerHomePage } from "./MultiplayerHomePage";
 
@@ -24,6 +24,10 @@ const listedRooms = [
 ];
 
 describe("MultiplayerHomePage", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("uses quick join without exposing room settings", () => {
     const onQuickJoin = vi.fn();
     render(<MultiplayerHomePage onBack={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} loadRooms={vi.fn().mockResolvedValue([])} onQuickJoin={onQuickJoin} />);
@@ -76,5 +80,17 @@ describe("MultiplayerHomePage", () => {
     fireEvent.change(passwordInput, { target: { value: "secret-pass" } });
     fireEvent.click(screen.getByRole("button", { name: "비밀번호 입장" }));
     expect(onJoinRoom).toHaveBeenCalledWith({ roomId: "973ebca7-f10a-4718-88c6-eb501f9c0af0", privatePassword: "secret-pass" });
+  });
+
+  it("refreshes the room list automatically while the screen is open", async () => {
+    vi.useFakeTimers();
+    const loadRooms = vi.fn().mockResolvedValue([]);
+
+    render(<MultiplayerHomePage onBack={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} loadRooms={loadRooms} onQuickJoin={vi.fn()} />);
+
+    expect(loadRooms).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(5000);
+    await Promise.resolve();
+    expect(loadRooms).toHaveBeenCalledTimes(2);
   });
 });

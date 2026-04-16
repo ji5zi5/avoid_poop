@@ -79,7 +79,7 @@ export class RoomService {
         {
           userId: user.id,
           username: user.username,
-          ready: false
+          ready: true
         }
       ],
       options: mergedOptions,
