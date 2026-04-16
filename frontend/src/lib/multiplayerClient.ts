@@ -56,6 +56,12 @@ export type CreateRoomPayload = {
   privatePassword?: string;
 };
 
+export type UpdateRoomSettingsPayload = {
+  options?: Partial<RoomOptions>;
+  maxPlayers?: number;
+  privatePassword?: string;
+};
+
 export type JoinRoomPayload = {
   roomCode?: string;
   roomId?: string;
@@ -125,7 +131,8 @@ export type ClientSocketEvent =
   | { type: "leave_room" }
   | { type: "send_chat"; message: string }
   | { type: "kick_player"; targetUserId: number }
-  | { type: "transfer_host"; targetUserId: number };
+  | { type: "transfer_host"; targetUserId: number }
+  | { type: "update_room_settings"; settings: UpdateRoomSettingsPayload };
 
 export type ServerSocketEvent =
   | {

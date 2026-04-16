@@ -742,6 +742,57 @@ test('host can transfer host ownership inside the lobby', { concurrency: false }
   await app.close();
 });
 
+test('host can update room settings inside the lobby before the game starts', { concurrency: false }, async () => {
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+  const hostCookie = await signup(app, 'settings_host_owner');
+  const guestCookie = await signup(app, 'settings_host_guest');
+  const created = await app.inject({method: 'POST', url: '/api/multiplayer/rooms', cookies: {avoid_poop_session: hostCookie}});
+  const roomCode = created.json().roomCode as string;
+  await app.inject({method: 'POST', url: '/api/multiplayer/join', cookies: {avoid_poop_session: guestCookie}, payload: {roomCode}});
+
+  const {socket: hostSocket} = await connectSocketAndWaitForConnected(port, hostCookie);
+  const {socket: guestSocket} = await connectSocketAndWaitForConnected(port, guestCookie);
+  const hostEvents: Array<any> = [];
+  const guestEvents: Array<any> = [];
+  hostSocket.on('message', (payload: RawData) => hostEvents.push(JSON.parse(payload.toString())));
+  guestSocket.on('message', (payload: RawData) => guestEvents.push(JSON.parse(payload.toString())));
+
+  hostSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+  guestSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+
+  await waitFor(() => hostEvents.some((event) => event.type === 'room_snapshot'));
+  hostSocket.send(JSON.stringify({
+    type: 'update_room_settings',
+    settings: {
+      options: {
+        difficulty: 'hard',
+        visibility: 'private',
+        bodyBlock: true,
+        debuffTier: 3,
+      },
+      maxPlayers: 4,
+      privatePassword: 'new-secret',
+    },
+  }));
+
+  await waitFor(() =>
+    guestEvents.some((event) =>
+      event.type === 'room_snapshot'
+      && event.room.maxPlayers === 4
+      && event.room.options.difficulty === 'hard'
+      && event.room.options.visibility === 'private'
+      && event.room.options.bodyBlock === true
+      && event.room.options.debuffTier === 3
+    )
+  );
+
+  hostSocket.close();
+  guestSocket.close();
+  await app.close();
+});
+
 test('host can kick a player out of the lobby and the kicked client is detached', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});

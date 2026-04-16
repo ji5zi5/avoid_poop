@@ -454,6 +454,32 @@ export class MultiplayerSocketGateway {
         return;
       }
 
+      if (event.type === 'update_room_settings') {
+        try {
+          const managedRoomCode = context.roomCode;
+          this.options.roomService.updateRoomSettings(managedRoomCode, context.user.id, event.settings);
+          this.app.log.info(
+            {
+              event: 'multiplayer_room_settings_updated',
+              roomCode: managedRoomCode,
+              hostUserId: context.user.id,
+              hasOptionsPatch: Boolean(event.settings.options),
+              hasMaxPlayersPatch: event.settings.maxPlayers !== undefined,
+              hasPrivatePasswordPatch: event.settings.privatePassword !== undefined,
+            },
+            'Host updated lobby room settings',
+          );
+          this.broadcastRoomSnapshot(managedRoomCode);
+        } catch (error) {
+          if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
+            this.send(context.socket, {type: 'error', error: error.message});
+            return;
+          }
+          throw error;
+        }
+        return;
+      }
+
       if (event.type === 'start_game') {
         try {
           this.options.roomService.ensureRoomCanStart(context.roomCode, context.user.id);

@@ -9,6 +9,7 @@ import {
   type RoomListEntry,
   type RoomOptions,
   type RoomOptionsPatch,
+  type RoomSettingsPatch,
   type RoomSummary,
   roomListEntrySchema,
   roomMaxPlayersSchema,
@@ -248,6 +249,40 @@ export class RoomService {
     }
 
     player.ready = ready;
+    return this.toSummary(room);
+  }
+
+  updateRoomSettings(roomCode: string, actorUserId: number, patch: RoomSettingsPatch) {
+    const room = this.getMutableRoomForHostAction(roomCode, actorUserId);
+
+    const nextOptions = {
+      ...room.options,
+      ...(patch.options ?? {})
+    };
+    const nextMaxPlayers = patch.maxPlayers ?? room.maxPlayers;
+    const normalizedNextMaxPlayers = roomMaxPlayersSchema.parse(nextMaxPlayers);
+
+    if (normalizedNextMaxPlayers < room.players.length) {
+      throw new RoomStartError('Max players cannot be lower than current player count.');
+    }
+
+    let nextPrivatePassword = room.privatePassword;
+    if (patch.privatePassword !== undefined) {
+      nextPrivatePassword = normalizePrivatePassword(patch.privatePassword);
+    }
+
+    if (nextOptions.visibility === 'private') {
+      if (!nextPrivatePassword) {
+        throw new RoomAccessError('Private rooms require a password.');
+      }
+    } else {
+      nextPrivatePassword = null;
+    }
+
+    room.options = nextOptions;
+    room.maxPlayers = normalizedNextMaxPlayers;
+    room.privatePassword = nextPrivatePassword;
+
     return this.toSummary(room);
   }
 

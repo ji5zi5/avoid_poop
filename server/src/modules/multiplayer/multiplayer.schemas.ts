@@ -47,6 +47,20 @@ export const createRoomPayloadSchema = z.object({
   }
 });
 
+export const updateRoomSettingsPayloadSchema = z.object({
+  options: roomOptionsPatchSchema.optional(),
+  maxPlayers: roomMaxPlayersSchema.optional(),
+  privatePassword: privatePasswordValueSchema.optional()
+}).superRefine((value, ctx) => {
+  if (!value.options && value.maxPlayers === undefined && value.privatePassword === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Provide at least one room setting to update.',
+      path: ['options']
+    });
+  }
+});
+
 export const joinRoomPayloadSchema = z.object({
   roomCode: roomCodeValueSchema.optional(),
   roomId: roomBrowseIdSchema.optional(),
@@ -219,6 +233,10 @@ export const multiplayerClientEventSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('transfer_host'),
     targetUserId: z.number().int().positive()
+  }),
+  z.object({
+    type: z.literal('update_room_settings'),
+    settings: updateRoomSettingsPayloadSchema
   })
 ]);
 
@@ -270,6 +288,7 @@ export const defaultRoomOptions = roomOptionsSchema.parse({
 
 export type RoomOptions = z.infer<typeof roomOptionsSchema>;
 export type RoomOptionsPatch = z.infer<typeof roomOptionsPatchSchema>;
+export type RoomSettingsPatch = z.infer<typeof updateRoomSettingsPayloadSchema>;
 export type LobbyPlayer = z.infer<typeof lobbyPlayerSchema>;
 export type RoomChatMessage = z.infer<typeof roomChatMessageSchema>;
 export type RoomSummary = z.infer<typeof roomSummarySchema>;

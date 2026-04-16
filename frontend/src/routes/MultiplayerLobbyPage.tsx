@@ -1,6 +1,6 @@
 import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
 
-import type { RoomSummary } from "../lib/multiplayerClient";
+import type { RoomOptions, RoomSummary, UpdateRoomSettingsPayload } from "../lib/multiplayerClient";
 import { copy } from "../content/copy";
 import { getMultiplayerColorMap } from "../lib/multiplayerColors";
 
@@ -12,10 +12,13 @@ type Props = {
   onSetReady: (ready: boolean) => void;
   onKickPlayer: (userId: number) => void;
   onTransferHost: (userId: number) => void;
+  onUpdateRoomSettings: (settings: UpdateRoomSettingsPayload) => void;
   onStart: () => void;
   room: RoomSummary;
   userId: number;
 };
+
+const roomMaxPlayerOptions = [2, 3, 4, 5, 6, 7, 8] as const;
 
 function debuffTierLabel(debuffTier: RoomSummary["options"]["debuffTier"]) {
   return debuffTier === 3 ? copy.multiplayer.debuffTierStrong : copy.multiplayer.debuffTierWeak;
@@ -27,12 +30,16 @@ type PendingModerationAction = {
   type: "kick" | "transfer";
 };
 
-export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat, onSetReady, onKickPlayer, onTransferHost, onStart, room, userId }: Props) {
+export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat, onSetReady, onKickPlayer, onTransferHost, onUpdateRoomSettings, onStart, room, userId }: Props) {
   const currentPlayer = room.players.find((player) => player.userId === userId);
   const playerColors = getMultiplayerColorMap(room.players);
   const isReady = currentPlayer?.ready ?? false;
   const isHost = currentPlayer?.isHost ?? canStart;
   const [message, setMessage] = useState("");
+  const [showSettingsSheet, setShowSettingsSheet] = useState(false);
+  const [settingsOptions, setSettingsOptions] = useState<RoomOptions>(room.options);
+  const [settingsMaxPlayers, setSettingsMaxPlayers] = useState<number>(room.maxPlayers);
+  const [settingsPrivatePassword, setSettingsPrivatePassword] = useState("");
   const [openManagePlayerId, setOpenManagePlayerId] = useState<number | null>(null);
   const [pendingModerationAction, setPendingModerationAction] = useState<PendingModerationAction | null>(null);
   const chatLogRef = useRef<HTMLUListElement | null>(null);
@@ -86,6 +93,18 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
       setOpenManagePlayerId(null);
     }
   }, [canManagePlayers, openManagePlayerId]);
+
+  useEffect(() => {
+    if (!isHost) {
+      setShowSettingsSheet(false);
+      return;
+    }
+    if (!showSettingsSheet) {
+      setSettingsOptions(room.options);
+      setSettingsMaxPlayers(room.maxPlayers);
+      setSettingsPrivatePassword("");
+    }
+  }, [isHost, room.maxPlayers, room.options, showSettingsSheet]);
 
   useEffect(() => {
     if (!openManagePlayerId) {
@@ -168,6 +187,27 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
     setPendingModerationAction(null);
   }
 
+  function openSettingsSheet() {
+    setSettingsOptions(room.options);
+    setSettingsMaxPlayers(room.maxPlayers);
+    setSettingsPrivatePassword("");
+    setShowSettingsSheet(true);
+  }
+
+  function handleSaveRoomSettings() {
+    onUpdateRoomSettings({
+      options: settingsOptions,
+      maxPlayers: settingsMaxPlayers,
+      privatePassword: settingsOptions.visibility === "private" && settingsPrivatePassword.trim().length > 0
+        ? settingsPrivatePassword.trim()
+        : undefined,
+    });
+    setShowSettingsSheet(false);
+  }
+
+  const availableMaxPlayerOptions = roomMaxPlayerOptions.filter((value) => value >= room.playerCount);
+  const needsPrivatePassword = settingsOptions.visibility === "private" && room.options.visibility !== "private" && settingsPrivatePassword.trim().length === 0;
+
   return (
     <section className="menu-screen multiplayer-lobby-screen">
       <div className="console-panel console-panel--primary console-panel--compact multiplayer-lobby-card multiplayer-lobby-card--stitch">
@@ -177,7 +217,14 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
             <h1 className="home-card__title">{copy.multiplayer.lobbyTitle}</h1>
             <div className="room-code-chip">{room.options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</div>
           </div>
-          <strong className={`room-status-chip ${connected ? "is-live" : ""}`}>{connected ? copy.multiplayer.statusConnected : copy.multiplayer.statusConnecting}</strong>
+          <div className="multiplayer-lobby-header__aside">
+            <strong className={`room-status-chip ${connected ? "is-live" : ""}`}>{connected ? copy.multiplayer.statusConnected : copy.multiplayer.statusConnecting}</strong>
+            {isHost ? (
+              <button type="button" className="ghost-button subtle-button" onClick={openSettingsSheet}>
+                {copy.multiplayer.editRoomSetup}
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <div className="lobby-summary-strip">
@@ -348,6 +395,77 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
                 {pendingModerationAction.type === "transfer" ? copy.multiplayer.moderationTransferConfirm : copy.multiplayer.moderationKickConfirm}
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showSettingsSheet && isHost ? (
+        <div className="menu-selection-sheet" role="dialog" aria-label={copy.multiplayer.editRoomSetup}>
+          <div className="menu-selection-sheet__scrim" onClick={() => setShowSettingsSheet(false)} />
+          <div className="menu-selection-sheet__panel multiplayer-create-sheet">
+            <p className="panel-kicker">{copy.multiplayer.editRoomSetup}</p>
+            <div className="multiplayer-home-options multiplayer-home-options--refined multiplayer-home-options--heroic">
+              <label>
+                <span>{copy.multiplayer.visibility}</span>
+                <select value={settingsOptions.visibility} onChange={(event) => setSettingsOptions((current) => ({ ...current, visibility: event.target.value as RoomOptions["visibility"] }))}>
+                  <option value="public">{copy.multiplayer.publicRoom}</option>
+                  <option value="private">{copy.multiplayer.privateRoom}</option>
+                </select>
+              </label>
+              <label>
+                <span>{copy.multiplayer.difficulty}</span>
+                <select value={settingsOptions.difficulty} onChange={(event) => setSettingsOptions((current) => ({ ...current, difficulty: event.target.value as RoomOptions["difficulty"] }))}>
+                  <option value="normal">{copy.multiplayer.difficultyNormal}</option>
+                  <option value="hard">{copy.multiplayer.difficultyHard}</option>
+                </select>
+              </label>
+              <label>
+                <span>{copy.multiplayer.maxPlayers}</span>
+                <select value={settingsMaxPlayers} onChange={(event) => setSettingsMaxPlayers(Number(event.target.value))}>
+                  {availableMaxPlayerOptions.map((value) => (
+                    <option key={value} value={value}>{copy.multiplayer.maxPlayersOption(value)}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{copy.multiplayer.debuffTier}</span>
+                <select value={settingsOptions.debuffTier} onChange={(event) => setSettingsOptions((current) => ({ ...current, debuffTier: Number(event.target.value) as RoomOptions["debuffTier"] }))}>
+                  <option value={2}>{copy.multiplayer.debuffTierWeak}</option>
+                  <option value={3}>{copy.multiplayer.debuffTierStrong}</option>
+                </select>
+              </label>
+              <label>
+                <span>{copy.multiplayer.bodyBlock}</span>
+                <select
+                  value={settingsOptions.bodyBlock ? "on" : "off"}
+                  onChange={(event) => setSettingsOptions((current) => ({ ...current, bodyBlock: event.target.value === "on" }))}
+                >
+                  <option value="off">OFF</option>
+                  <option value="on">ON</option>
+                </select>
+              </label>
+              {settingsOptions.visibility === "private" ? (
+                <label>
+                  <span>{copy.multiplayer.privatePassword}</span>
+                  <input
+                    value={settingsPrivatePassword}
+                    onChange={(event) => setSettingsPrivatePassword(event.target.value)}
+                    placeholder={room.options.visibility === "private" ? copy.multiplayer.privatePasswordKeep : copy.multiplayer.passwordPlaceholder}
+                  />
+                </label>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              className="home-start-button home-start-button--hero"
+              onClick={handleSaveRoomSettings}
+              disabled={needsPrivatePassword}
+            >
+              {copy.multiplayer.saveRoomSettings}
+            </button>
+            <button type="button" className="ghost-button subtle-button menu-close-button" onClick={() => setShowSettingsSheet(false)}>
+              {copy.records.back}
+            </button>
           </div>
         </div>
       ) : null}

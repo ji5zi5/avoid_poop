@@ -233,6 +233,7 @@ export default function App() {
               onSetReady={(ready) => multiplayerClient.send({ type: "set_ready", ready })}
               onKickPlayer={(targetUserId) => multiplayerClient.send({ type: "kick_player", targetUserId })}
               onTransferHost={(targetUserId) => multiplayerClient.send({ type: "transfer_host", targetUserId })}
+              onUpdateRoomSettings={(settings) => multiplayerClient.send({ type: "update_room_settings", settings })}
               onStart={() => multiplayerClient.send({ type: "start_game" })}
             />
           ) : null}

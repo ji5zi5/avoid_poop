@@ -22,23 +22,25 @@ afterEach(() => cleanup());
 
 describe('MultiplayerLobbyPage', () => {
   it('shows room options and only the host start action until all players are ready', () => {
-    render(<MultiplayerLobbyPage canStart connected room={room} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onKickPlayer={vi.fn()} onTransferHost={vi.fn()} onStart={vi.fn()} />);
+    render(<MultiplayerLobbyPage canStart connected room={room} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onKickPlayer={vi.fn()} onTransferHost={vi.fn()} onUpdateRoomSettings={vi.fn()} onStart={vi.fn()} />);
     expect(screen.getAllByText('비공개방').length).toBeGreaterThan(0);
     expect(screen.getByText('방장 권한')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '방 설정' })).toBeTruthy();
     expect(screen.getByText('전원이 준비해야 시작 가능').textContent).toBe('전원이 준비해야 시작 가능');
     expect((screen.getByText('시작') as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByText('준비 해제')).toBeNull();
   });
 
   it('shows only the ready action for non-host participants', () => {
-    render(<MultiplayerLobbyPage canStart={false} connected room={room} userId={2} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onKickPlayer={vi.fn()} onTransferHost={vi.fn()} onStart={vi.fn()} />);
+    render(<MultiplayerLobbyPage canStart={false} connected room={room} userId={2} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onKickPlayer={vi.fn()} onTransferHost={vi.fn()} onUpdateRoomSettings={vi.fn()} onStart={vi.fn()} />);
     expect(screen.getByText('준비 필요')).toBeTruthy();
     expect(screen.getByRole('button', { name: '준비' }).textContent).toBe('준비');
     expect(screen.queryByText('시작')).toBeNull();
+    expect(screen.queryByRole('button', { name: '방 설정' })).toBeNull();
   });
 
   it('gives each lobby player a distinct visual accent', () => {
-    render(<MultiplayerLobbyPage canStart connected room={room} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onKickPlayer={vi.fn()} onTransferHost={vi.fn()} onStart={vi.fn()} />);
+    render(<MultiplayerLobbyPage canStart connected room={room} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onKickPlayer={vi.fn()} onTransferHost={vi.fn()} onUpdateRoomSettings={vi.fn()} onStart={vi.fn()} />);
 
     const hostRow = screen.getByTestId('lobby-player-1');
     const guestRow = screen.getByTestId('lobby-player-2');
@@ -48,7 +50,7 @@ describe('MultiplayerLobbyPage', () => {
 
   it('sends chat message from the form', () => {
     const onSendChat = vi.fn();
-    render(<MultiplayerLobbyPage canStart connected room={{...room, players: room.players.map((p) => ({...p, ready: true}))}} userId={1} onLeave={vi.fn()} onSendChat={onSendChat} onSetReady={vi.fn()} onKickPlayer={vi.fn()} onTransferHost={vi.fn()} onStart={vi.fn()} />);
+    render(<MultiplayerLobbyPage canStart connected room={{...room, players: room.players.map((p) => ({...p, ready: true}))}} userId={1} onLeave={vi.fn()} onSendChat={onSendChat} onSetReady={vi.fn()} onKickPlayer={vi.fn()} onTransferHost={vi.fn()} onUpdateRoomSettings={vi.fn()} onStart={vi.fn()} />);
     fireEvent.change(screen.getByPlaceholderText('채팅'), {target: {value: '안녕'}});
     fireEvent.submit(screen.getByRole('button', {name: '보내기'}).closest('form')!);
     expect(onSendChat).toHaveBeenCalledWith('안녕');
@@ -59,7 +61,7 @@ describe('MultiplayerLobbyPage', () => {
       ...room,
       chatMessages: [{ id: 'm1', userId: 2, username: 'guest', message: '첫 메시지', createdAt: '2026-04-16T10:00:00.000Z' }],
     };
-    const { container, rerender } = render(<MultiplayerLobbyPage canStart connected room={initial} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onKickPlayer={vi.fn()} onTransferHost={vi.fn()} onStart={vi.fn()} />);
+    const { container, rerender } = render(<MultiplayerLobbyPage canStart connected room={initial} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onKickPlayer={vi.fn()} onTransferHost={vi.fn()} onUpdateRoomSettings={vi.fn()} onStart={vi.fn()} />);
 
     const chatPanel = container.querySelector('.multiplayer-chat-panel--heroic') as HTMLDivElement;
     const chatLog = container.querySelector('.multiplayer-chat-log') as HTMLUListElement;
@@ -79,6 +81,7 @@ describe('MultiplayerLobbyPage', () => {
         onSetReady={vi.fn()}
         onKickPlayer={vi.fn()}
         onTransferHost={vi.fn()}
+        onUpdateRoomSettings={vi.fn()}
         onStart={vi.fn()}
       />,
     );
@@ -103,6 +106,7 @@ describe('MultiplayerLobbyPage', () => {
         onSetReady={vi.fn()}
         onKickPlayer={onKickPlayer}
         onTransferHost={onTransferHost}
+        onUpdateRoomSettings={vi.fn()}
         onStart={vi.fn()}
       />,
     );
@@ -118,5 +122,38 @@ describe('MultiplayerLobbyPage', () => {
     expect(screen.getByRole('dialog', { name: '유저 추방' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '추방하기' }));
     expect(onKickPlayer).toHaveBeenCalledWith(2);
+  });
+
+  it('lets the host edit room settings from inside the lobby', () => {
+    const onUpdateRoomSettings = vi.fn();
+
+    render(
+      <MultiplayerLobbyPage
+        canStart
+        connected
+        room={room}
+        userId={1}
+        onLeave={vi.fn()}
+        onSendChat={vi.fn()}
+        onSetReady={vi.fn()}
+        onKickPlayer={vi.fn()}
+        onTransferHost={vi.fn()}
+        onUpdateRoomSettings={onUpdateRoomSettings}
+        onStart={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '방 설정' }));
+    expect(screen.getByRole('dialog', { name: '방 설정' })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('난이도'), { target: { value: 'normal' } });
+    fireEvent.change(screen.getByLabelText('최대 인원'), { target: { value: '4' } });
+    fireEvent.change(screen.getByLabelText('부딪힘'), { target: { value: 'off' } });
+    fireEvent.click(screen.getByRole('button', { name: '설정 저장' }));
+
+    expect(onUpdateRoomSettings).toHaveBeenCalledWith({
+      options: { difficulty: 'normal', visibility: 'private', bodyBlock: false, debuffTier: 3 },
+      maxPlayers: 4,
+      privatePassword: undefined,
+    });
   });
 });

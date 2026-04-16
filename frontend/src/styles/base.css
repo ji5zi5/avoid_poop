@@ -2255,6 +2255,12 @@ input {
   gap: 1rem;
 }
 
+.multiplayer-lobby-header__aside {
+  display: grid;
+  justify-items: end;
+  gap: 0.55rem;
+}
+
 .multiplayer-lobby-options {
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 }
