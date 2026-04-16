@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
 
 import type { RoomSummary } from "../lib/multiplayerClient";
 import { copy } from "../content/copy";
@@ -10,6 +10,8 @@ type Props = {
   onLeave: () => void;
   onSendChat: (message: string) => void;
   onSetReady: (ready: boolean) => void;
+  onKickPlayer: (userId: number) => void;
+  onTransferHost: (userId: number) => void;
   onStart: () => void;
   room: RoomSummary;
   userId: number;
@@ -19,12 +21,13 @@ function debuffTierLabel(debuffTier: RoomSummary["options"]["debuffTier"]) {
   return debuffTier === 3 ? copy.multiplayer.debuffTierStrong : copy.multiplayer.debuffTierWeak;
 }
 
-export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat, onSetReady, onStart, room, userId }: Props) {
+export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat, onSetReady, onKickPlayer, onTransferHost, onStart, room, userId }: Props) {
   const currentPlayer = room.players.find((player) => player.userId === userId);
   const playerColors = getMultiplayerColorMap(room.players);
   const isReady = currentPlayer?.ready ?? false;
   const isHost = currentPlayer?.isHost ?? canStart;
   const [message, setMessage] = useState("");
+  const [openManagePlayerId, setOpenManagePlayerId] = useState<number | null>(null);
   const chatLogRef = useRef<HTMLUListElement | null>(null);
   const enoughPlayers = room.playerCount >= 2;
   const allReady = room.players.every((player) => player.ready);
@@ -51,6 +54,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
     }
     onSetReady(!isReady);
   };
+  const canManagePlayers = isHost && room.status === "waiting" && room.playerCount > 1;
 
   useEffect(() => {
     const chatLog = chatLogRef.current;
@@ -60,6 +64,21 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
     chatLog.scrollTop = chatLog.scrollHeight;
   }, [room.chatMessages.length]);
 
+  useEffect(() => {
+    if (!openManagePlayerId) {
+      return;
+    }
+    if (!room.players.some((player) => player.userId === openManagePlayerId && player.userId !== userId)) {
+      setOpenManagePlayerId(null);
+    }
+  }, [openManagePlayerId, room.players, userId]);
+
+  useEffect(() => {
+    if (!canManagePlayers && openManagePlayerId !== null) {
+      setOpenManagePlayerId(null);
+    }
+  }, [canManagePlayers, openManagePlayerId]);
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!message.trim()) {
@@ -67,6 +86,14 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
     }
     onSendChat(message.trim());
     setMessage("");
+  }
+
+  function openManageMenu(event: MouseEvent<HTMLElement>, targetUserId: number) {
+    event.preventDefault();
+    if (!canManagePlayers) {
+      return;
+    }
+    setOpenManagePlayerId((current) => current === targetUserId ? null : targetUserId);
   }
 
   return (
@@ -106,6 +133,12 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
                     key={player.userId}
                     className="multiplayer-player-row multiplayer-player-row--card"
                     data-testid={`lobby-player-${player.userId}`}
+                    onContextMenu={(event) => {
+                      if (player.userId === userId || player.isHost) {
+                        return;
+                      }
+                      openManageMenu(event, player.userId);
+                    }}
                     style={{
                       "--player-accent": playerColors.get(player.userId)?.accent,
                       "--player-soft": playerColors.get(player.userId)?.soft,
@@ -117,12 +150,48 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
                       <div className="lobby-player-copy">
                         <div className="lobby-player-title-row">
                           <span>{player.username}</span>
-                          <span className={`lobby-player-role ${player.isHost ? "is-host" : ""}`}>{player.isHost ? "방장" : "참가자"}</span>
+                          <span className={`lobby-player-role ${player.isHost ? "is-host" : ""}`}>{player.isHost ? copy.multiplayer.hostBadge : copy.multiplayer.participantBadge}</span>
                         </div>
                         <small>{player.userId === userId ? (player.isHost ? "내 방" : "내 자리") : player.ready ? "준비 완료" : "대기 중"}</small>
                       </div>
                     </div>
-                    <strong className={`room-status-chip ${player.ready ? "is-live" : ""}`}>{player.ready ? copy.multiplayer.ready : copy.multiplayer.waitingRoom}</strong>
+                    <div className="lobby-player-actions">
+                      <strong className={`room-status-chip ${player.ready ? "is-live" : ""}`}>{player.ready ? copy.multiplayer.ready : copy.multiplayer.waitingRoom}</strong>
+                      {canManagePlayers && player.userId !== userId ? (
+                        <button
+                          type="button"
+                          className={`ghost-button subtle-button lobby-player-manage-button ${openManagePlayerId === player.userId ? "is-open" : ""}`}
+                          onClick={(event) => openManageMenu(event, player.userId)}
+                          aria-label={`${player.username} ${copy.multiplayer.manage}`}
+                        >
+                          ⋯
+                        </button>
+                      ) : null}
+                    </div>
+                    {canManagePlayers && openManagePlayerId === player.userId ? (
+                      <div className="lobby-player-manage-menu">
+                        <button
+                          type="button"
+                          className="ghost-button subtle-button"
+                          onClick={() => {
+                            setOpenManagePlayerId(null);
+                            onTransferHost(player.userId);
+                          }}
+                        >
+                          {copy.multiplayer.transferHost}
+                        </button>
+                        <button
+                          type="button"
+                          className="ghost-button subtle-button lobby-player-manage-menu__danger"
+                          onClick={() => {
+                            setOpenManagePlayerId(null);
+                            onKickPlayer(player.userId);
+                          }}
+                        >
+                          {copy.multiplayer.kickPlayer}
+                        </button>
+                      </div>
+                    ) : null}
                   </li>
                 ))}
               </ul>

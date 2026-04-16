@@ -22,7 +22,7 @@ afterEach(() => cleanup());
 
 describe('MultiplayerLobbyPage', () => {
   it('shows room options and only the host start action until all players are ready', () => {
-    render(<MultiplayerLobbyPage canStart connected room={room} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onStart={vi.fn()} />);
+    render(<MultiplayerLobbyPage canStart connected room={room} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onKickPlayer={vi.fn()} onTransferHost={vi.fn()} onStart={vi.fn()} />);
     expect(screen.getAllByText('비공개방').length).toBeGreaterThan(0);
     expect(screen.getByText('방장 권한')).toBeTruthy();
     expect(screen.getByText('전원이 준비해야 시작 가능').textContent).toBe('전원이 준비해야 시작 가능');
@@ -31,14 +31,14 @@ describe('MultiplayerLobbyPage', () => {
   });
 
   it('shows only the ready action for non-host participants', () => {
-    render(<MultiplayerLobbyPage canStart={false} connected room={room} userId={2} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onStart={vi.fn()} />);
+    render(<MultiplayerLobbyPage canStart={false} connected room={room} userId={2} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onKickPlayer={vi.fn()} onTransferHost={vi.fn()} onStart={vi.fn()} />);
     expect(screen.getByText('준비 필요')).toBeTruthy();
     expect(screen.getByRole('button', { name: '준비' }).textContent).toBe('준비');
     expect(screen.queryByText('시작')).toBeNull();
   });
 
   it('gives each lobby player a distinct visual accent', () => {
-    render(<MultiplayerLobbyPage canStart connected room={room} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onStart={vi.fn()} />);
+    render(<MultiplayerLobbyPage canStart connected room={room} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onKickPlayer={vi.fn()} onTransferHost={vi.fn()} onStart={vi.fn()} />);
 
     const hostRow = screen.getByTestId('lobby-player-1');
     const guestRow = screen.getByTestId('lobby-player-2');
@@ -48,7 +48,7 @@ describe('MultiplayerLobbyPage', () => {
 
   it('sends chat message from the form', () => {
     const onSendChat = vi.fn();
-    render(<MultiplayerLobbyPage canStart connected room={{...room, players: room.players.map((p) => ({...p, ready: true}))}} userId={1} onLeave={vi.fn()} onSendChat={onSendChat} onSetReady={vi.fn()} onStart={vi.fn()} />);
+    render(<MultiplayerLobbyPage canStart connected room={{...room, players: room.players.map((p) => ({...p, ready: true}))}} userId={1} onLeave={vi.fn()} onSendChat={onSendChat} onSetReady={vi.fn()} onKickPlayer={vi.fn()} onTransferHost={vi.fn()} onStart={vi.fn()} />);
     fireEvent.change(screen.getByPlaceholderText('채팅'), {target: {value: '안녕'}});
     fireEvent.submit(screen.getByRole('button', {name: '보내기'}).closest('form')!);
     expect(onSendChat).toHaveBeenCalledWith('안녕');
@@ -59,7 +59,7 @@ describe('MultiplayerLobbyPage', () => {
       ...room,
       chatMessages: [{ id: 'm1', userId: 2, username: 'guest', message: '첫 메시지', createdAt: '2026-04-16T10:00:00.000Z' }],
     };
-    const { container, rerender } = render(<MultiplayerLobbyPage canStart connected room={initial} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onStart={vi.fn()} />);
+    const { container, rerender } = render(<MultiplayerLobbyPage canStart connected room={initial} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onKickPlayer={vi.fn()} onTransferHost={vi.fn()} onStart={vi.fn()} />);
 
     const chatPanel = container.querySelector('.multiplayer-chat-panel--heroic') as HTMLDivElement;
     const chatLog = container.querySelector('.multiplayer-chat-log') as HTMLUListElement;
@@ -77,6 +77,8 @@ describe('MultiplayerLobbyPage', () => {
         onLeave={vi.fn()}
         onSendChat={vi.fn()}
         onSetReady={vi.fn()}
+        onKickPlayer={vi.fn()}
+        onTransferHost={vi.fn()}
         onStart={vi.fn()}
       />,
     );
@@ -84,5 +86,33 @@ describe('MultiplayerLobbyPage', () => {
     expect(chatPanel.className).toContain('multiplayer-chat-panel--heroic');
     expect(chatLog.scrollTop).toBe(420);
     expect(container.querySelector('.multiplayer-chat-message.is-self')?.textContent).toContain('응답');
+  });
+
+  it('lets the host open a player management menu and trigger transfer or kick', () => {
+    const onKickPlayer = vi.fn();
+    const onTransferHost = vi.fn();
+
+    render(
+      <MultiplayerLobbyPage
+        canStart
+        connected
+        room={room}
+        userId={1}
+        onLeave={vi.fn()}
+        onSendChat={vi.fn()}
+        onSetReady={vi.fn()}
+        onKickPlayer={onKickPlayer}
+        onTransferHost={onTransferHost}
+        onStart={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'guest 관리' }));
+    fireEvent.click(screen.getByRole('button', { name: '방장 넘기기' }));
+    expect(onTransferHost).toHaveBeenCalledWith(2);
+
+    fireEvent.click(screen.getByRole('button', { name: 'guest 관리' }));
+    fireEvent.click(screen.getByRole('button', { name: '추방' }));
+    expect(onKickPlayer).toHaveBeenCalledWith(2);
   });
 });

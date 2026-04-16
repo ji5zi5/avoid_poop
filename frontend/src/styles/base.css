@@ -2540,6 +2540,13 @@ input {
   border-color: rgba(213, 167, 91, 0.32);
 }
 
+.home-status-chip--notice {
+  width: fit-content;
+  background: rgba(208, 122, 99, 0.12);
+  border-color: rgba(208, 122, 99, 0.22);
+  color: rgba(126, 48, 28, 0.92);
+}
+
 .room-code-chip {
   margin-top: 0.55rem;
   font-weight: 700;
@@ -2776,6 +2783,7 @@ input {
   background: rgba(255, 252, 247, 0.82);
   border-left: 0.4rem solid var(--player-accent, rgba(74, 52, 31, 0.18));
   box-shadow: inset 0 0 0 1px var(--player-soft, transparent);
+  position: relative;
 }
 
 .lobby-player-identity {
@@ -3236,6 +3244,46 @@ input {
   font-size: 0.72rem;
 }
 
+.lobby-player-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.lobby-player-manage-button {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.lobby-player-manage-button.is-open {
+  background: rgba(208, 122, 99, 0.16);
+  border-color: rgba(208, 122, 99, 0.22);
+}
+
+.lobby-player-manage-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(74, 52, 31, 0.08);
+}
+
+.lobby-player-manage-menu .ghost-button {
+  min-width: 0;
+}
+
+.lobby-player-manage-menu__danger {
+  background: rgba(208, 122, 99, 0.12);
+  border-color: rgba(208, 122, 99, 0.22);
+  color: rgba(126, 48, 28, 0.92);
+}
+
 .multiplayer-lobby-footer {
   display: grid;
   gap: 0.75rem;
@@ -3290,6 +3338,13 @@ input {
 
   .multiplayer-lobby-actions--heroic {
     grid-template-columns: 1fr;
+  }
+
+  .lobby-player-actions {
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+    margin-top: 0.6rem;
   }
 }
 

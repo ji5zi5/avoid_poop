@@ -24,6 +24,7 @@ export default function App() {
   const [game, setGame] = useState<MultiplayerGameSnapshot | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const [reconnectSequence, setReconnectSequence] = useState(0);
+  const [multiplayerNotice, setMultiplayerNotice] = useState<string | null>(null);
 
   const multiplayerClient = useMemo(
     () =>
@@ -57,6 +58,14 @@ export default function App() {
                 chatMessages: nextMessages,
               };
             });
+            return;
+          }
+          if (event.type === "room_departed") {
+            setMultiplayerNotice(event.message);
+            setRoom(null);
+            setGame(null);
+            setSocketConnected(false);
+            setScreen("multiplayer-home");
             return;
           }
           if (event.type === "game_snapshot") {
@@ -139,6 +148,7 @@ export default function App() {
 
   async function enterRoom(loadRoom: Promise<RoomSummary>) {
     const nextRoom = await loadRoom;
+    setMultiplayerNotice(null);
     setRoom(nextRoom);
     setGame(null);
     setSocketConnected(false);
@@ -148,6 +158,7 @@ export default function App() {
   async function handleLeaveMultiplayer() {
     await api.leaveRoom().catch(() => undefined);
     multiplayerClient.disconnect();
+    setMultiplayerNotice(null);
     setRoom(null);
     setGame(null);
     setSocketConnected(false);
@@ -174,7 +185,10 @@ export default function App() {
             <MenuPage
               user={user}
               sessionSaveCount={saveCount}
-              onOpenMultiplayer={() => setScreen("multiplayer-home")}
+              onOpenMultiplayer={() => {
+                setMultiplayerNotice(null);
+                setScreen("multiplayer-home");
+              }}
               onPlay={(nextMode) => {
                 setMode(nextMode);
                 setScreen("game");
@@ -197,7 +211,11 @@ export default function App() {
           {screen === "career" ? <CareerPage onBack={() => setScreen("records")} onSessionExpired={handleSessionExpired} /> : null}
           {screen === "multiplayer-home" ? (
             <MultiplayerHomePage
-              onBack={() => setScreen("menu")}
+              notice={multiplayerNotice}
+              onBack={() => {
+                setMultiplayerNotice(null);
+                setScreen("menu");
+              }}
               onCreateRoom={(payload) => enterRoom(api.createRoom(payload))}
               loadRooms={() => api.listRooms()}
               onJoinRoom={(payload) => enterRoom(api.joinRoom(payload))}
@@ -213,6 +231,8 @@ export default function App() {
               onLeave={handleLeaveMultiplayer}
               onSendChat={(message) => multiplayerClient.send({ type: "send_chat", message })}
               onSetReady={(ready) => multiplayerClient.send({ type: "set_ready", ready })}
+              onKickPlayer={(targetUserId) => multiplayerClient.send({ type: "kick_player", targetUserId })}
+              onTransferHost={(targetUserId) => multiplayerClient.send({ type: "transfer_host", targetUserId })}
               onStart={() => multiplayerClient.send({ type: "start_game" })}
             />
           ) : null}

@@ -391,6 +391,69 @@ export class MultiplayerSocketGateway {
         return;
       }
 
+      if (event.type === 'kick_player') {
+        try {
+          const managedRoomCode = context.roomCode;
+          const targetUserId = event.targetUserId;
+          this.options.roomService.kickPlayer(managedRoomCode, context.user.id, targetUserId);
+
+          for (const connection of this.connections.values()) {
+            if (connection.roomCode === managedRoomCode && connection.user.id === targetUserId) {
+              connection.roomCode = null;
+              this.send(connection.socket, {
+                type: 'room_departed',
+                roomCode: managedRoomCode,
+                reason: 'kicked',
+                message: '방장에게 추방되었습니다.',
+              });
+            }
+          }
+
+          this.app.log.info(
+            {
+              event: 'multiplayer_player_kicked',
+              roomCode: managedRoomCode,
+              hostUserId: context.user.id,
+              targetUserId,
+            },
+            'Host removed a player from the lobby',
+          );
+          this.broadcastRoomSnapshot(managedRoomCode);
+        } catch (error) {
+          if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
+            this.send(context.socket, {type: 'error', error: error.message});
+            return;
+          }
+          throw error;
+        }
+        return;
+      }
+
+      if (event.type === 'transfer_host') {
+        try {
+          const managedRoomCode = context.roomCode;
+          const targetUserId = event.targetUserId;
+          this.options.roomService.transferHost(managedRoomCode, context.user.id, targetUserId);
+          this.app.log.info(
+            {
+              event: 'multiplayer_host_transferred',
+              roomCode: managedRoomCode,
+              previousHostUserId: context.user.id,
+              nextHostUserId: targetUserId,
+            },
+            'Host ownership transferred inside the lobby',
+          );
+          this.broadcastRoomSnapshot(managedRoomCode);
+        } catch (error) {
+          if (error instanceof RoomNotFoundError || error instanceof RoomAccessError || error instanceof RoomStartError) {
+            this.send(context.socket, {type: 'error', error: error.message});
+            return;
+          }
+          throw error;
+        }
+        return;
+      }
+
       if (event.type === 'start_game') {
         try {
           this.options.roomService.ensureRoomCanStart(context.roomCode, context.user.id);

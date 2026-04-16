@@ -123,7 +123,9 @@ export type ClientSocketEvent =
   | { type: "player_input"; direction: -1 | 0 | 1 }
   | { type: "jump" }
   | { type: "leave_room" }
-  | { type: "send_chat"; message: string };
+  | { type: "send_chat"; message: string }
+  | { type: "kick_player"; targetUserId: number }
+  | { type: "transfer_host"; targetUserId: number };
 
 export type ServerSocketEvent =
   | {
@@ -139,6 +141,7 @@ export type ServerSocketEvent =
   | { type: "room_snapshot"; room: RoomSummary }
   | { type: "game_snapshot"; game: MultiplayerGameSnapshot }
   | { type: "chat_message"; roomCode: string; chatMessage: RoomChatMessage }
+  | { type: "room_departed"; roomCode: string; reason: "kicked"; message: string }
   | { type: "pong" }
   | { type: "error"; error: string };
 

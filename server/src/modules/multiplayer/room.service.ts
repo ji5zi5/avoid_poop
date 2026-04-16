@@ -242,7 +242,47 @@ export class RoomService {
       throw new RoomAccessError('You are not a member of this room.');
     }
 
+    if (player.userId === room.hostUserId) {
+      player.ready = true;
+      return this.toSummary(room);
+    }
+
     player.ready = ready;
+    return this.toSummary(room);
+  }
+
+  kickPlayer(roomCode: string, actorUserId: number, targetUserId: number) {
+    const room = this.getMutableRoomForHostAction(roomCode, actorUserId);
+
+    if (targetUserId === actorUserId) {
+      throw new RoomStartError('The host cannot remove themselves.');
+    }
+
+    const targetIndex = room.players.findIndex((player) => player.userId === targetUserId);
+    if (targetIndex === -1) {
+      throw new RoomAccessError('Choose a player who is still in the room.');
+    }
+
+    room.players.splice(targetIndex, 1);
+    this.userRoomIndex.delete(targetUserId);
+
+    return this.toSummary(room);
+  }
+
+  transferHost(roomCode: string, actorUserId: number, targetUserId: number) {
+    const room = this.getMutableRoomForHostAction(roomCode, actorUserId);
+
+    if (targetUserId === actorUserId) {
+      return this.toSummary(room);
+    }
+
+    const targetPlayer = room.players.find((player) => player.userId === targetUserId);
+    if (!targetPlayer) {
+      throw new RoomAccessError('Choose a player who is still in the room.');
+    }
+
+    room.hostUserId = targetUserId;
+    targetPlayer.ready = true;
     return this.toSummary(room);
   }
 
@@ -324,6 +364,29 @@ export class RoomService {
 
   private removeUserFromCurrentRoom(userId: number) {
     this.leaveCurrentRoom(userId);
+  }
+
+  private getMutableRoomForHostAction(roomCode: string, actorUserId: number) {
+    const normalizedRoomCode = normalizeRoomCode(roomCode);
+    const room = this.rooms.get(normalizedRoomCode);
+
+    if (!room) {
+      throw new RoomNotFoundError('Room not found.');
+    }
+
+    if (!room.players.some((player) => player.userId === actorUserId)) {
+      throw new RoomAccessError('You are not a member of this room.');
+    }
+
+    if (room.status !== 'waiting') {
+      throw new RoomStartError('Lobby management is only available before the game starts.');
+    }
+
+    if (room.hostUserId !== actorUserId) {
+      throw new RoomStartError('Only the host can manage players.');
+    }
+
+    return room;
   }
 
   private findRoomByIdentifier(roomIdentifier: string) {

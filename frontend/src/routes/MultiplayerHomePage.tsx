@@ -9,6 +9,7 @@ type Props = {
   onQuickJoin: (payload: QuickJoinPayload) => Promise<void> | void;
   loadRooms: () => Promise<RoomListEntry[]>;
   onBack: () => void;
+  notice?: string | null;
 };
 
 const defaultOptions: RoomOptions = {
@@ -30,7 +31,7 @@ function formatRoomSubtitle(room: RoomListEntry) {
   }`;
 }
 
-export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loadRooms, onBack }: Props) {
+export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loadRooms, onBack, notice = null }: Props) {
   const [createPrivatePassword, setCreatePrivatePassword] = useState("");
   const [rooms, setRooms] = useState<RoomListEntry[]>([]);
   const [roomPasswords, setRoomPasswords] = useState<Record<string, string>>({});
@@ -82,6 +83,8 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
           </div>
           <button className="ghost-button subtle-button" onClick={onBack}>{copy.records.back}</button>
         </div>
+
+        {notice ? <div className="home-status-chip home-status-chip--notice">{notice}</div> : null}
 
         <section className="multiplayer-feature-band">
           <article className="matchmaking-card matchmaking-card--highlight matchmaking-card--heroic matchmaking-card--stitch">

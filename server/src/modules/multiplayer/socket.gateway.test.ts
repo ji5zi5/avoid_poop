@@ -706,6 +706,76 @@ test('chat messages broadcast into the lobby stream', { concurrency: false }, as
   await app.close();
 });
 
+test('host can transfer host ownership inside the lobby', { concurrency: false }, async () => {
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+  const hostCookie = await signup(app, 'transfer_host_owner');
+  const guestCookie = await signup(app, 'transfer_host_guest');
+  const created = await app.inject({method: 'POST', url: '/api/multiplayer/rooms', cookies: {avoid_poop_session: hostCookie}});
+  const roomCode = created.json().roomCode as string;
+  await app.inject({method: 'POST', url: '/api/multiplayer/join', cookies: {avoid_poop_session: guestCookie}, payload: {roomCode}});
+
+  const {socket: hostSocket} = await connectSocketAndWaitForConnected(port, hostCookie);
+  const {socket: guestSocket} = await connectSocketAndWaitForConnected(port, guestCookie);
+  const hostEvents: Array<any> = [];
+  const guestEvents: Array<any> = [];
+  hostSocket.on('message', (payload: RawData) => hostEvents.push(JSON.parse(payload.toString())));
+  guestSocket.on('message', (payload: RawData) => guestEvents.push(JSON.parse(payload.toString())));
+
+  hostSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+  guestSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+
+  await waitFor(() => hostEvents.some((event) => event.type === 'room_snapshot'));
+  hostSocket.send(JSON.stringify({type: 'transfer_host', targetUserId: 2}));
+
+  await waitFor(() =>
+    guestEvents.some((event) =>
+      event.type === 'room_snapshot'
+      && event.room.hostUserId === 2
+      && event.room.players.some((player: {userId: number; isHost: boolean; ready: boolean}) => player.userId === 2 && player.isHost && player.ready)
+    )
+  );
+
+  hostSocket.close();
+  guestSocket.close();
+  await app.close();
+});
+
+test('host can kick a player out of the lobby and the kicked client is detached', { concurrency: false }, async () => {
+  const app = await createApp();
+  await app.listen({port: 0, host: '127.0.0.1'});
+  const port = Number((app.server.address() as {port: number}).port);
+  const hostCookie = await signup(app, 'kick_host_owner');
+  const guestCookie = await signup(app, 'kick_host_guest');
+  const created = await app.inject({method: 'POST', url: '/api/multiplayer/rooms', cookies: {avoid_poop_session: hostCookie}});
+  const roomCode = created.json().roomCode as string;
+  await app.inject({method: 'POST', url: '/api/multiplayer/join', cookies: {avoid_poop_session: guestCookie}, payload: {roomCode}});
+
+  const {socket: hostSocket} = await connectSocketAndWaitForConnected(port, hostCookie);
+  const {socket: guestSocket} = await connectSocketAndWaitForConnected(port, guestCookie);
+  const hostEvents: Array<any> = [];
+  const guestEvents: Array<any> = [];
+  hostSocket.on('message', (payload: RawData) => hostEvents.push(JSON.parse(payload.toString())));
+  guestSocket.on('message', (payload: RawData) => guestEvents.push(JSON.parse(payload.toString())));
+
+  hostSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+  guestSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+
+  await waitFor(() => guestEvents.some((event) => event.type === 'room_snapshot'));
+  hostSocket.send(JSON.stringify({type: 'kick_player', targetUserId: 2}));
+
+  await waitFor(() => guestEvents.some((event) => event.type === 'room_departed' && event.reason === 'kicked'));
+  await waitFor(() => hostEvents.some((event) => event.type === 'room_snapshot' && event.room.playerCount === 1));
+
+  guestSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
+  await waitFor(() => guestEvents.some((event) => event.type === 'error' && event.error === 'You are not a member of this room.'));
+
+  hostSocket.close();
+  guestSocket.close();
+  await app.close();
+});
+
 test('malformed websocket payloads are rejected without crashing the socket', { concurrency: false }, async () => {
   const app = await createApp();
   await app.listen({port: 0, host: '127.0.0.1'});

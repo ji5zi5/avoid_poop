@@ -248,6 +248,12 @@ export const copy = {
     difficultyHard: '하드',
     chat: '채팅',
     sendChat: '보내기',
+    manage: '관리',
+    transferHost: '방장 넘기기',
+    kickPlayer: '추방',
+    hostBadge: '방장',
+    participantBadge: '참가자',
+    kickedNotice: '방장에서 추방되었습니다.',
     jumpHint: '부딪힘 ON일 때 점프로 통과 가능',
     debuffActive: '현재 디버프',
     debuffLabels: {

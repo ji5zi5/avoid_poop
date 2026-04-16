@@ -211,6 +211,14 @@ export const multiplayerClientEventSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('send_chat'),
     message: z.string().trim().min(1).max(240)
+  }),
+  z.object({
+    type: z.literal('kick_player'),
+    targetUserId: z.number().int().positive()
+  }),
+  z.object({
+    type: z.literal('transfer_host'),
+    targetUserId: z.number().int().positive()
   })
 ]);
 
@@ -237,6 +245,12 @@ export const multiplayerServerEventSchema = z.discriminatedUnion('type', [
     type: z.literal('chat_message'),
     roomCode: z.string().length(ROOM_CODE_LENGTH).regex(/^[A-Z0-9]+$/),
     chatMessage: roomChatMessageSchema
+  }),
+  z.object({
+    type: z.literal('room_departed'),
+    roomCode: z.string().length(ROOM_CODE_LENGTH).regex(/^[A-Z0-9]+$/),
+    reason: z.literal('kicked'),
+    message: z.string().min(1)
   }),
   z.object({
     type: z.literal('pong')
