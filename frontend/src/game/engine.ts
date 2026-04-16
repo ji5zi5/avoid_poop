@@ -11,6 +11,16 @@ function wavePressure(state: GameState) {
   return Math.min(state.mode === "hard" ? 14 : 13, Math.max(0, state.round - 1));
 }
 
+function buildSplitVelocityProfile(count: number) {
+  if (count <= 1) {
+    return [0];
+  }
+
+  const midpoint = (count - 1) / 2;
+  const maxOffset = Math.max(0.5, midpoint);
+  return Array.from({ length: count }, (_, index) => (index - midpoint) / maxOffset);
+}
+
 export function updateGame(state: GameState, delta: number, direction: number) {
   if (state.gameOver) {
     return state;
@@ -93,32 +103,27 @@ export function updateGame(state: GameState, delta: number, direction: number) {
       hazard.pendingRemoval = true;
       hazard.awardOnExit = false;
 
+      const childCount = Math.max(2, hazard.splitChildCount ?? 2);
       const childSize = hazard.splitChildSize ?? 14;
       const childSpeed = hazard.splitChildSpeed ?? Math.max(150, hazard.speed * 0.84);
       const childSpread = hazard.splitChildSpread ?? 64;
       const childY = Math.max(0, hazard.y - childSize * 0.4);
+      const hazardCenter = hazard.x + hazard.width / 2;
+      const spawnOffset = Math.max(childSize * 0.95, hazard.width * 0.42);
+      const velocityProfile = buildSplitVelocityProfile(childCount);
 
-      const leftChild = createCustomHazard(state, {
-        x: hazard.x - childSize * 0.2,
-        size: childSize,
-        speed: childSpeed,
-        owner: hazard.owner,
-        variant: childSize >= 20 ? "medium" : "small",
-        velocityX: -childSpread,
-        gravity: 220,
+      velocityProfile.forEach((velocityFactor) => {
+        const child = createCustomHazard(state, {
+          x: hazardCenter + velocityFactor * spawnOffset - childSize / 2,
+          size: childSize,
+          speed: childSpeed,
+          owner: hazard.owner,
+          variant: childSize >= 20 ? "medium" : "small",
+          velocityX: childSpread * velocityFactor,
+          gravity: 220,
+        });
+        child.y = childY;
       });
-      leftChild.y = childY;
-
-      const rightChild = createCustomHazard(state, {
-        x: hazard.x + hazard.width - childSize * 0.8,
-        size: childSize,
-        speed: childSpeed,
-        owner: hazard.owner,
-        variant: childSize >= 20 ? "medium" : "small",
-        velocityX: childSpread,
-        gravity: 220,
-      });
-      rightChild.y = childY;
       return;
     }
 

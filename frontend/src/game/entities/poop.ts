@@ -9,6 +9,7 @@ type CreateHazardOptions = {
   owner?: HazardOwner;
   pendingRemoval?: boolean;
   splitAtY?: number;
+  splitChildCount?: number;
   splitChildSize?: number;
   splitChildSpeed?: number;
   splitChildSpread?: number;
@@ -51,6 +52,7 @@ export function createHazard(id: number, x: number, speed: number, size = 18, op
     velocityX: options.velocityX,
     gravity: options.gravity,
     splitAtY: options.splitAtY,
+    splitChildCount: options.splitChildCount,
     splitChildSize: options.splitChildSize,
     splitChildSpeed: options.splitChildSpeed,
     splitChildSpread: options.splitChildSpread,

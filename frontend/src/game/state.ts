@@ -73,6 +73,7 @@ export type Hazard = {
   velocityX?: number;
   gravity?: number;
   splitAtY?: number;
+  splitChildCount?: number;
   splitChildSize?: number;
   splitChildSpeed?: number;
   splitChildSpread?: number;

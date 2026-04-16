@@ -16,6 +16,7 @@ type CustomHazardOptions = {
   pendingRemoval?: boolean;
   size: number;
   splitAtY?: number;
+  splitChildCount?: number;
   splitChildSize?: number;
   splitChildSpeed?: number;
   splitChildSpread?: number;
@@ -144,6 +145,7 @@ export function createCustomHazard(state: GameState, options: CustomHazardOption
     owner: options.owner,
     pendingRemoval: options.pendingRemoval,
     splitAtY: options.splitAtY,
+    splitChildCount: options.splitChildCount,
     splitChildSize: options.splitChildSize,
     splitChildSpeed: options.splitChildSpeed,
     splitChildSpread: options.splitChildSpread,
@@ -198,6 +200,11 @@ function spawnSplitHazard(state: GameState) {
   const pressure = roundPressure(state);
   const size = state.mode === "hard" ? 24 : 20;
   const speed = (state.mode === "hard" ? 194 : 172) + pressure * (state.mode === "hard" ? 14 : 11);
+  const splitChildCount = state.mode === "hard"
+    ? state.round >= 10
+      ? 4
+      : 3
+    : 2;
 
   createCustomHazard(state, {
     x: randomX(state, state.width, size),
@@ -206,6 +213,7 @@ function spawnSplitHazard(state: GameState) {
     owner: "wave",
     behavior: "split",
     splitAtY: Math.floor(state.height * (state.mode === "hard" ? 0.34 : 0.4)),
+    splitChildCount,
     splitChildSize: 14,
     splitChildSpeed: speed * 0.9,
     splitChildSpread: state.mode === "hard" ? 76 : 62,
@@ -224,7 +232,7 @@ function spawnBounceHazard(state: GameState) {
     speed,
     owner: "wave",
     behavior: "bounce",
-    bouncesRemaining: 1,
+    bouncesRemaining: state.mode === "hard" ? 3 : 1,
     variant: size >= 20 ? "medium" : "small",
   });
 }

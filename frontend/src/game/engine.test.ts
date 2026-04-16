@@ -277,6 +277,7 @@ describe("game engine", () => {
       variant: "large",
       behavior: "split",
       splitAtY: 150,
+      splitChildCount: 2,
       splitChildSize: 14,
       splitChildSpeed: 170,
       splitChildSpread: 72,
@@ -289,6 +290,36 @@ describe("game engine", () => {
     expect(childHazards).toHaveLength(2);
     expect(childHazards.some((hazard) => (hazard.velocityX ?? 0) < 0)).toBe(true);
     expect(childHazards.some((hazard) => (hazard.velocityX ?? 0) > 0)).toBe(true);
+  });
+
+  it("lets hard split hazards burst into three or four children", () => {
+    const state = createGameEngine("hard");
+    state.hazards.push({
+      id: 1,
+      x: 120,
+      y: 140,
+      size: 24,
+      width: 24,
+      height: 24,
+      speed: 190,
+      owner: "wave",
+      variant: "large",
+      behavior: "split",
+      splitAtY: 150,
+      splitChildCount: 4,
+      splitChildSize: 14,
+      splitChildSpeed: 178,
+      splitChildSpread: 72,
+    });
+    state.nextHazardId = 2;
+
+    updateGame(state, 0.1, 0);
+
+    const childHazards = state.hazards.filter((hazard) => hazard.size === 14);
+    expect(childHazards).toHaveLength(4);
+    expect(childHazards.every((hazard) => typeof hazard.velocityX === "number")).toBe(true);
+    expect(childHazards.filter((hazard) => (hazard.velocityX ?? 0) < 0)).toHaveLength(2);
+    expect(childHazards.filter((hazard) => (hazard.velocityX ?? 0) > 0)).toHaveLength(2);
   });
 
   it("lets bounce hazards hop once before disappearing", () => {
@@ -356,6 +387,39 @@ describe("game engine", () => {
     }
 
     expect(maxTravel).toBeGreaterThanOrEqual(24);
+  });
+
+  it("lets hard bounce hazards rebound more than twice before disappearing", () => {
+    const state = createGameEngine("hard");
+    state.spawnTimer = -999;
+    state.hazards.push({
+      id: 1,
+      x: 80,
+      y: state.height - 64,
+      size: 20,
+      width: 20,
+      height: 20,
+      speed: 190,
+      owner: "wave",
+      variant: "medium",
+      behavior: "bounce",
+      bouncesRemaining: 3,
+    });
+
+    let bounceEvents = 0;
+    let previousSpeed = state.hazards[0]?.speed ?? 0;
+
+    for (let step = 0; step < 80 && state.hazards.length > 0; step += 1) {
+      updateGame(state, 0.1, 0);
+      const nextSpeed = state.hazards[0]?.speed ?? 0;
+      if (previousSpeed > 0 && nextSpeed < 0) {
+        bounceEvents += 1;
+      }
+      previousSpeed = nextSpeed;
+    }
+
+    expect(bounceEvents).toBeGreaterThanOrEqual(3);
+    expect(state.hazards).toHaveLength(0);
   });
 
   it("builds a boss queue when entering boss phase", () => {
