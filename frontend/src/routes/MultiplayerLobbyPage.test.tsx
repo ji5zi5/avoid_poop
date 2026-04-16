@@ -51,4 +51,36 @@ describe('MultiplayerLobbyPage', () => {
     fireEvent.submit(screen.getByRole('button', {name: '보내기'}).closest('form')!);
     expect(onSendChat).toHaveBeenCalledWith('안녕');
   });
+
+  it('keeps the chat panel height stable and scrolls to the latest message', () => {
+    const initial = {
+      ...room,
+      chatMessages: [{ id: 'm1', userId: 2, username: 'guest', message: '첫 메시지', createdAt: '2026-04-16T10:00:00.000Z' }],
+    };
+    const { container, rerender } = render(<MultiplayerLobbyPage canStart connected room={initial} userId={1} onLeave={vi.fn()} onSendChat={vi.fn()} onSetReady={vi.fn()} onStart={vi.fn()} />);
+
+    const chatPanel = container.querySelector('.multiplayer-chat-panel--heroic') as HTMLDivElement;
+    const chatLog = container.querySelector('.multiplayer-chat-log') as HTMLUListElement;
+    Object.defineProperty(chatLog, 'scrollHeight', { configurable: true, value: 420 });
+
+    rerender(
+      <MultiplayerLobbyPage
+        canStart
+        connected
+        room={{
+          ...initial,
+          chatMessages: [...initial.chatMessages, { id: 'm2', userId: 1, username: 'host', message: '응답', createdAt: '2026-04-16T10:00:01.000Z' }],
+        }}
+        userId={1}
+        onLeave={vi.fn()}
+        onSendChat={vi.fn()}
+        onSetReady={vi.fn()}
+        onStart={vi.fn()}
+      />,
+    );
+
+    expect(chatPanel.className).toContain('multiplayer-chat-panel--heroic');
+    expect(chatLog.scrollTop).toBe(420);
+    expect(container.querySelector('.multiplayer-chat-message.is-self')?.textContent).toContain('응답');
+  });
 });

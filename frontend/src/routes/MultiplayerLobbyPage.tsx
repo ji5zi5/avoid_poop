@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 import type { RoomSummary } from "../lib/multiplayerClient";
 import { copy } from "../content/copy";
@@ -24,6 +24,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
   const playerColors = getMultiplayerColorMap(room.players);
   const isReady = currentPlayer?.ready ?? false;
   const [message, setMessage] = useState("");
+  const chatLogRef = useRef<HTMLUListElement | null>(null);
   const enoughPlayers = room.playerCount >= 2;
   const allReady = room.players.every((player) => player.ready);
   const canActuallyStart = canStart && enoughPlayers && allReady;
@@ -33,6 +34,14 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
     : !allReady
       ? copy.multiplayer.startNeedReady
       : copy.multiplayer.startHint;
+
+  useEffect(() => {
+    const chatLog = chatLogRef.current;
+    if (!chatLog) {
+      return;
+    }
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }, [room.chatMessages.length]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -106,15 +115,15 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
                 <span className="panel-kicker">CHAT</span>
                 <h2>{copy.multiplayer.chat}</h2>
               </div>
-              <span className="home-card__meta">{connected ? "연결됨" : "복구 중"}</span>
+              <span className="home-card__meta">{room.chatMessages.length > 0 ? `${room.chatMessages.length}개` : connected ? "연결됨" : "복구 중"}</span>
             </div>
-            <ul className="multiplayer-chat-log">
+            <ul ref={chatLogRef} className="multiplayer-chat-log">
               {room.chatMessages.length > 0 ? room.chatMessages.map((entry) => (
-                <li key={entry.id}>
-                  <strong>{entry.username}</strong>
-                  <span>{entry.message}</span>
+                <li key={entry.id} className={`multiplayer-chat-message ${entry.userId === userId ? "is-self" : ""}`}>
+                  <strong className="multiplayer-chat-message__author">{entry.username}</strong>
+                  <span className="multiplayer-chat-message__body">{entry.message}</span>
                 </li>
-              )) : <li><span>{copy.records.none}</span></li>}
+              )) : <li className="multiplayer-chat-log__empty"><span>아직 채팅이 없습니다</span></li>}
             </ul>
             <form className="multiplayer-chat-form" onSubmit={handleSubmit}>
               <input value={message} onChange={(event) => setMessage(event.target.value)} maxLength={240} placeholder={copy.multiplayer.chat} />

@@ -2834,7 +2834,8 @@ input {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 0.85rem;
-  min-height: 22rem;
+  height: 22rem;
+  overflow: hidden;
 }
 
 .multiplayer-chat-heading {
@@ -2867,13 +2868,52 @@ input {
   border-radius: 26px;
   border: 1px solid rgba(74, 52, 31, 0.12);
   background: rgba(255, 252, 247, 0.78);
-  min-height: 22rem;
+  height: 22rem;
+  overflow: hidden;
 }
 
-.multiplayer-chat-log li {
+.multiplayer-chat-log {
+  align-content: start;
+  padding-right: 0.1rem;
+}
+
+.multiplayer-chat-log__empty {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  color: rgba(74, 52, 31, 0.48);
+  border-radius: 18px;
+  border: 1px dashed rgba(74, 52, 31, 0.12);
+  background: rgba(255, 248, 241, 0.72);
+}
+
+.multiplayer-chat-message {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: start;
+  padding: 0.7rem 0.8rem;
   border-radius: 16px;
   border: 1px solid rgba(74, 52, 31, 0.08);
-  background: rgba(255, 248, 241, 0.92);
+  background: rgba(255, 248, 241, 0.94);
+}
+
+.multiplayer-chat-message.is-self {
+  justify-items: end;
+  text-align: right;
+  background: linear-gradient(180deg, rgba(255, 236, 226, 0.98) 0%, rgba(255, 228, 214, 0.94) 100%);
+  border-color: rgba(208, 122, 99, 0.18);
+}
+
+.multiplayer-chat-message__author {
+  color: rgba(74, 52, 31, 0.76);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.multiplayer-chat-message__body {
+  color: var(--tone-4);
+  line-height: 1.45;
+  word-break: break-word;
 }
 
 .multiplayer-game-hud .readout-panel,
@@ -3169,6 +3209,11 @@ input {
   .multiplayer-code-form--heroic,
   .multiplayer-room-card__join {
     grid-template-columns: 1fr;
+  }
+
+  .multiplayer-lobby-roster,
+  .multiplayer-chat-panel--heroic {
+    height: 20rem;
   }
 }
 
