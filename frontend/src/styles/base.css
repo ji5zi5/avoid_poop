@@ -650,14 +650,16 @@ input {
 
 .game-stage-panel {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
   gap: 0.3rem;
   min-height: 0;
+  align-content: start;
+  justify-items: center;
 }
 
 .game-frame {
   position: relative;
-  min-height: 0;
+  min-height: fit-content;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -666,6 +668,7 @@ input {
   border: 2px solid rgba(70, 63, 26, 0.12);
   overflow: hidden;
   border-radius: 14px;
+  align-self: start;
 }
 
 .game-canvas {
@@ -958,6 +961,8 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: fit-content;
+  max-width: 100%;
 }
 
 
