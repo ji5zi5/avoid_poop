@@ -38,9 +38,11 @@ export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, on
   }, [onSessionExpired, sessionSaveCount]);
 
   const bestScoreLabel = useMemo(() => {
-    const score = selectedMode === "hard" ? bestScores.hard : bestScores.normal;
+    const score = singleOpen
+      ? selectedMode === "hard" ? bestScores.hard : bestScores.normal
+      : Math.max(bestScores.normal ?? 0, bestScores.hard ?? 0) || null;
     return score === null ? copy.records.none : `${score.toLocaleString()} pts`;
-  }, [bestScores.hard, bestScores.normal, selectedMode]);
+  }, [bestScores.hard, bestScores.normal, selectedMode, singleOpen]);
 
   return (
     <section className="menu-screen simple-menu-screen">

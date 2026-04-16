@@ -47,7 +47,7 @@ describe('MenuPage', () => {
       />,
     );
 
-    await waitFor(() => expect(screen.getByText('58,200 pts')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText('82,400 pts').length).toBeGreaterThan(0));
 
     fireEvent.click(screen.getAllByText('게임 시작')[0]);
     expect(screen.getByText('싱글').textContent).toBe('싱글');
@@ -67,12 +67,14 @@ describe('MenuPage', () => {
       />,
     );
 
-    await waitFor(() => expect(screen.getByText('58,200 pts')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText('82,400 pts').length).toBeGreaterThan(0));
 
     fireEvent.click(screen.getAllByText('게임 시작')[0]);
     fireEvent.click(screen.getByRole('button', {name: '싱글'}));
+    fireEvent.click(screen.getByRole('button', {name: '일반'}));
+    await waitFor(() => expect(screen.getAllByText('58,200 pts').length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole('button', {name: '하드'}));
 
-    await waitFor(() => expect(screen.getByText('82,400 pts')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText('82,400 pts').length).toBeGreaterThan(0));
   });
 });
