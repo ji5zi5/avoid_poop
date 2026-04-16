@@ -1,4 +1,6 @@
+import type { GameMode } from '../../../../shared/src/contracts/index.js';
 import type {RoomOptions} from './multiplayer.schemas.js';
+import type { SharedHazardBehavior, SharedHazardVariant, SharedWaveDirector } from '../../../../shared/src/index.js';
 
 export type MultiplayerPhase = 'wave' | 'boss' | 'complete';
 export type MultiplayerPlayerStatus = 'alive' | 'spectator' | 'disconnected';
@@ -27,10 +29,22 @@ export type MultiplayerPlayerState = {
 };
 
 export type MultiplayerHazardState = {
+  behavior?: SharedHazardBehavior;
+  bouncesRemaining?: number;
+  gravity?: number;
   height: number;
   id: number;
   owner: 'wave' | 'boss';
+  pendingRemoval?: boolean;
   speed: number;
+  splitAtY?: number;
+  splitChildCount?: number;
+  splitChildSize?: number;
+  splitChildSpeed?: number;
+  splitChildSpread?: number;
+  triggered?: boolean;
+  variant: SharedHazardVariant;
+  velocityX?: number;
   width: number;
   x: number;
   y: number;
@@ -46,9 +60,28 @@ export type MultiplayerItemState = {
 };
 
 export type MultiplayerGameState = {
+  bossEncounterDuration: number;
+  bossPatternActiveId: string | null;
+  bossPatternFamilyStreak: 'pressure' | 'lane' | 'trap' | null;
+  bossPatternFamilyStreakCount: number;
+  bossPatternIndex: number;
+  bossPatternPhase: 'idle' | 'telegraph' | 'attack' | 'cooldown';
+  bossRecentPatterns: string[];
+  bossRecentThemes: string[];
+  bossPatternQueue: string[];
+  bossPatternTimer: number;
+  bossPatternSeed: number;
+  bossPatternShots: number;
+  bossPatternStepTimer: number;
+  bossTelegraphText: string;
+  bossTelegraphTimer: number;
+  bossThemeId: string | null;
+  bossThemeLabel: string;
   elapsedInPhase: number;
   hazards: MultiplayerHazardState[];
+  height: number;
   items: MultiplayerItemState[];
+  mode: GameMode;
   nextHazardId: number;
   nextItemId: number;
   itemSpawnTimer: number;
@@ -60,5 +93,7 @@ export type MultiplayerGameState = {
   round: number;
   spawnTimer: number;
   startedAt: number;
+  width: number;
+  waveDirector: SharedWaveDirector;
   winnerUserId: number | null;
 };

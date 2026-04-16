@@ -273,6 +273,8 @@ export const copy = {
     moderationTransferMessage: (username: string) => `${username}님에게 방장 권한을 넘기시겠습니까?`,
     moderationKickMessage: (username: string) => `${username}님을 정말 추방하시겠습니까?`,
     jumpHint: '부딪힘 ON일 때 점프로 통과 가능',
+    bodyBlockReady: '점프 준비',
+    bodyBlockAirborne: '점프 중',
     debuffActive: '현재 디버프',
     debuffLabels: {
       slow: '이동 둔화',

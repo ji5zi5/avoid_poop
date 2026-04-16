@@ -1,6 +1,23 @@
 import type {MultiplayerGameSnapshot} from '../../lib/multiplayerClient';
 import { getMultiplayerColorMap } from '../../lib/multiplayerColors';
 
+function drawHazard(ctx: CanvasRenderingContext2D, hazard: MultiplayerGameSnapshot["hazards"][number]) {
+  ctx.fillStyle = hazard.owner === 'boss' ? '#463f1a' : '#60492c';
+  ctx.fillRect(hazard.x, hazard.y, hazard.width, hazard.height);
+
+  if (hazard.behavior === "split") {
+    ctx.fillStyle = "rgba(255, 248, 241, 0.92)";
+    ctx.fillRect(hazard.x + hazard.width / 2 - 2, hazard.y + 2, 4, 6);
+    ctx.fillRect(hazard.x + hazard.width / 2 - 6, hazard.y + 6, 12, 2);
+  } else if (hazard.behavior === "bounce") {
+    ctx.strokeStyle = "rgba(70, 63, 26, 0.5)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(hazard.x + hazard.width / 2, hazard.y + hazard.height + 4, Math.max(8, hazard.width * 0.36), 0, Math.PI);
+    ctx.stroke();
+  }
+}
+
 export function renderMultiplayerGame(
   ctx: CanvasRenderingContext2D,
   snapshot: MultiplayerGameSnapshot,
@@ -19,8 +36,7 @@ export function renderMultiplayerGame(
   }
 
   for (const hazard of snapshot.hazards) {
-    ctx.fillStyle = hazard.owner === 'boss' ? '#463f1a' : '#60492c';
-    ctx.fillRect(hazard.x, hazard.y, hazard.width, hazard.height);
+    drawHazard(ctx, hazard);
   }
 
   for (const item of snapshot.items) {

@@ -1,4 +1,5 @@
 import type { GameMode } from "../../../shared/src/contracts/index.js";
+import { getSharedWaveSpawnThreshold } from "../../../shared/src/index.js";
 
 import { createInitialState } from "./state.js";
 import type { GameState, Hazard, Item } from "./state.js";
@@ -6,10 +7,6 @@ import { resolveCollisions } from "./systems/collision.js";
 import { runBossPattern } from "./systems/bossPatterns.js";
 import { updateRounds } from "./systems/rounds.js";
 import { createCustomHazard, maybeSpawnItem, spawnWavePattern } from "./systems/spawn.js";
-
-function wavePressure(state: GameState) {
-  return Math.min(state.mode === "hard" ? 14 : 13, Math.max(0, state.round - 1));
-}
 
 function buildSplitVelocityProfile(count: number) {
   if (count <= 1) {
@@ -72,11 +69,7 @@ export function updateGame(state: GameState, delta: number, direction: number) {
   if (state.currentPhase === "boss") {
     runBossPattern(state, delta);
   } else if (state.pendingBossClearAnnouncement === false) {
-    const pressure = wavePressure(state);
-    const waveSpawnBase = state.mode === "hard" ? 0.82 : 0.93;
-    const waveSpawnFloor = state.mode === "hard" ? 0.12 : 0.17;
-    const waveDecay = state.mode === "hard" ? 0.076 : 0.07;
-    const spawnThreshold = Math.max(waveSpawnFloor, waveSpawnBase - pressure * waveDecay);
+    const spawnThreshold = getSharedWaveSpawnThreshold(state.mode, state.round);
     if (state.spawnTimer >= spawnThreshold) {
       state.spawnTimer = 0;
       spawnWavePattern(state);

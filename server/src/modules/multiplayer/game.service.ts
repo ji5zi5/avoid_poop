@@ -1,6 +1,9 @@
 import {config} from '../../config.js';
+import { buildWaveDirectorForRound, buildWaveSpawnSpecs, createSharedWaveDirector, evolveSupportedHazards, getSharedWaveSpawnThreshold, type SharedWaveHazardSpec } from '../../../../shared/src/index.js';
+import { runBossPattern } from '../../../../frontend/src/game/systems/bossPatterns.js';
 
 import type {RoomSummary} from './multiplayer.schemas.js';
+import { buildMultiplayerBossSubsetPlan, getMultiplayerBossThemeLabel } from './boss-subset.js';
 import {MultiplayerDebuffService} from './debuff.service.js';
 import type {
   MultiplayerDebuffType,
@@ -18,7 +21,7 @@ const PLAYER_SPEED = 210;
 const PLAYER_LIVES = 3;
 const DEBUFF_ITEM_SIZE = 18;
 const DEBUFF_DURATION_MS = 4000;
-const JUMP_DURATION_MS = 650;
+const JUMP_DURATION_MS = 850;
 const INPUT_DELAY_MS = 180;
 
 export class MultiplayerGameService {
@@ -27,6 +30,9 @@ export class MultiplayerGameService {
   createGame(room: RoomSummary, startedAt = Date.now()): MultiplayerGameState {
     return {
       roomCode: room.roomCode,
+      mode: room.options.difficulty,
+      width: GAME_WIDTH,
+      height: GAME_HEIGHT,
       options: room.options,
       startedAt,
       phase: 'wave',
@@ -36,8 +42,26 @@ export class MultiplayerGameService {
       nextHazardId: 1,
       nextItemId: 1,
       itemSpawnTimer: 0,
+      bossEncounterDuration: getDefaultBossDuration(room.options.difficulty),
+      bossThemeId: null,
+      bossThemeLabel: '',
+      bossPatternQueue: [],
+      bossPatternIndex: 0,
+      bossPatternActiveId: null,
+      bossPatternPhase: 'idle',
+      bossRecentPatterns: [],
+      bossRecentThemes: [],
+      bossPatternTimer: 0,
+      bossPatternStepTimer: 0,
+      bossPatternShots: 0,
+      bossPatternSeed: createServerBossSeed(room.roomCode, startedAt),
+      bossPatternFamilyStreak: null,
+      bossPatternFamilyStreakCount: 0,
+      bossTelegraphText: '',
+      bossTelegraphTimer: 0,
       hazards: [],
       items: [],
+      waveDirector: createSharedWaveDirector(room.options.difficulty, 1, createServerWaveSeed(room.roomCode, startedAt)),
       players: room.players.map((player, index, players) => createPlayerState(player.userId, player.username, index, players.length)),
       placementOrder: [],
       winnerUserId: null
@@ -198,8 +222,19 @@ export class MultiplayerGameService {
 
     if (game.phase !== 'boss' && game.spawnTimer >= getSpawnInterval(game)) {
       game.spawnTimer = 0;
-      game.hazards.push(createHazard(game.nextHazardId, game.round, game.phase, game.options.difficulty));
-      game.nextHazardId += 1;
+      const selection = buildWaveSpawnSpecs({
+        director: game.waveDirector,
+        mode: game.options.difficulty,
+        round: game.round,
+        width: GAME_WIDTH,
+        height: GAME_HEIGHT,
+        nextHazardId: game.nextHazardId,
+      });
+      game.waveDirector = selection.nextDirector;
+      for (const hazard of selection.hazards) {
+        game.hazards.push(createHazardFromSharedSpec(hazard, game.nextHazardId));
+        game.nextHazardId += 1;
+      }
     }
 
     if (game.winnerUserId === null && game.itemSpawnTimer >= 4) {
@@ -207,10 +242,15 @@ export class MultiplayerGameService {
       this.spawnDebuffItem(game, getItemSpawnX(game.nextItemId), GAME_HEIGHT / 2 - 24);
     }
 
-    for (const hazard of game.hazards) {
-      hazard.y += hazard.speed * delta;
+    if (game.phase === 'boss') {
+      runBossPattern(game as never, delta);
     }
-    game.hazards = game.hazards.filter((hazard) => hazard.y < GAME_HEIGHT + hazard.height);
+
+    game.hazards = evolveMultiplayerHazards(game.hazards, delta, () => {
+      const id = game.nextHazardId;
+      game.nextHazardId += 1;
+      return id;
+    }, game.options.difficulty);
 
     this.resolveHazardCollisions(game);
     this.resolveItemCollections(game, now);
@@ -223,13 +263,28 @@ export class MultiplayerGameService {
     if (game.phase === 'wave' && game.elapsedInPhase >= getRoundDuration(game)) {
       const nextRound = game.round + 1;
       game.round = nextRound;
+      game.waveDirector = buildWaveDirectorForRound(game.options.difficulty, nextRound, game.waveDirector);
       game.elapsedInPhase = 0;
       game.phase = shouldEnterBoss(nextRound) ? 'boss' : 'wave';
+      if (game.phase === 'boss') {
+        initializeMultiplayerBossEncounter(game);
+      }
       return game;
     }
 
     if (game.phase === 'boss' && game.elapsedInPhase >= getBossDuration(game)) {
       game.elapsedInPhase = 0;
+      game.bossThemeId = null;
+      game.bossThemeLabel = '';
+      game.bossPatternQueue = [];
+      game.bossPatternIndex = 0;
+      game.bossPatternActiveId = null;
+      game.bossPatternPhase = 'idle';
+      game.bossPatternTimer = 0;
+      game.bossPatternStepTimer = 0;
+      game.bossPatternShots = 0;
+      game.bossTelegraphText = '';
+      game.bossTelegraphTimer = 0;
       game.phase = 'wave';
       return game;
     }
@@ -338,20 +393,89 @@ function createPlayerState(userId: number, username: string, index: number, tota
   };
 }
 
-function createHazard(id: number, round: number, phase: MultiplayerGameState['phase'], difficulty: 'normal' | 'hard'): MultiplayerHazardState {
-  const size = phase === 'boss' ? 28 : difficulty === 'hard' ? 22 : 20;
-  const laneCount = difficulty === 'hard' ? 7 : 6;
-  const laneWidth = Math.max(1, Math.floor((GAME_WIDTH - size) / Math.max(1, laneCount - 1)));
-  const lane = id % laneCount;
+function createHazardFromSharedSpec(spec: SharedWaveHazardSpec, id: number): MultiplayerHazardState {
+  const size = spec.size;
+  const width = spec.width ?? size;
+  const height = spec.height ?? size;
   return {
     id,
-    owner: phase === 'boss' ? 'boss' : 'wave',
-    width: size,
-    height: size,
-    x: Math.min(GAME_WIDTH - size, lane * laneWidth),
-    y: -size,
-    speed: phase === 'boss' ? 220 + round * 8 + (difficulty === 'hard' ? 22 : 0) : 160 + round * 6 + (difficulty === 'hard' ? 16 : 0)
+    owner: spec.owner,
+    x: clamp(spec.x, 0, GAME_WIDTH - width),
+    y: spec.y ?? -height,
+    width,
+    height,
+    speed: spec.speed,
+    variant: spec.variant,
+    behavior: spec.behavior,
+    velocityX: spec.velocityX,
+    gravity: spec.gravity,
+    splitAtY: spec.splitAtY,
+    splitChildCount: spec.splitChildCount,
+    splitChildSize: spec.splitChildSize,
+    splitChildSpeed: spec.splitChildSpeed,
+    splitChildSpread: spec.splitChildSpread,
+    bouncesRemaining: spec.bouncesRemaining,
+    triggered: spec.triggered,
+    pendingRemoval: spec.pendingRemoval,
   };
+}
+
+function evolveMultiplayerHazards(hazards: MultiplayerHazardState[], delta: number, nextId: () => number, mode: 'normal' | 'hard') {
+  const waveHazards = hazards.filter((hazard) => hazard.owner === 'wave');
+  const bossHazards = hazards.filter((hazard) => hazard.owner === 'boss').map((hazard) => ({
+    ...hazard,
+    y: hazard.y + hazard.speed * delta,
+  })).filter((hazard) => hazard.y < GAME_HEIGHT + hazard.height);
+
+  const evolved = evolveSupportedHazards(
+    waveHazards.map((hazard) => ({
+      id: hazard.id,
+      owner: 'wave' as const,
+      x: hazard.x,
+      y: hazard.y,
+      size: Math.max(hazard.width, hazard.height),
+      width: hazard.width,
+      height: hazard.height,
+      speed: hazard.speed,
+      variant: hazard.variant,
+      behavior: hazard.behavior,
+      velocityX: hazard.velocityX,
+      gravity: hazard.gravity,
+      splitAtY: hazard.splitAtY,
+      splitChildCount: hazard.splitChildCount,
+      splitChildSize: hazard.splitChildSize,
+      splitChildSpeed: hazard.splitChildSpeed,
+      splitChildSpread: hazard.splitChildSpread,
+      bouncesRemaining: hazard.bouncesRemaining,
+      triggered: hazard.triggered,
+      pendingRemoval: hazard.pendingRemoval,
+    })),
+    GAME_WIDTH,
+    GAME_HEIGHT,
+    delta,
+    mode,
+  );
+
+  return [
+    ...evolved.map((hazard) => createHazardFromSharedSpec(hazard, hazard.id ?? nextId())),
+    ...bossHazards,
+  ];
+}
+
+function createServerWaveSeed(roomCode: string, startedAt: number) {
+  let hash = startedAt % 2147483646;
+  for (const character of roomCode) {
+    hash = (hash * 31 + character.charCodeAt(0)) % 2147483646;
+  }
+  return Math.max(1, hash);
+}
+
+function createServerBossSeed(roomCode: string, startedAt: number) {
+  let hash = (startedAt + 97) % 2147483646;
+  for (const character of roomCode) {
+    hash = (hash * 47 + character.charCodeAt(0)) % 2147483646;
+  }
+  return Math.max(1, hash);
 }
 
 function recordPlacement(game: MultiplayerGameState, userId: number) {
@@ -377,12 +501,42 @@ function getRoundDuration(game: MultiplayerGameState) {
 }
 
 function getBossDuration(game: MultiplayerGameState) {
-  return game.options.difficulty === 'hard' ? 13 : 11;
+  return game.bossEncounterDuration;
+}
+
+function getDefaultBossDuration(difficulty: 'normal' | 'hard') {
+  return difficulty === 'hard' ? 13 : 11;
+}
+
+function initializeMultiplayerBossEncounter(game: MultiplayerGameState) {
+  const plan = buildMultiplayerBossSubsetPlan({
+    mode: game.mode,
+    round: game.round,
+    previousFamilyStreak: game.bossPatternFamilyStreak,
+    previousFamilyStreakCount: game.bossPatternFamilyStreakCount,
+    recentPatterns: game.bossRecentPatterns as never,
+    recentThemes: game.bossRecentThemes as never,
+    queueSeed: game.bossPatternSeed,
+  });
+
+  game.bossThemeId = plan.themeId;
+  game.bossThemeLabel = getMultiplayerBossThemeLabel(plan.themeId);
+  game.bossRecentThemes = [...game.bossRecentThemes, plan.themeId].slice(-3);
+  game.bossPatternQueue = plan.queue;
+  game.bossPatternIndex = 0;
+  game.bossPatternActiveId = null;
+  game.bossPatternPhase = 'idle';
+  game.bossPatternTimer = 0;
+  game.bossPatternStepTimer = 0;
+  game.bossPatternShots = 0;
+  game.bossPatternSeed = plan.nextQueueSeed;
+  game.bossTelegraphText = '';
+  game.bossTelegraphTimer = 0;
+  game.bossEncounterDuration = Math.max(getDefaultBossDuration(game.options.difficulty), plan.minEncounterDuration);
 }
 
 function getSpawnInterval(game: MultiplayerGameState) {
-  const base = game.options.difficulty === 'hard' ? 0.72 : 0.85;
-  return Math.max(0.38, base - (game.round - 1) * 0.025);
+  return getSharedWaveSpawnThreshold(game.options.difficulty, game.round);
 }
 
 function getItemSpawnX(itemId: number) {
@@ -409,7 +563,7 @@ function resolveBodyBlock(players: MultiplayerPlayerState[], now: number) {
         continue;
       }
 
-      const shift = Math.ceil(actualOverlap / 2);
+      const shift = Math.ceil(actualOverlap / 2) + 2;
       if (left.x <= right.x) {
         left.x = clamp(left.x - shift, 0, GAME_WIDTH - left.width);
         right.x = clamp(right.x + shift, 0, GAME_WIDTH - right.width);

@@ -1,4 +1,5 @@
 import type { GameMode, RunResultPayload } from "../../../shared/src/contracts/index.js";
+import { createSharedWaveDirector } from "../../../shared/src/index.js";
 
 export type ItemType = "invincibility" | "speed" | "heal" | "slow" | "clear";
 export type ToastTone = "neutral" | "danger" | "reward" | "boss";
@@ -124,6 +125,7 @@ export type GameState = {
   nextItemId: number;
   spawnTimer: number;
   itemTimer: number;
+  itemSeed: number;
   bossPatternTimer: number;
   bossEncounterDuration: number;
   bossThemeId: BossThemeId | null;
@@ -167,57 +169,12 @@ function createRunSeed() {
   return Math.floor(Math.random() * MAX_RUN_SEED) + 1;
 }
 
-function getWaveRoundBand(mode: GameMode, round: number) {
-  if (mode === "hard") {
-    if (round >= 10) {
-      return 3;
-    }
-    if (round >= 7) {
-      return 2;
-    }
-    if (round >= 4) {
-      return 1;
-    }
-    return 0;
-  }
-
-  if (round >= 10) {
-    return 3;
-  }
-  if (round >= 7) {
-    return 2;
-  }
-  if (round >= 4) {
-    return 1;
-  }
-  return 0;
+function createDerivedSeed(seed: number, salt: number) {
+  return Math.max(1, ((seed * 48271) + salt) % MAX_RUN_SEED);
 }
 
 export function createWaveDirector(mode: GameMode, round: number, seed = createRunSeed()): WaveDirector {
-  const roundBand = getWaveRoundBand(mode, round);
-  return {
-    seed,
-    patternCursor: 0,
-    recentPatterns: [],
-    specialCooldown: 0,
-    roundBudget: mode === "hard"
-      ? roundBand >= 3 ? 4 : roundBand >= 2 ? 3 : roundBand >= 1 ? 2 : 1
-      : roundBand >= 3 ? 3 : roundBand >= 2 ? 2 : 1,
-    clusterQuota: mode === "hard"
-      ? roundBand >= 3 ? 3 : roundBand >= 1 ? 2 : 1
-      : roundBand >= 2 ? 2 : 1,
-    tripleQuota: mode === "hard"
-      ? roundBand >= 2 ? 1 : 0
-      : roundBand >= 3 ? 1 : 0,
-    splitterQuota: mode === "hard"
-      ? roundBand >= 2 ? 2 : roundBand >= 1 ? 1 : 0
-      : roundBand >= 2 ? 1 : 0,
-    bounceQuota: mode === "hard"
-      ? roundBand >= 2 ? 2 : roundBand >= 1 ? 1 : 0
-      : roundBand >= 2 ? 1 : 0,
-    roundBand,
-    round,
-  };
+  return createSharedWaveDirector(mode, round, seed);
 }
 
 export function createInitialState(
@@ -227,6 +184,7 @@ export function createInitialState(
     bossSeed?: number;
   },
 ): GameState {
+  const waveSeed = seedOverrides?.waveSeed ?? createRunSeed();
   return {
     mode,
     width: GAME_WIDTH,
@@ -252,6 +210,7 @@ export function createInitialState(
     nextItemId: 1,
     spawnTimer: 0,
     itemTimer: 0,
+    itemSeed: createDerivedSeed(waveSeed, 7919),
     bossPatternTimer: 0,
     bossEncounterDuration: BOSS_DURATION,
     bossThemeId: null,
@@ -278,7 +237,7 @@ export function createInitialState(
     itemToastTone: "neutral",
     effectBurstTimer: 0,
     effectBurstType: null,
-    waveDirector: createWaveDirector(mode, 1, seedOverrides?.waveSeed),
+    waveDirector: createWaveDirector(mode, 1, waveSeed),
     screenShakeTimer: 0,
     damageFlashTimer: 0,
     gameOver: false,

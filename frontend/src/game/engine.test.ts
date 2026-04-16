@@ -13,7 +13,7 @@ import {
   isHardOnlyPattern,
   runBossPattern,
 } from "./systems/bossPatterns";
-import { selectWavePattern, spawnWavePattern } from "./systems/spawn";
+import { maybeSpawnItem, selectWavePattern, spawnWavePattern } from "./systems/spawn";
 import { getHazardHitbox, getPlayerHitbox } from "./systems/collision";
 
 const BOSS_SIM_STEP = 0.05;
@@ -230,6 +230,25 @@ describe("game engine", () => {
     const second = selectWavePattern({ ...state.waveDirector, recentPatterns: [...state.waveDirector.recentPatterns] }, state.mode, state.round);
 
     expect(second.pattern).toBe(first.pattern);
+  });
+
+  it("does not let item spawning change the next supported wave selection for the same wave seed", () => {
+    const withItem = createGameEngine("hard", { waveSeed: 505, bossSeed: 9001 });
+    const withoutItem = createGameEngine("hard", { waveSeed: 505, bossSeed: 9001 });
+
+    withItem.round = 4;
+    withoutItem.round = 4;
+    withItem.waveDirector = createWaveDirector("hard", 4, 505);
+    withoutItem.waveDirector = createWaveDirector("hard", 4, 505);
+    withItem.itemTimer = 99;
+
+    maybeSpawnItem(withItem);
+
+    const selectionWithItem = selectWavePattern({ ...withItem.waveDirector, recentPatterns: [...withItem.waveDirector.recentPatterns] }, withItem.mode, withItem.round);
+    const selectionWithoutItem = selectWavePattern({ ...withoutItem.waveDirector, recentPatterns: [...withoutItem.waveDirector.recentPatterns] }, withoutItem.mode, withoutItem.round);
+
+    expect(selectionWithItem.pattern).toBe(selectionWithoutItem.pattern);
+    expect(selectionWithItem.nextDirector.seed).toBe(selectionWithoutItem.nextDirector.seed);
   });
 
   it("keeps triple clusters rarer than singles and doubles in the deterministic late sample window", () => {

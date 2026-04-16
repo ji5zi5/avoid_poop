@@ -22,6 +22,7 @@ export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, on
   const remaining = game.players.filter((player) => player.status === "alive").length;
   const currentDebuffs = me?.activeDebuffs ?? [];
   const jammed = currentDebuffs.some((debuff) => debuff.type === "vision_jam");
+  const jumpStateLabel = game.options.bodyBlock ? (me?.airborneUntil ? copy.multiplayer.bodyBlockAirborne : copy.multiplayer.bodyBlockReady) : null;
 
   function suppressTouchCallout(event: React.SyntheticEvent<HTMLElement>) {
     event.preventDefault();
@@ -71,13 +72,30 @@ export function MultiplayerGamePage({ currentUserId, game, onDirectionChange, on
     <section className="game-screen multiplayer-game-screen">
       <div className="console-panel console-panel--game">
         <div className="game-hud-grid multiplayer-game-hud">
+          <div className="readout-panel readout-panel--lives">
+            <span>{copy.game.lives}</span>
+            <div className="life-meter" aria-label={`${copy.game.lives} ${me?.lives ?? 0}`}>
+              {[0, 1, 2].map((index) => (
+                <span key={index} className={index < (me?.lives ?? 0) ? "life-heart" : "life-heart is-empty"}>
+                  ♥
+                </span>
+              ))}
+            </div>
+          </div>
           <div className="readout-panel"><span>{copy.game.round}</span><strong>{game.round}</strong></div>
           <div className={`readout-panel readout-panel--phase ${game.phase === "boss" ? "is-boss" : ""}`}><span>{copy.game.mode}</span><strong>{game.phase === "boss" ? copy.game.boss : game.phase === "complete" ? copy.multiplayer.finished : copy.game.wave}</strong></div>
           <div className="readout-panel"><span>{copy.multiplayer.remainingPlayers}</span><strong>{remaining}</strong></div>
+          {jumpStateLabel ? <div className="readout-panel"><span>{copy.multiplayer.bodyBlock}</span><strong>{jumpStateLabel}</strong></div> : null}
         </div>
         <div className="game-frame multiplayer-game-frame">
           <div className="game-playfield">
             <canvas ref={canvasRef} width={360} height={520} className="game-canvas" />
+            {game.bossTelegraphText ? (
+              <div className="phase-banner is-boss">
+                <span>{game.bossThemeLabel || copy.game.boss}</span>
+                <strong>{game.bossTelegraphText}</strong>
+              </div>
+            ) : null}
             {jammed ? <div className="vision-jam-overlay" aria-label={copy.multiplayer.debuffLabels.vision_jam} /> : null}
             {me?.status === "spectator" ? <div className="spectator-banner">{copy.multiplayer.spectator}</div> : null}
             {me?.status === "disconnected" ? <div className="spectator-banner">{copy.multiplayer.reconnecting}</div> : null}

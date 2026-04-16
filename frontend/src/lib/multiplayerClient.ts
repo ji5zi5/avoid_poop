@@ -110,6 +110,18 @@ export type MultiplayerHazardSnapshot = {
   width: number;
   height: number;
   speed: number;
+  variant: "small" | "medium" | "large" | "boss" | "giant";
+  behavior?: "none" | "split" | "bounce";
+  velocityX?: number;
+  gravity?: number;
+  splitAtY?: number;
+  splitChildCount?: number;
+  splitChildSize?: number;
+  splitChildSpeed?: number;
+  splitChildSpread?: number;
+  bouncesRemaining?: number;
+  triggered?: boolean;
+  pendingRemoval?: boolean;
 };
 
 export type MultiplayerItemSnapshot = {
@@ -126,6 +138,15 @@ export type MultiplayerGameSnapshot = {
   phase: MultiplayerPhase;
   round: number;
   elapsedInPhase: number;
+  bossEncounterDuration: number;
+  bossThemeId: string | null;
+  bossThemeLabel: string;
+  bossPatternQueue: string[];
+  bossPatternIndex: number;
+  bossPatternActiveId: string | null;
+  bossPatternPhase: "idle" | "telegraph" | "attack" | "cooldown";
+  bossTelegraphText: string;
+  bossTelegraphTimer: number;
   options: RoomOptions;
   players: MultiplayerPlayerSnapshot[];
   hazards: MultiplayerHazardSnapshot[];

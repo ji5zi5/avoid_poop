@@ -1,11 +1,10 @@
+import { buildWaveDirectorForRound, buildWaveSpawnSpecs, selectSharedWavePattern } from "../../../../shared/src/index.js";
 import { createItem } from "../entities/item.js";
 import { createHazard } from "../entities/poop.js";
 import { createWaveDirector } from "../state.js";
 import type { GameState, Hazard, ItemType, WaveDirector, WavePattern } from "../state.js";
 
 const ITEM_TYPES: ItemType[] = ["invincibility", "speed", "heal", "slow", "clear"];
-const NORMAL_HAZARD_SIZES = [16, 20, 24] as const;
-
 type CustomHazardOptions = {
   awardOnExit?: boolean;
   behavior?: Hazard["behavior"];
@@ -28,18 +27,8 @@ type CustomHazardOptions = {
   x: number;
 };
 
-function randomX(state: GameState, width: number, size: number) {
-  const rolled = advanceWaveSeed(state.waveDirector.seed);
-  state.waveDirector.seed = rolled.nextSeed;
-  return Math.floor(rolled.value * Math.max(1, width - size));
-}
-
 function clampX(width: number, hazardWidth: number, x: number) {
   return Math.max(0, Math.min(width - hazardWidth, x));
-}
-
-function roundPressure(state: GameState) {
-  return Math.min(state.mode === "hard" ? 18 : 16, Math.max(0, state.round - 1));
 }
 
 function advanceWaveSeed(seed: number) {
@@ -50,89 +39,22 @@ function advanceWaveSeed(seed: number) {
   };
 }
 
-function getNormalHazardSize(state: GameState) {
-  const offset = state.mode === "hard" ? 1 : 0;
-  return NORMAL_HAZARD_SIZES[(state.nextHazardId + state.round + offset) % NORMAL_HAZARD_SIZES.length];
+function randomItemX(state: GameState, width: number, size: number) {
+  const rolled = advanceWaveSeed(state.itemSeed);
+  state.itemSeed = rolled.nextSeed;
+  return Math.floor(rolled.value * Math.max(1, width - size));
 }
 
 function buildRoundDirector(mode: GameState["mode"], round: number, current?: WaveDirector): WaveDirector {
-  const base = createWaveDirector(mode, round);
-  return {
-    ...base,
-    seed: current?.seed ?? base.seed,
-    patternCursor: current?.patternCursor ?? 0,
-    recentPatterns: current?.recentPatterns ?? [],
-    specialCooldown: Math.max(0, (current?.specialCooldown ?? 0) - 1),
-  };
+  return buildWaveDirectorForRound(mode, round, current);
 }
 
 export function syncWaveDirectorForRound(state: GameState, round = state.round) {
   state.waveDirector = buildRoundDirector(state.mode, round, state.waveDirector);
 }
 
-function pickWeightedPattern(seed: number, choices: Array<{ pattern: WavePattern; weight: number }>) {
-  const rolled = advanceWaveSeed(seed);
-  const totalWeight = choices.reduce((sum, choice) => sum + choice.weight, 0);
-  let cursor = rolled.value * totalWeight;
-
-  for (const choice of choices) {
-    cursor -= choice.weight;
-    if (cursor <= 0) {
-      return { pattern: choice.pattern, nextSeed: rolled.nextSeed };
-    }
-  }
-
-  return { pattern: choices[choices.length - 1].pattern, nextSeed: rolled.nextSeed };
-}
-
 export function selectWavePattern(director: WaveDirector, mode: GameState["mode"], round: number) {
-  const current = director.round === round ? director : buildRoundDirector(mode, round, director);
-  const choices: Array<{ pattern: WavePattern; weight: number }> = [{ pattern: "single", weight: mode === "hard" ? 5.2 : 6.1 }];
-  const recentLast = current.recentPatterns[current.recentPatterns.length - 1] ?? null;
-
-  if (current.roundBudget > 0 && current.specialCooldown === 0) {
-    if (current.clusterQuota > 0 && recentLast !== "cluster_2") {
-      choices.push({ pattern: "cluster_2", weight: mode === "hard" ? 3.8 : 3 });
-    }
-    if (current.tripleQuota > 0 && round >= (mode === "hard" ? 10 : 12) && recentLast !== "cluster_3") {
-      choices.push({ pattern: "cluster_3", weight: mode === "hard" ? 0.7 : 0.45 });
-    }
-    if (current.splitterQuota > 0 && recentLast !== "splitter") {
-      choices.push({ pattern: "splitter", weight: mode === "hard" ? 2.6 : 2 });
-    }
-    if (current.bounceQuota > 0 && recentLast !== "bouncer") {
-      choices.push({ pattern: "bouncer", weight: mode === "hard" ? 3.6 : 2.4 });
-    }
-  }
-
-  const picked = pickWeightedPattern(current.seed, choices);
-  const nextDirector: WaveDirector = {
-    ...current,
-    seed: picked.nextSeed,
-    patternCursor: current.patternCursor + 1,
-    recentPatterns: [...current.recentPatterns, picked.pattern].slice(-4),
-  };
-
-  if (picked.pattern === "single") {
-    nextDirector.specialCooldown = Math.max(0, current.specialCooldown - 1);
-    return { pattern: picked.pattern, nextDirector };
-  }
-
-  nextDirector.roundBudget = Math.max(0, current.roundBudget - (picked.pattern === "cluster_3" ? 2 : 1));
-  nextDirector.specialCooldown = picked.pattern === "cluster_3" ? 2 : 1;
-
-  if (picked.pattern === "cluster_2") {
-    nextDirector.clusterQuota = Math.max(0, current.clusterQuota - 1);
-  } else if (picked.pattern === "cluster_3") {
-    nextDirector.clusterQuota = Math.max(0, current.clusterQuota - 1);
-    nextDirector.tripleQuota = Math.max(0, current.tripleQuota - 1);
-  } else if (picked.pattern === "splitter") {
-    nextDirector.splitterQuota = Math.max(0, current.splitterQuota - 1);
-  } else if (picked.pattern === "bouncer") {
-    nextDirector.bounceQuota = Math.max(0, current.bounceQuota - 1);
-  }
-
-  return { pattern: picked.pattern, nextDirector };
+  return selectSharedWavePattern(director, mode, round) as { pattern: WavePattern; nextDirector: WaveDirector };
 }
 
 export function createCustomHazard(state: GameState, options: CustomHazardOptions) {
@@ -159,108 +81,41 @@ export function createCustomHazard(state: GameState, options: CustomHazardOption
   return hazard;
 }
 
-export function spawnHazard(state: GameState, boss = false, forcedX?: number) {
-  const size = boss ? 28 : getNormalHazardSize(state);
-  const pressure = roundPressure(state);
-  const speedBase = (state.mode === "hard" ? 146 : 126) + pressure * (state.mode === "hard" ? 20 : 15);
-  const sizeWeight = boss ? 0 : Math.max(0, size - 16) * 2.5;
-  const speed = boss
-    ? speedBase + (state.mode === "hard" ? 124 : 82) + pressure * (state.mode === "hard" ? 5 : 3)
-    : speedBase + sizeWeight + Math.min(state.mode === "hard" ? 72 : 54, pressure * (state.mode === "hard" ? 6 : 5));
-
-  return createCustomHazard(state, {
-    size,
-    speed,
-    owner: boss ? "boss" : "wave",
-    variant: boss ? "boss" : undefined,
-    x: forcedX ?? randomX(state, state.width, size),
+export function spawnWavePattern(state: GameState) {
+  const selection = buildWaveSpawnSpecs({
+    director: state.waveDirector,
+    mode: state.mode,
+    round: state.round,
+    width: state.width,
+    height: state.height,
+    nextHazardId: state.nextHazardId,
   });
-}
 
-function spawnClusterHazards(state: GameState, count: 2 | 3) {
-  const size = getNormalHazardSize(state);
-  const gap = size + 18;
-  const totalWidth = size + gap * (count - 1);
-  const anchorX = randomX(state, state.width, totalWidth);
-  const pressure = roundPressure(state);
-  const speed = (state.mode === "hard" ? 176 : 152) + pressure * (state.mode === "hard" ? 15 : 11);
-
-  for (let index = 0; index < count; index += 1) {
+  state.waveDirector = selection.nextDirector;
+  for (const hazard of selection.hazards) {
     createCustomHazard(state, {
-      x: anchorX + index * gap,
-      size,
-      speed: speed + index * 6,
-      owner: "wave",
-      variant: size >= 24 ? "large" : size >= 20 ? "medium" : "small",
+      x: hazard.x,
+      size: hazard.size,
+      speed: hazard.speed,
+      owner: hazard.owner,
+      variant: hazard.variant,
+      behavior: hazard.behavior,
+      width: hazard.width,
+      height: hazard.height,
+      velocityX: hazard.velocityX,
+      gravity: hazard.gravity,
+      splitAtY: hazard.splitAtY,
+      splitChildCount: hazard.splitChildCount,
+      splitChildSize: hazard.splitChildSize,
+      splitChildSpeed: hazard.splitChildSpeed,
+      splitChildSpread: hazard.splitChildSpread,
+      bouncesRemaining: hazard.bouncesRemaining,
+      triggered: hazard.triggered,
+      pendingRemoval: hazard.pendingRemoval,
     });
   }
-}
 
-function spawnSplitHazard(state: GameState) {
-  const pressure = roundPressure(state);
-  const size = state.mode === "hard" ? 24 : 20;
-  const speed = (state.mode === "hard" ? 194 : 172) + pressure * (state.mode === "hard" ? 14 : 11);
-  const splitChildCount = state.mode === "hard"
-    ? state.round >= 10
-      ? 4
-      : 3
-    : 2;
-
-  createCustomHazard(state, {
-    x: randomX(state, state.width, size),
-    size,
-    speed,
-    owner: "wave",
-    behavior: "split",
-    splitAtY: Math.floor(state.height * (state.mode === "hard" ? 0.34 : 0.4)),
-    splitChildCount,
-    splitChildSize: 14,
-    splitChildSpeed: speed * 0.9,
-    splitChildSpread: state.mode === "hard" ? 76 : 62,
-    variant: size >= 24 ? "large" : "medium",
-  });
-}
-
-function spawnBounceHazard(state: GameState) {
-  const pressure = roundPressure(state);
-  const size = state.mode === "hard" ? 20 : 18;
-  const speed = (state.mode === "hard" ? 204 : 180) + pressure * (state.mode === "hard" ? 15 : 10);
-
-  createCustomHazard(state, {
-    x: randomX(state, state.width, size),
-    size,
-    speed,
-    owner: "wave",
-    behavior: "bounce",
-    bouncesRemaining: state.mode === "hard" ? 3 : 1,
-    variant: size >= 20 ? "medium" : "small",
-  });
-}
-
-export function spawnWavePattern(state: GameState) {
-  const selection = selectWavePattern(state.waveDirector, state.mode, state.round);
-  state.waveDirector = selection.nextDirector;
-  const { pattern } = selection;
-
-  if (pattern === "cluster_2") {
-    spawnClusterHazards(state, 2);
-    return pattern;
-  }
-  if (pattern === "cluster_3") {
-    spawnClusterHazards(state, 3);
-    return pattern;
-  }
-  if (pattern === "splitter") {
-    spawnSplitHazard(state);
-    return pattern;
-  }
-  if (pattern === "bouncer") {
-    spawnBounceHazard(state);
-    return pattern;
-  }
-
-  spawnHazard(state);
-  return pattern;
+  return selection.pattern;
 }
 
 export function spawnGiantHazard(state: GameState, x: number, width: number, speed: number, height = 68) {
@@ -321,6 +176,6 @@ export function maybeSpawnItem(state: GameState) {
 
   state.itemTimer = 0;
   const type = ITEM_TYPES[state.nextItemId % ITEM_TYPES.length];
-  state.items.push(createItem(state.nextItemId, randomX(state, state.width, 20), type));
+  state.items.push(createItem(state.nextItemId, randomItemX(state, state.width, 20), type));
   state.nextItemId += 1;
 }
