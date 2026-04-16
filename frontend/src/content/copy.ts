@@ -251,6 +251,8 @@ export const copy = {
     sendChat: '보내기',
     saveRoomSettings: '설정 저장',
     privatePasswordKeep: '비워 두면 기존 비밀번호 유지',
+    settingsSavedToast: '설정이 저장되었습니다.',
+    settingsSheetHint: '시작 전까지 방 규칙을 바로 조정할 수 있습니다',
     manage: '관리',
     transferHost: '방장 넘기기',
     kickPlayer: '추방',
@@ -294,6 +296,11 @@ const errorTranslations: Record<string, string> = {
   "Request failed": "요청 처리에 실패했습니다.",
   "Failed to load records": "기록을 불러오지 못했습니다.",
   "Failed to save result": "결과 저장에 실패했습니다.",
+  "Private rooms require a password.": "비공개방에는 비밀번호가 필요합니다.",
+  "Max players cannot be lower than current player count.": "현재 인원보다 최대 인원을 낮출 수 없습니다.",
+  "Lobby management is only available before the game starts.": "게임 시작 전 대기방에서만 변경할 수 있습니다.",
+  "Only the host can manage players.": "방장만 이 기능을 사용할 수 있습니다.",
+  "Choose a player who is still in the room.": "아직 방에 있는 플레이어만 선택할 수 있습니다.",
 };
 
 export function translateErrorMessage(message: string) {

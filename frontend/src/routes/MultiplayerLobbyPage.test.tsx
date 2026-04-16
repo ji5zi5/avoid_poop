@@ -126,8 +126,7 @@ describe('MultiplayerLobbyPage', () => {
 
   it('lets the host edit room settings from inside the lobby', () => {
     const onUpdateRoomSettings = vi.fn();
-
-    render(
+    const { rerender } = render(
       <MultiplayerLobbyPage
         canStart
         connected
@@ -155,5 +154,23 @@ describe('MultiplayerLobbyPage', () => {
       maxPlayers: 4,
       privatePassword: undefined,
     });
+
+    rerender(
+      <MultiplayerLobbyPage
+        canStart
+        connected
+        room={{ ...room, maxPlayers: 4, options: { ...room.options, difficulty: 'normal', bodyBlock: false } }}
+        userId={1}
+        onLeave={vi.fn()}
+        onSendChat={vi.fn()}
+        onSetReady={vi.fn()}
+        onKickPlayer={vi.fn()}
+        onTransferHost={vi.fn()}
+        onUpdateRoomSettings={onUpdateRoomSettings}
+        onStart={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('status').textContent).toContain('설정이 저장되었습니다.');
   });
 });

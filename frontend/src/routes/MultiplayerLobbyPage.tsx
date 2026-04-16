@@ -15,6 +15,7 @@ type Props = {
   onUpdateRoomSettings: (settings: UpdateRoomSettingsPayload) => void;
   onStart: () => void;
   room: RoomSummary;
+  toastSignal?: { message: string; tone: "success" | "danger"; issuedAt: number } | null;
   userId: number;
 };
 
@@ -30,7 +31,7 @@ type PendingModerationAction = {
   type: "kick" | "transfer";
 };
 
-export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat, onSetReady, onKickPlayer, onTransferHost, onUpdateRoomSettings, onStart, room, userId }: Props) {
+export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat, onSetReady, onKickPlayer, onTransferHost, onUpdateRoomSettings, onStart, room, toastSignal = null, userId }: Props) {
   const currentPlayer = room.players.find((player) => player.userId === userId);
   const playerColors = getMultiplayerColorMap(room.players);
   const isReady = currentPlayer?.ready ?? false;
@@ -40,8 +41,10 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
   const [settingsOptions, setSettingsOptions] = useState<RoomOptions>(room.options);
   const [settingsMaxPlayers, setSettingsMaxPlayers] = useState<number>(room.maxPlayers);
   const [settingsPrivatePassword, setSettingsPrivatePassword] = useState("");
+  const [settingsSavePending, setSettingsSavePending] = useState(false);
   const [openManagePlayerId, setOpenManagePlayerId] = useState<number | null>(null);
   const [pendingModerationAction, setPendingModerationAction] = useState<PendingModerationAction | null>(null);
+  const [toast, setToast] = useState<{ message: string; tone: "success" | "danger" } | null>(null);
   const chatLogRef = useRef<HTMLUListElement | null>(null);
   const managePopoverRef = useRef<HTMLDivElement | null>(null);
   const enoughPlayers = room.playerCount >= 2;
@@ -97,6 +100,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
   useEffect(() => {
     if (!isHost) {
       setShowSettingsSheet(false);
+      setSettingsSavePending(false);
       return;
     }
     if (!showSettingsSheet) {
@@ -151,6 +155,32 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [pendingModerationAction]);
 
+  useEffect(() => {
+    if (!settingsSavePending) {
+      return;
+    }
+    setToast({ message: copy.multiplayer.settingsSavedToast, tone: "success" });
+    setSettingsSavePending(false);
+  }, [room, settingsSavePending]);
+
+  useEffect(() => {
+    if (!toastSignal) {
+      return;
+    }
+    if (toastSignal.tone === "danger") {
+      setSettingsSavePending(false);
+    }
+    setToast({ message: toastSignal.message, tone: toastSignal.tone });
+  }, [toastSignal]);
+
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+    const timeout = window.setTimeout(() => setToast(null), 2400);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!message.trim()) {
@@ -202,6 +232,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
         ? settingsPrivatePassword.trim()
         : undefined,
     });
+    setSettingsSavePending(true);
     setShowSettingsSheet(false);
   }
 
@@ -211,6 +242,11 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
   return (
     <section className="menu-screen multiplayer-lobby-screen">
       <div className="console-panel console-panel--primary console-panel--compact multiplayer-lobby-card multiplayer-lobby-card--stitch">
+        {toast ? (
+          <div className={`multiplayer-lobby-toast multiplayer-lobby-toast--${toast.tone}`} role="status" aria-live="polite">
+            {toast.message}
+          </div>
+        ) : null}
         <div className="multiplayer-lobby-header multiplayer-lobby-header--heroic">
           <div>
             <p className="panel-kicker">{copy.multiplayer.entry}</p>
@@ -403,7 +439,19 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
         <div className="menu-selection-sheet" role="dialog" aria-label={copy.multiplayer.editRoomSetup}>
           <div className="menu-selection-sheet__scrim" onClick={() => setShowSettingsSheet(false)} />
           <div className="menu-selection-sheet__panel multiplayer-create-sheet">
-            <p className="panel-kicker">{copy.multiplayer.editRoomSetup}</p>
+            <div className="multiplayer-settings-sheet__intro">
+              <div>
+                <p className="panel-kicker">{copy.multiplayer.editRoomSetup}</p>
+                <h2>{copy.multiplayer.editRoomSetup}</h2>
+                <p>{copy.multiplayer.settingsSheetHint}</p>
+              </div>
+              <div className="matchmaking-card__chips">
+                <span className="home-status-chip">{settingsOptions.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
+                <span className="home-status-chip">{settingsOptions.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
+                <span className="home-status-chip">{copy.multiplayer.maxPlayersChip(settingsMaxPlayers)}</span>
+                <span className="home-status-chip">{settingsOptions.bodyBlock ? "부딪힘 ON" : "부딪힘 OFF"}</span>
+              </div>
+            </div>
             <div className="multiplayer-home-options multiplayer-home-options--refined multiplayer-home-options--heroic">
               <label>
                 <span>{copy.multiplayer.visibility}</span>

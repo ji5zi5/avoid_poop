@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import type { AuthUser, GameMode, RecordEntry } from "../../shared/src/contracts/index";
-import { copy } from "./content/copy";
+import { copy, translateErrorMessage } from "./content/copy";
 import { api, clearStoredSessionToken } from "./lib/api";
 import { createMultiplayerClient, type MultiplayerGameSnapshot, type RoomSummary } from "./lib/multiplayerClient";
 import { AuthPage } from "./routes/AuthPage";
@@ -25,6 +25,7 @@ export default function App() {
   const [socketConnected, setSocketConnected] = useState(false);
   const [reconnectSequence, setReconnectSequence] = useState(0);
   const [multiplayerNotice, setMultiplayerNotice] = useState<string | null>(null);
+  const [multiplayerLobbyToast, setMultiplayerLobbyToast] = useState<{ message: string; tone: "success" | "danger"; issuedAt: number } | null>(null);
 
   const multiplayerClient = useMemo(
     () =>
@@ -62,10 +63,19 @@ export default function App() {
           }
           if (event.type === "room_departed") {
             setMultiplayerNotice(event.message);
+            setMultiplayerLobbyToast(null);
             setRoom(null);
             setGame(null);
             setSocketConnected(false);
             setScreen("multiplayer-home");
+            return;
+          }
+          if (event.type === "error") {
+            setMultiplayerLobbyToast({
+              message: translateErrorMessage(event.error),
+              tone: "danger",
+              issuedAt: Date.now(),
+            });
             return;
           }
           if (event.type === "game_snapshot") {
@@ -149,6 +159,7 @@ export default function App() {
   async function enterRoom(loadRoom: Promise<RoomSummary>) {
     const nextRoom = await loadRoom;
     setMultiplayerNotice(null);
+    setMultiplayerLobbyToast(null);
     setRoom(nextRoom);
     setGame(null);
     setSocketConnected(false);
@@ -159,6 +170,7 @@ export default function App() {
     await api.leaveRoom().catch(() => undefined);
     multiplayerClient.disconnect();
     setMultiplayerNotice(null);
+    setMultiplayerLobbyToast(null);
     setRoom(null);
     setGame(null);
     setSocketConnected(false);
@@ -227,6 +239,7 @@ export default function App() {
               canStart={room.hostUserId === user.id}
               connected={socketConnected}
               room={room}
+              toastSignal={multiplayerLobbyToast}
               userId={user.id}
               onLeave={handleLeaveMultiplayer}
               onSendChat={(message) => multiplayerClient.send({ type: "send_chat", message })}

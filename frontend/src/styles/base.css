@@ -2261,6 +2261,30 @@ input {
   gap: 0.55rem;
 }
 
+.multiplayer-lobby-toast {
+  width: fit-content;
+  max-width: min(100%, 20rem);
+  justify-self: center;
+  padding: 0.62rem 0.95rem;
+  border-radius: 999px;
+  box-shadow: 0 14px 28px rgba(43, 30, 18, 0.12);
+  font-size: 0.82rem;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.multiplayer-lobby-toast--success {
+  background: rgba(126, 153, 105, 0.18);
+  color: #4a6135;
+  border: 1px solid rgba(126, 153, 105, 0.28);
+}
+
+.multiplayer-lobby-toast--danger {
+  background: rgba(208, 122, 99, 0.16);
+  color: rgba(126, 48, 28, 0.92);
+  border: 1px solid rgba(208, 122, 99, 0.24);
+}
+
 .multiplayer-lobby-options {
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 }
@@ -3512,6 +3536,23 @@ input {
 
 .multiplayer-create-sheet {
   gap: 0.85rem;
+}
+
+.multiplayer-settings-sheet__intro {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.multiplayer-settings-sheet__intro h2 {
+  margin: 0.18rem 0 0;
+  color: var(--tone-4);
+  font-size: 1.24rem;
+}
+
+.multiplayer-settings-sheet__intro p {
+  margin: 0.3rem 0 0;
+  color: rgba(74, 52, 31, 0.7);
+  line-height: 1.45;
 }
 
 .records-board--three {
