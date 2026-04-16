@@ -260,11 +260,6 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
           </div>
           <div className="multiplayer-lobby-header__aside">
             <strong className={`room-status-chip ${connected ? "is-live" : ""}`}>{connected ? copy.multiplayer.statusConnected : copy.multiplayer.statusConnecting}</strong>
-            {isHost ? (
-              <button type="button" className="ghost-button subtle-button" onClick={openSettingsSheet} disabled={countdownActive}>
-                {copy.multiplayer.editRoomSetup}
-              </button>
-            ) : null}
           </div>
         </div>
 
@@ -401,6 +396,16 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
               >
                 {primaryActionLabel}
               </button>
+              {isHost ? (
+                <button
+                  type="button"
+                  className="ghost-button subtle-button multiplayer-lobby-settings-button"
+                  onClick={openSettingsSheet}
+                  disabled={countdownActive}
+                >
+                  {copy.multiplayer.editRoomSetup}
+                </button>
+              ) : null}
               <button className="ghost-button subtle-button multiplayer-lobby-leave-button" onClick={onLeave}>{copy.multiplayer.leave}</button>
             </div>
           </div>

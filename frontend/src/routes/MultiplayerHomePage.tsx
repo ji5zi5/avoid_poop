@@ -38,14 +38,18 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
   const [showCreateSetup, setShowCreateSetup] = useState(false);
   const [options, setOptions] = useState<RoomOptions>(defaultOptions);
   const [maxPlayers, setMaxPlayers] = useState<number>(8);
-  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [loadingRooms, setLoadingRooms] = useState(true);
+  const [manualRefreshing, setManualRefreshing] = useState(false);
 
-  async function refreshRooms() {
-    setLoadingRooms(true);
+  async function refreshRooms({ showIndicator = false }: { showIndicator?: boolean } = {}) {
+    if (showIndicator && !loadingRooms) {
+      setManualRefreshing(true);
+    }
     try {
       setRooms(await loadRooms());
     } finally {
       setLoadingRooms(false);
+      setManualRefreshing(false);
     }
   }
 
@@ -53,7 +57,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
     void refreshRooms();
 
     const interval = window.setInterval(() => {
-      void refreshRooms();
+      void refreshRooms({ showIndicator: false });
     }, 5000);
 
     return () => window.clearInterval(interval);
@@ -116,10 +120,12 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
               <span className="panel-kicker">{copy.multiplayer.roomList}</span>
               <h2>{copy.multiplayer.roomList}</h2>
             </div>
-            <button className="ghost-button subtle-button" type="button" onClick={() => void refreshRooms()}>{copy.multiplayer.refreshRooms}</button>
+            <button className="ghost-button subtle-button" type="button" onClick={() => void refreshRooms({ showIndicator: true })} disabled={manualRefreshing}>
+              {manualRefreshing ? copy.records.loading : copy.multiplayer.refreshRooms}
+            </button>
           </div>
 
-          {loadingRooms ? <p>{copy.records.loading}</p> : null}
+          {loadingRooms && rooms.length === 0 ? <p>{copy.records.loading}</p> : null}
 
           {!loadingRooms && rooms.length === 0 ? (
             <div className="records-empty">{copy.multiplayer.noRooms}</div>
