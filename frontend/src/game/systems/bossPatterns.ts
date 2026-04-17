@@ -57,11 +57,23 @@ const HARD_ONLY_PATTERNS: BossPatternId[] = [
   "shatter_lane",
   "glider_cross",
   "glider_stack",
+  "rotor_gate",
+  "delayed_drop",
+  "shockwave_burst",
+  "folding_corridor",
+  "tracker_drop",
+  "mirror_counter",
+  "delayed_splitter",
+  "snake_wave",
   "diagonal_rain",
   "cross_arc",
   "fan_arc",
   "bounce_drive",
   "split_rebound",
+  "wall_bounce_glider",
+  "rotobounce_mix",
+  "layered_barrage",
+  "bait_seal",
   "corridor_snapback",
   "lane_pincer",
   "fake_safe_lane",
@@ -369,6 +381,7 @@ function spawnBossSplitter(
   splitChildCount = 3,
   splitChildSize = 14,
   splitChildSpread = 82,
+  splitAtY = Math.floor(state.height * 0.28),
 ) {
   return createCustomHazard(state, {
     x: Math.floor((state.width - size) * xRatio),
@@ -377,7 +390,7 @@ function spawnBossSplitter(
     owner: "boss",
     variant: "boss",
     behavior: "split",
-    splitAtY: Math.floor(state.height * 0.28),
+    splitAtY,
     splitChildCount,
     splitChildSize,
     splitChildSpeed: speed * 0.92,
@@ -402,6 +415,87 @@ function spawnSideGlider(
     variant: "boss",
     velocityX: side === "left" ? Math.abs(drift) : -Math.abs(drift),
     gravity,
+  });
+  hazard.x = side === "left" ? -size * 0.9 : state.width - size * 0.1;
+  hazard.y = y;
+  return hazard;
+}
+
+function spawnRotorBlade(
+  state: GameState,
+  side: "left" | "right",
+  widthRatio: number,
+  speed: number,
+  y: number,
+  height = 60,
+) {
+  const width = Math.floor(state.width * widthRatio);
+  const hazard = spawnHalfHazard(state, side, speed, widthRatio, height);
+  hazard.y = y;
+  return hazard;
+}
+
+function spawnDelayedDrop(
+  state: GameState,
+  xRatio: number,
+  startY: number,
+  _fallSpeed: number,
+  size = 20,
+  gravity = 260,
+) {
+  const hazard = createCustomHazard(state, {
+    x: Math.floor((state.width - size) * xRatio),
+    size,
+    speed: 0,
+    owner: "boss",
+    variant: "boss",
+    gravity,
+  });
+  hazard.y = startY;
+  return hazard;
+}
+
+function spawnShockwaveSegment(
+  state: GameState,
+  x: number,
+  y: number,
+  width: number,
+  velocityX: number,
+  height = 16,
+) {
+  const hazard = createCustomHazard(state, {
+    x,
+    size: Math.max(width, height),
+    width,
+    height,
+    speed: 0,
+    owner: "boss",
+    variant: "boss",
+    velocityX,
+  });
+  hazard.y = y;
+  return hazard;
+}
+
+function spawnRicochetGlider(
+  state: GameState,
+  side: "left" | "right",
+  y: number,
+  speed: number,
+  drift: number,
+  size = 20,
+  ricochets = 1,
+) {
+  const hazard = createCustomHazard(state, {
+    x: side === "left" ? 0 : state.width - size,
+    size,
+    speed,
+    owner: "boss",
+    variant: "boss",
+    behavior: "ricochet",
+    velocityX: side === "left" ? Math.abs(drift) : -Math.abs(drift),
+    bouncesRemaining: ricochets,
+    gravity: 0,
   });
   hazard.x = side === "left" ? -size * 0.9 : state.width - size * 0.1;
   hazard.y = y;
@@ -926,6 +1020,161 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
       });
     },
   },
+  rotor_gate: {
+    archetype: "rotor_gate",
+    family: "pressure",
+    label: () => "회전문",
+    normalAllowed: false,
+    telegraphHardMs: 380,
+    telegraphNormalMs: 760,
+    run(state, delta) {
+      const startSide = pickSide(state);
+      const sequence = startSide === "left"
+        ? [
+            { side: "left" as const, widthRatio: 0.34, y: 24 },
+            { side: "right" as const, widthRatio: 0.34, y: 92 },
+            { side: "left" as const, widthRatio: 0.24, y: 168 },
+            { side: "right" as const, widthRatio: 0.24, y: 236 },
+          ]
+        : [
+            { side: "right" as const, widthRatio: 0.34, y: 24 },
+            { side: "left" as const, widthRatio: 0.34, y: 92 },
+            { side: "right" as const, widthRatio: 0.24, y: 168 },
+            { side: "left" as const, widthRatio: 0.24, y: 236 },
+          ];
+      return tickPattern(state, delta, scaledInterval(state, 0.34, 0.44, 0.2, 0.28), sequence.length, (shot) => {
+        const current = sequence[shot];
+        spawnRotorBlade(state, current.side, current.widthRatio, giantSpeed(state, 4 + shot * 4), current.y, 62);
+      });
+    },
+  },
+  delayed_drop: {
+    archetype: "delayed_drop",
+    family: "pressure",
+    label: () => "지연 낙하",
+    normalAllowed: false,
+    telegraphHardMs: 420,
+    telegraphNormalMs: 820,
+    run(state, delta) {
+      const positions = [0.12, 0.74, 0.28, 0.56];
+      return tickPattern(state, delta, scaledInterval(state, 0.32, 0.42, 0.18, 0.26), positions.length, (shot) => {
+        spawnDelayedDrop(state, positions[shot], 22 + shot * 20, 40 + shot * 10, 20, 300);
+      });
+    },
+  },
+  shockwave_burst: {
+    archetype: "shockwave_burst",
+    family: "trap",
+    label: () => "충격파",
+    normalAllowed: false,
+    telegraphHardMs: 430,
+    telegraphNormalMs: 820,
+    run(state, delta) {
+      const floorY = state.height - 54;
+      return tickPattern(state, delta, scaledInterval(state, 0.42, 0.54, 0.24, 0.34), 3, (shot) => {
+        if (shot === 0) {
+          spawnCenterHazard(state, 0.22, giantSpeed(state, -12), 64);
+          return;
+        }
+        if (shot === 1) {
+          spawnShockwaveSegment(state, Math.floor(state.width * 0.42), floorY, 78, -124);
+          spawnShockwaveSegment(state, Math.floor(state.width * 0.42), floorY, 78, 124);
+          return;
+        }
+        spawnShockwaveSegment(state, Math.floor(state.width * 0.28), floorY - 28, 68, -108);
+        spawnShockwaveSegment(state, Math.floor(state.width * 0.52), floorY - 28, 68, 108);
+      });
+    },
+  },
+  folding_corridor: {
+    archetype: "folding_corridor",
+    family: "lane",
+    label: () => "접힘 통로",
+    normalAllowed: false,
+    telegraphHardMs: 370,
+    telegraphNormalMs: 760,
+    run(state, delta) {
+      const laneCount = getLaneCount(state);
+      const safeLane = Math.floor((laneCount - 1) / 2);
+      const sizes = [20, 28, 36, 44];
+      return tickPattern(state, delta, scaledInterval(state, 0.34, 0.44, 0.2, 0.28), sizes.length, (shot) => {
+        spawnLaneBarrage(state, safeLane, laneCount, laneSpeed(state, 6 + shot * 2), sizes[shot]);
+      });
+    },
+  },
+  tracker_drop: {
+    archetype: "tracker_drop",
+    family: "trap",
+    label: () => "추적 낙하",
+    normalAllowed: false,
+    telegraphHardMs: 420,
+    telegraphNormalMs: 800,
+    run(state, delta) {
+      return tickPattern(state, delta, scaledInterval(state, 0.4, 0.5, 0.22, 0.3), 3, (shot) => {
+        const xRatio = Math.max(0, Math.min(1, state.player.x / Math.max(1, state.width - 20)));
+        if (shot < 2) {
+          spawnDelayedDrop(state, xRatio, 18 + shot * 18, 48 + shot * 8, 20, 320);
+          return;
+        }
+        spawnCenterHazard(state, 0.24, giantSpeed(state, 6), 68);
+      });
+    },
+  },
+  mirror_counter: {
+    archetype: "mirror_counter",
+    family: "pressure",
+    label: () => "미러 카운터",
+    normalAllowed: false,
+    telegraphHardMs: 350,
+    telegraphNormalMs: 720,
+    run(state, delta) {
+      const firstSide = pickSide(state);
+      return tickPattern(state, delta, scaledInterval(state, 0.36, 0.46, 0.2, 0.28), 4, (shot) => {
+        if (shot === 0) {
+          spawnHalfHazard(state, firstSide, giantSpeed(state, 8), 0.34, 66);
+          return;
+        }
+        if (shot === 1) {
+          spawnHalfHazard(state, oppositeSide(firstSide), giantSpeed(state, 14), 0.34, 66);
+          return;
+        }
+        if (shot === 2) {
+          spawnCenterHazard(state, 0.26, giantSpeed(state, -2), 68);
+          return;
+        }
+        spawnHalfHazard(state, firstSide, giantSpeed(state, 16), 0.28, 60);
+      });
+    },
+  },
+  delayed_splitter: {
+    archetype: "delayed_splitter",
+    family: "trap",
+    label: () => "지연 분열",
+    normalAllowed: false,
+    telegraphHardMs: 420,
+    telegraphNormalMs: 800,
+    run(state, delta) {
+      const positions = [0.18, 0.62, 0.4];
+      return tickPattern(state, delta, scaledInterval(state, 0.4, 0.52, 0.22, 0.32), positions.length, (shot) => {
+        spawnBossSplitter(state, positions[shot], mediumSpeed(state, 14 + shot * 4), 22, isNightmareMode(state.mode) ? 4 : 3, 14, 84, Math.floor(state.height * 0.44));
+      });
+    },
+  },
+  snake_wave: {
+    archetype: "snake_wave",
+    family: "lane",
+    label: () => "스네이크 웨이브",
+    normalAllowed: false,
+    telegraphHardMs: 360,
+    telegraphNormalMs: 740,
+    run(state, delta) {
+      const xRatios = [0.08, 0.26, 0.46, 0.66, 0.84];
+      const drifts = [58, 92, 0, -92, -58];
+      return tickPattern(state, delta, scaledInterval(state, 0.24, 0.34, 0.14, 0.2), xRatios.length, (shot) => {
+        spawnAngledBossHazard(state, xRatios[shot], mediumSpeed(state, 8 + shot * 2), drifts[shot], 18, 150);
+      });
+    },
+  },
   diagonal_rain: {
     archetype: "diagonal_rain",
     family: "lane",
@@ -1025,6 +1274,112 @@ const definitions: Record<BossPatternId, BossPatternDefinition> = {
           return;
         }
         spawnBossBouncer(state, leftRatio, mediumSpeed(state, 28), 22, isNightmareMode(state.mode) ? 3 : 2);
+      });
+    },
+  },
+  wall_bounce_glider: {
+    archetype: "wall_bounce_glider",
+    family: "lane",
+    label: () => "벽반사 활공",
+    normalAllowed: false,
+    telegraphHardMs: 390,
+    telegraphNormalMs: 780,
+    run(state, delta) {
+      const side = pickSide(state);
+      return tickPattern(state, delta, scaledInterval(state, 0.4, 0.5, 0.22, 0.3), 4, (shot) => {
+        if (shot === 0) {
+          spawnRicochetGlider(state, side, 42, 0, 148, 20, isNightmareMode(state.mode) ? 2 : 1);
+          return;
+        }
+        if (shot === 1) {
+          spawnRicochetGlider(state, oppositeSide(side), 126, 0, 164, 20, isNightmareMode(state.mode) ? 2 : 1);
+          return;
+        }
+        if (shot === 2) {
+          spawnRicochetGlider(state, side, 198, 0, 126, 18, 1);
+          return;
+        }
+        spawnCenterHazard(state, 0.24, giantSpeed(state, 0), 64);
+      });
+    },
+  },
+  rotobounce_mix: {
+    archetype: "rotobounce_mix",
+    family: "pressure",
+    label: () => "회전 도약",
+    normalAllowed: false,
+    telegraphHardMs: 420,
+    telegraphNormalMs: 820,
+    run(state, delta) {
+      const side = pickSide(state);
+      return tickPattern(state, delta, scaledInterval(state, 0.42, 0.54, 0.24, 0.34), 4, (shot) => {
+        if (shot === 0) {
+          spawnRotorBlade(state, side, 0.3, giantSpeed(state, 4), 38, 62);
+          spawnBossBouncer(state, side === "left" ? 0.66 : 0.12, mediumSpeed(state, 22), 22, isNightmareMode(state.mode) ? 3 : 2);
+          return;
+        }
+        if (shot === 1) {
+          spawnRotorBlade(state, oppositeSide(side), 0.3, giantSpeed(state, 10), 126, 62);
+          return;
+        }
+        if (shot === 2) {
+          spawnBossBouncer(state, side === "left" ? 0.2 : 0.58, mediumSpeed(state, 28), 22, isNightmareMode(state.mode) ? 3 : 2);
+          return;
+        }
+        spawnCenterHazard(state, 0.22, giantSpeed(state, -4), 68);
+      });
+    },
+  },
+  layered_barrage: {
+    archetype: "layered_barrage",
+    family: "pressure",
+    label: () => "다층 포화",
+    normalAllowed: false,
+    telegraphHardMs: 430,
+    telegraphNormalMs: 840,
+    run(state, delta) {
+      const laneCount = getLaneCount(state);
+      const centerLane = Math.floor((laneCount - 1) / 2);
+      return tickPattern(state, delta, scaledInterval(state, 0.44, 0.56, 0.24, 0.34), 3, (shot) => {
+        if (shot === 0) {
+          spawnSideGlider(state, "left", 44, mediumSpeed(state, 10), 126, 18, 112);
+          spawnSideGlider(state, "right", 118, mediumSpeed(state, 6), 112, 18, 108);
+          return;
+        }
+        if (shot === 1) {
+          spawnArcPair(state, mediumSpeed(state, 10), 82, 0.18, 0.7, 18, 176);
+          spawnLaneBarrage(state, centerLane, laneCount, laneSpeed(state, 8), 24);
+          return;
+        }
+        spawnBossSplitter(state, 0.46, mediumSpeed(state, 24), 22, isNightmareMode(state.mode) ? 4 : 3, 14, 86, Math.floor(state.height * 0.36));
+      });
+    },
+  },
+  bait_seal: {
+    archetype: "bait_seal",
+    family: "trap",
+    label: () => "미끼 후 봉쇄",
+    normalAllowed: false,
+    telegraphHardMs: 450,
+    telegraphNormalMs: 840,
+    run(state, delta) {
+      const baitSide = pickSide(state);
+      const laneCount = getLaneCount(state);
+      const sealLane = baitSide === "left" ? laneCount - 1 : 0;
+      return tickPattern(state, delta, scaledInterval(state, 0.46, 0.58, 0.26, 0.36), 4, (shot) => {
+        if (shot === 0) {
+          spawnSafeThirdSetup(state, baitSide, giantSpeed(state, -24), 84);
+          return;
+        }
+        if (shot === 1) {
+          spawnLaneBarrage(state, sealLane, laneCount, laneSpeed(state, 8), 24);
+          return;
+        }
+        if (shot === 2) {
+          spawnHalfHazard(state, baitSide, giantSpeed(state, 4), 0.28, 60);
+          return;
+        }
+        spawnCenterHazard(state, 0.26, giantSpeed(state, 10), 68);
       });
     },
   },
@@ -1459,11 +1814,23 @@ const PATTERN_TIMING_MS: Record<BossPatternId, number> = {
   mirror_dive: 1860,
   glider_cross: 1940,
   glider_stack: 1880,
+  rotor_gate: 1960,
+  delayed_drop: 1860,
+  shockwave_burst: 2040,
+  folding_corridor: 1920,
+  tracker_drop: 1980,
+  mirror_counter: 1820,
+  delayed_splitter: 2040,
+  snake_wave: 1880,
   diagonal_rain: 1760,
   cross_arc: 1880,
   fan_arc: 1940,
   bounce_drive: 2040,
   split_rebound: 2120,
+  wall_bounce_glider: 2060,
+  rotobounce_mix: 2140,
+  layered_barrage: 2260,
+  bait_seal: 2060,
   shatter_lane: 1980,
   corridor_snapback: 1760,
   lane_pincer: 1820,
@@ -1602,6 +1969,66 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     durationFloorMs: 7600,
     themeFamilies: ["lane", "pressure"],
   },
+  rotor_gauntlet: {
+    id: "rotor_gauntlet",
+    label: "회전문 난전",
+    mode: "hard",
+    roundStart: 12,
+    opener: ["rotor_gate", "switch_press"],
+    core: ["rotor_gate", "crossfall_mix", "glider_cross", "door_jam", "rotobounce_mix"],
+    finisher: ["door_jam", "rotor_gate", "rotobounce_mix"],
+    antiStationaryFinishers: ["door_jam", "rotobounce_mix"],
+    minQueueLength: 6,
+    maxQueueLength: 7,
+    maxHeavySetPieces: 0,
+    durationFloorMs: 9200,
+    themeFamilies: ["pressure", "lane", "trap"],
+  },
+  delayed_denial: {
+    id: "delayed_denial",
+    label: "지연 봉쇄",
+    mode: "hard",
+    roundStart: 12,
+    opener: ["delayed_drop", "tracker_drop"],
+    core: ["delayed_drop", "mirror_counter", "tracker_drop", "door_jam", "delayed_splitter"],
+    finisher: ["door_jam", "delayed_splitter", "tracker_drop"],
+    antiStationaryFinishers: ["door_jam", "tracker_drop"],
+    minQueueLength: 6,
+    maxQueueLength: 7,
+    maxHeavySetPieces: 0,
+    durationFloorMs: 9300,
+    themeFamilies: ["pressure", "trap"],
+  },
+  shock_corridor: {
+    id: "shock_corridor",
+    label: "충격 통로",
+    mode: "hard",
+    roundStart: 12,
+    opener: ["shockwave_burst", "folding_corridor"],
+    core: ["shockwave_burst", "center_break", "folding_corridor", "glider_cross", "door_jam"],
+    finisher: ["door_jam", "shockwave_burst", "folding_corridor"],
+    antiStationaryFinishers: ["door_jam", "shockwave_burst"],
+    minQueueLength: 6,
+    maxQueueLength: 7,
+    maxHeavySetPieces: 0,
+    durationFloorMs: 9600,
+    themeFamilies: ["lane", "pressure", "trap"],
+  },
+  folding_rush: {
+    id: "folding_rush",
+    label: "접힘 러시",
+    mode: "hard",
+    roundStart: 12,
+    opener: ["folding_corridor", "mirror_dive"],
+    core: ["folding_corridor", "snake_wave", "lane_flipback", "center_lane_weave", "mirror_counter"],
+    finisher: ["door_jam", "mirror_dive", "folding_corridor"],
+    antiStationaryFinishers: ["door_jam", "mirror_dive"],
+    minQueueLength: 6,
+    maxQueueLength: 7,
+    maxHeavySetPieces: 0,
+    durationFloorMs: 9000,
+    themeFamilies: ["lane", "pressure"],
+  },
   trap_weave: {
     id: "trap_weave",
     label: "함정 직조",
@@ -1660,6 +2087,66 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     maxQueueLength: 6,
     maxHeavySetPieces: 0,
     durationFloorMs: 8200,
+    themeFamilies: ["lane", "pressure"],
+  },
+  tracker_feint: {
+    id: "tracker_feint",
+    label: "추적 페인트",
+    mode: "hard",
+    roundStart: 12,
+    opener: ["tracker_drop", "fake_warning"],
+    core: ["tracker_drop", "mirror_counter", "fake_safe_lane", "last_hit_followup", "bait_seal"],
+    finisher: ["door_jam", "tracker_drop", "bait_seal"],
+    antiStationaryFinishers: ["door_jam", "tracker_drop", "bait_seal"],
+    minQueueLength: 6,
+    maxQueueLength: 7,
+    maxHeavySetPieces: 0,
+    durationFloorMs: 9400,
+    themeFamilies: ["trap", "pressure"],
+  },
+  mirror_pursuit: {
+    id: "mirror_pursuit",
+    label: "미러 추격",
+    mode: "hard",
+    roundStart: 12,
+    opener: ["mirror_counter", "glider_cross"],
+    core: ["mirror_counter", "tracker_drop", "glider_cross", "door_jam", "crossfall_mix"],
+    finisher: ["door_jam", "mirror_counter", "tracker_drop"],
+    antiStationaryFinishers: ["door_jam", "mirror_counter", "tracker_drop"],
+    minQueueLength: 6,
+    maxQueueLength: 7,
+    maxHeavySetPieces: 0,
+    durationFloorMs: 9200,
+    themeFamilies: ["pressure", "lane", "trap"],
+  },
+  split_timer: {
+    id: "split_timer",
+    label: "분열 타이머",
+    mode: "hard",
+    roundStart: 12,
+    opener: ["delayed_splitter", "center_break"],
+    core: ["delayed_splitter", "split_rebound", "shatter_lane", "tracker_drop", "door_jam"],
+    finisher: ["door_jam", "delayed_splitter", "split_rebound"],
+    antiStationaryFinishers: ["door_jam", "tracker_drop", "split_rebound"],
+    minQueueLength: 6,
+    maxQueueLength: 7,
+    maxHeavySetPieces: 0,
+    durationFloorMs: 9600,
+    themeFamilies: ["trap", "lane", "pressure"],
+  },
+  snake_pressure: {
+    id: "snake_pressure",
+    label: "뱀결 압박",
+    mode: "hard",
+    roundStart: 12,
+    opener: ["snake_wave", "mirror_dive"],
+    core: ["snake_wave", "glider_stack", "cross_arc", "center_lane_weave", "door_jam"],
+    finisher: ["door_jam", "snake_wave", "glider_cross"],
+    antiStationaryFinishers: ["door_jam", "snake_wave", "glider_cross"],
+    minQueueLength: 6,
+    maxQueueLength: 7,
+    maxHeavySetPieces: 0,
+    durationFloorMs: 9300,
     themeFamilies: ["lane", "pressure"],
   },
   residue_fakeout: {
@@ -1813,6 +2300,66 @@ const themeDefinitions: Record<BossThemeId, BossThemeDefinition> = {
     maxHeavySetPieces: 1,
     durationFloorMs: 10800,
     themeFamilies: ["trap", "lane", "pressure"],
+  },
+  ricochet_chamber: {
+    id: "ricochet_chamber",
+    label: "반사 실내",
+    mode: "nightmare",
+    roundStart: 10,
+    opener: ["wall_bounce_glider", "glider_cross"],
+    core: ["wall_bounce_glider", "glider_stack", "cross_arc", "door_jam", "tracker_drop"],
+    finisher: ["door_jam", "wall_bounce_glider", "bounce_drive"],
+    antiStationaryFinishers: ["door_jam", "wall_bounce_glider", "bounce_drive"],
+    minQueueLength: 6,
+    maxQueueLength: 8,
+    maxHeavySetPieces: 0,
+    durationFloorMs: 10800,
+    themeFamilies: ["lane", "pressure", "trap"],
+  },
+  rotobounce_core: {
+    id: "rotobounce_core",
+    label: "회전 도약핵",
+    mode: "nightmare",
+    roundStart: 10,
+    opener: ["rotobounce_mix", "rotor_gate"],
+    core: ["rotobounce_mix", "bounce_drive", "rotor_gate", "split_rebound", "door_jam"],
+    finisher: ["door_jam", "rotobounce_mix", "split_rebound"],
+    antiStationaryFinishers: ["door_jam", "rotobounce_mix", "split_rebound"],
+    minQueueLength: 6,
+    maxQueueLength: 8,
+    maxHeavySetPieces: 0,
+    durationFloorMs: 11000,
+    themeFamilies: ["pressure", "trap", "lane"],
+  },
+  layered_cataclysm: {
+    id: "layered_cataclysm",
+    label: "다층 격변",
+    mode: "nightmare",
+    roundStart: 10,
+    opener: ["layered_barrage", "cross_arc"],
+    core: ["layered_barrage", "fan_arc", "glider_stack", "shatter_lane", "door_jam"],
+    finisher: ["door_jam", "layered_barrage", "bounce_drive"],
+    antiStationaryFinishers: ["door_jam", "layered_barrage", "bounce_drive"],
+    minQueueLength: 6,
+    maxQueueLength: 8,
+    maxHeavySetPieces: 0,
+    durationFloorMs: 11200,
+    themeFamilies: ["pressure", "lane", "trap"],
+  },
+  bait_lockdown: {
+    id: "bait_lockdown",
+    label: "미끼 봉쇄",
+    mode: "nightmare",
+    roundStart: 10,
+    opener: ["bait_seal", "fake_warning"],
+    core: ["bait_seal", "tracker_drop", "fake_safe_lane", "door_jam", "split_rebound"],
+    finisher: ["door_jam", "bait_seal", "center_collapse"],
+    antiStationaryFinishers: ["door_jam", "bait_seal"],
+    minQueueLength: 6,
+    maxQueueLength: 8,
+    maxHeavySetPieces: 1,
+    durationFloorMs: 10800,
+    themeFamilies: ["trap", "pressure"],
   },
 };
 

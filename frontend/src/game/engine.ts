@@ -147,6 +147,22 @@ export function updateGame(state: GameState, delta: number, direction: number) {
         hazard.awardOnExit = false;
       }
     }
+
+    if (hazard.behavior === "ricochet") {
+      const hitLeftWall = hazard.x <= 0 && (hazard.velocityX ?? 0) < 0;
+      const hitRightWall = hazard.x + hazard.width >= state.width && (hazard.velocityX ?? 0) > 0;
+      if ((hazard.bouncesRemaining ?? 0) > 0 && (hitLeftWall || hitRightWall)) {
+        hazard.x = Math.max(0, Math.min(state.width - hazard.width, hazard.x));
+        hazard.velocityX = -(hazard.velocityX ?? 0);
+        hazard.bouncesRemaining = (hazard.bouncesRemaining ?? 1) - 1;
+        hazard.triggered = true;
+        return;
+      }
+      if ((hazard.bouncesRemaining ?? 0) === 0 && (hitLeftWall || hitRightWall)) {
+        hazard.pendingRemoval = true;
+        hazard.awardOnExit = false;
+      }
+    }
   });
 
   state.items.forEach((item: Item) => {

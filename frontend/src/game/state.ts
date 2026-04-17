@@ -5,7 +5,7 @@ export type ItemType = "invincibility" | "speed" | "heal" | "slow" | "clear";
 export type ToastTone = "neutral" | "danger" | "reward" | "boss";
 export type HazardOwner = "wave" | "boss";
 export type HazardVariant = "small" | "medium" | "large" | "boss" | "giant";
-export type HazardBehavior = "none" | "split" | "bounce";
+export type HazardBehavior = "none" | "split" | "bounce" | "ricochet";
 export type WavePattern = "single" | "cluster_2" | "cluster_3" | "splitter" | "bouncer";
 export type BossPatternFamily = "pressure" | "lane" | "trap";
 export type BossThemeId =
@@ -17,11 +17,19 @@ export type BossThemeId =
   | "edge_rotation"
   | "corridor_switch"
   | "snapback_lite"
+  | "rotor_gauntlet"
+  | "delayed_denial"
+  | "shock_corridor"
+  | "folding_rush"
   | "trap_weave"
   | "fakeout_chain"
   | "residue_fakeout"
   | "rush_detour"
   | "glide_duet"
+  | "tracker_feint"
+  | "mirror_pursuit"
+  | "split_timer"
+  | "snake_pressure"
   | "forced_cross"
   | "split_crucible"
   | "lane_gauntlet"
@@ -30,7 +38,11 @@ export type BossThemeId =
   | "arc_storm"
   | "rebound_labyrinth"
   | "arc_pressure"
-  | "recoil_pivot";
+  | "recoil_pivot"
+  | "ricochet_chamber"
+  | "rotobounce_core"
+  | "layered_cataclysm"
+  | "bait_lockdown";
 export type BossPatternId =
   | "half_stomp_alternating"
   | "closing_doors"
@@ -55,12 +67,24 @@ export type BossPatternId =
   | "mirror_dive"
   | "glider_cross"
   | "glider_stack"
+  | "rotor_gate"
+  | "delayed_drop"
+  | "shockwave_burst"
+  | "folding_corridor"
+  | "tracker_drop"
+  | "mirror_counter"
+  | "delayed_splitter"
+  | "snake_wave"
   | "diagonal_rain"
   | "cross_arc"
   | "fan_arc"
   | "bounce_drive"
   | "shatter_lane"
   | "split_rebound"
+  | "wall_bounce_glider"
+  | "rotobounce_mix"
+  | "layered_barrage"
+  | "bait_seal"
   | "corridor_snapback"
   | "lane_pincer"
   | "fake_safe_lane"

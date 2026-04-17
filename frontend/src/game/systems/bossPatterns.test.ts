@@ -6,7 +6,7 @@ import { buildBossEncounterPlan, buildBossPatternQueue, getAvailableBossPatternI
 
 describe("boss patterns", () => {
   it("exposes a larger hard-mode boss pattern pool", () => {
-    expect(getAvailableBossPatternIds("hard")).toHaveLength(45);
+    expect(getAvailableBossPatternIds("hard")).toHaveLength(57);
   });
 
   it("keeps normal queues inside the normal-safe pattern pool", () => {
@@ -95,8 +95,8 @@ describe("boss patterns", () => {
     ]));
   });
 
-  it("unlocks at least eighteen hard boss themes by round 12", () => {
-    expect(getUnlockedBossThemeIds("hard", 12)).toHaveLength(18);
+  it("unlocks at least twenty-six hard boss themes by round 12", () => {
+    expect(getUnlockedBossThemeIds("hard", 12)).toHaveLength(26);
   });
 
   it("unlocks nightmare-only boss themes in nightmare mode", () => {
@@ -306,7 +306,7 @@ describe("boss patterns", () => {
   });
 
   it("keeps lane and trap queues diverse across representative round-12 seeds", () => {
-    const seeds = [1, 4944, 9887, 14830, 19773, 24716, 29659, 34602, 39545, 44488, 49431, 54374];
+    const seeds = [1, 4944, 9887, 14830, 19773, 24716, 29659, 34602, 39545, 44488, 49431, 54374, 59317, 64260, 69203, 74146, 79089, 84032, 88975, 93918];
     const laneThemeIds = new Set([
       "lane_intro",
       "corridor_intro",
@@ -314,17 +314,32 @@ describe("boss patterns", () => {
       "edge_rotation",
       "corridor_switch",
       "snapback_lite",
+      "rotor_gauntlet",
+      "delayed_denial",
+      "shock_corridor",
+      "folding_rush",
       "forced_cross",
+      "rush_detour",
+      "glide_duet",
+      "tracker_feint",
+      "mirror_pursuit",
+      "split_timer",
+      "snake_pressure",
       "lane_gauntlet",
+      "split_crucible",
     ]);
     const trapThemeIds = new Set([
       "trap_intro",
       "trap_weave",
       "fakeout_chain",
+      "tracker_feint",
+      "mirror_pursuit",
+      "split_timer",
       "residue_fakeout",
       "residue_storm",
       "residue_denial",
       "forced_cross",
+      "split_crucible",
     ]);
     const laneQueues = new Set<string>();
     const trapQueues = new Set<string>();
@@ -377,10 +392,22 @@ describe("boss patterns", () => {
       "mirror_dive",
       "glider_cross",
       "glider_stack",
+      "rotor_gate",
+      "delayed_drop",
+      "shockwave_burst",
+      "folding_corridor",
+      "tracker_drop",
+      "mirror_counter",
+      "delayed_splitter",
+      "snake_wave",
       "safe_third_flip",
       "residue_pivot",
       "shatter_lane",
       "split_rebound",
+      "wall_bounce_glider",
+      "rotobounce_mix",
+      "layered_barrage",
+      "bait_seal",
     ] as const;
 
     expect(newlyAddedPatterns.filter((id) => seenPatterns.has(id)).length).toBeGreaterThanOrEqual(4);
@@ -414,6 +441,15 @@ describe("boss patterns", () => {
       { round: 8, queueSeed: 28603, patternId: "bounce_drive" },
       { round: 8, queueSeed: 19067, patternId: "glider_cross" },
       { round: 8, queueSeed: 28601, patternId: "split_rebound" },
+      { round: 12, queueSeed: 13689, patternId: "rotor_gate" },
+      { round: 12, queueSeed: 15400, patternId: "delayed_drop" },
+      { round: 12, queueSeed: 17111, patternId: "shockwave_burst" },
+      { round: 12, queueSeed: 17111, patternId: "folding_corridor" },
+      { round: 12, queueSeed: 15400, patternId: "tracker_drop" },
+      { round: 12, queueSeed: 15400, patternId: "mirror_counter" },
+      { round: 12, queueSeed: 15400, patternId: "delayed_splitter" },
+      { round: 12, queueSeed: 18822, patternId: "snake_wave" },
+      { round: 12, queueSeed: 27378, patternId: "bait_seal" },
     ] as const;
 
     for (const { round, queueSeed, patternId } of cases) {
@@ -431,17 +467,25 @@ describe("boss patterns", () => {
     }
   });
 
-  it("surfaces glider_stack in a representative nightmare fixture", () => {
-    const plan = buildBossEncounterPlan({
-      mode: "nightmare",
-      round: 8,
-      previousFamilyStreak: null,
-      previousFamilyStreakCount: 0,
-      recentPatterns: [],
-      recentThemes: [],
-      queueSeed: 15393,
-    });
+  it("surfaces nightmare-only advanced patterns in representative nightmare fixtures", () => {
+    const cases = [
+      { round: 8, queueSeed: 15393, patternId: "glider_stack" },
+      { round: 10, queueSeed: 29671, patternId: "wall_bounce_glider" },
+      { round: 10, queueSeed: 37080, patternId: "layered_barrage" },
+    ] as const;
 
-    expect(plan.queue).toContain("glider_stack");
+    for (const { round, queueSeed, patternId } of cases) {
+      const plan = buildBossEncounterPlan({
+        mode: "nightmare",
+        round,
+        previousFamilyStreak: null,
+        previousFamilyStreakCount: 0,
+        recentPatterns: [],
+        recentThemes: [],
+        queueSeed,
+      });
+
+      expect(plan.queue).toContain(patternId);
+    }
   });
 });

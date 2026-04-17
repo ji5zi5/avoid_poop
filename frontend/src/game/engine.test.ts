@@ -96,8 +96,8 @@ function hasReachableSafePath(state: ReturnType<typeof createGameEngine>) {
   return true;
 }
 
-function createBossEncounterState(round: number, seed: number) {
-  const state = createGameEngine("hard");
+function createBossEncounterState(round: number, seed: number, mode: "hard" | "nightmare" = "hard") {
+  const state = createGameEngine(mode);
   state.round = round;
   state.reachedRound = round;
   state.currentPhase = "boss";
@@ -626,6 +626,27 @@ describe("game engine", () => {
     expect(state.hazards.some((hazard) => (hazard.gravity ?? 0) > 0)).toBe(true);
   });
 
+  it("keeps delayed_drop suspended before gravity meaningfully pulls it down", () => {
+    const state = createGameEngine("hard");
+    state.round = 12;
+    state.currentPhase = "boss";
+    state.bossPatternQueue = ["delayed_drop"];
+    state.bossPatternActiveId = null;
+    state.bossPatternIndex = 0;
+    state.bossEncounterDuration = 30;
+
+    for (let step = 0; step < 6 && state.hazards.length === 0; step += 1) {
+      updateGame(state, 0.25, 0);
+    }
+
+    const delayed = state.hazards[0];
+    expect(delayed).toBeTruthy();
+    const initialY = delayed!.y;
+    updateGame(state, 0.05, 0);
+    expect((delayed?.y ?? 0) - initialY).toBeLessThan(5);
+    expect((delayed?.gravity ?? 0) > 0).toBe(true);
+  });
+
   it("spawns mirrored angled hazards in mirror_dive without relying on giant center swings", () => {
     const state = createGameEngine("hard");
     state.round = 10;
@@ -717,6 +738,28 @@ describe("game engine", () => {
     expect(state.hazards.some((hazard) => (hazard.velocityX ?? 0) > 0)).toBe(true);
   });
 
+  it("ricochets a glider off the wall in wall_bounce_glider", () => {
+    const state = createGameEngine("nightmare");
+    state.round = 12;
+    state.currentPhase = "boss";
+    state.bossPatternQueue = ["wall_bounce_glider"];
+    state.bossPatternActiveId = null;
+    state.bossPatternIndex = 0;
+    state.bossEncounterDuration = 30;
+
+    for (let step = 0; step < 6 && state.hazards.length === 0; step += 1) {
+      updateGame(state, 0.25, 0);
+    }
+
+    const ricochet = state.hazards.find((hazard) => hazard.behavior === "ricochet");
+    expect(ricochet).toBeTruthy();
+
+    const beforeVelocity = ricochet!.velocityX;
+    ricochet!.x = state.width - ricochet!.width;
+    updateGame(state, 0.05, 0);
+    expect(ricochet!.velocityX).toBe(-(beforeVelocity ?? 0));
+  });
+
   it("spawns layered side-entry gliders in glider_stack", () => {
     const state = createGameEngine("hard");
     state.round = 12;
@@ -778,25 +821,52 @@ describe("game engine", () => {
 
   it("keeps representative late hard-only themes dodgeable across their theme seeds", () => {
     const cases = [
-      { round: 12, seed: 14830, themeId: "corridor_switch" },
-      { round: 12, seed: 19773, themeId: "trap_weave" },
-      { round: 12, seed: 24716, themeId: "rush_detour" },
-      { round: 12, seed: 29659, themeId: "residue_fakeout" },
-      { round: 12, seed: 34602, themeId: "split_crucible" },
-      { round: 12, seed: 39545, themeId: "residue_storm" },
-      { round: 12, seed: 44488, themeId: "residue_denial" },
-      { round: 14, seed: 14830, themeId: "corridor_switch" },
-      { round: 14, seed: 19773, themeId: "trap_weave" },
-      { round: 14, seed: 24716, themeId: "rush_detour" },
-      { round: 14, seed: 29659, themeId: "residue_fakeout" },
-      { round: 14, seed: 34602, themeId: "split_crucible" },
-      { round: 14, seed: 39545, themeId: "residue_storm" },
-      { round: 14, seed: 44488, themeId: "residue_denial" },
+      { round: 12, seed: 10267, themeId: "corridor_switch" },
+      { round: 12, seed: 20533, themeId: "trap_weave" },
+      { round: 12, seed: 29089, themeId: "mirror_pursuit" },
+      { round: 12, seed: 34222, themeId: "residue_fakeout" },
+      { round: 12, seed: 37644, themeId: "split_crucible" },
+      { round: 12, seed: 41066, themeId: "residue_storm" },
+      { round: 12, seed: 42777, themeId: "residue_denial" },
+      { round: 14, seed: 10267, themeId: "corridor_switch" },
+      { round: 14, seed: 20533, themeId: "trap_weave" },
+      { round: 14, seed: 29089, themeId: "mirror_pursuit" },
+      { round: 14, seed: 34222, themeId: "residue_fakeout" },
+      { round: 14, seed: 37644, themeId: "split_crucible" },
+      { round: 14, seed: 41066, themeId: "residue_storm" },
+      { round: 14, seed: 42777, themeId: "residue_denial" },
     ] as const;
     const failures: string[] = [];
 
     for (const { round, seed, themeId } of cases) {
       const state = createBossEncounterState(round, seed);
+      if (state.bossThemeId !== themeId) {
+        failures.push(`round ${round} seed ${seed} expected ${themeId} got ${state.bossThemeId ?? "unknown"}`);
+        continue;
+      }
+      if (!hasReachableSafePath(state)) {
+        failures.push(`round ${round} seed ${seed} theme ${themeId} lost all reachable lanes`);
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it("keeps representative nightmare-only themes dodgeable across their theme seeds", () => {
+    const cases = [
+      { round: 12, seed: 21207, themeId: "arc_storm" },
+      { round: 12, seed: 23650, themeId: "arc_pressure" },
+      { round: 12, seed: 28564, themeId: "rebound_labyrinth" },
+      { round: 12, seed: 31218, themeId: "recoil_pivot" },
+      { round: 12, seed: 33872, themeId: "ricochet_chamber" },
+      { round: 12, seed: 36526, themeId: "rotobounce_core" },
+      { round: 12, seed: 39180, themeId: "layered_cataclysm" },
+      { round: 12, seed: 41835, themeId: "bait_lockdown" },
+    ] as const;
+    const failures: string[] = [];
+
+    for (const { round, seed, themeId } of cases) {
+      const state = createBossEncounterState(round, seed, "nightmare");
       if (state.bossThemeId !== themeId) {
         failures.push(`round ${round} seed ${seed} expected ${themeId} got ${state.bossThemeId ?? "unknown"}`);
         continue;
@@ -844,13 +914,13 @@ describe("game engine", () => {
     const cases = [
       { round: 8, seed: 15889, themeId: "edge_rotation" },
       { round: 8, seed: 19773, themeId: "corridor_switch" },
-      { round: 12, seed: 14830, themeId: "corridor_switch" },
-      { round: 12, seed: 19773, themeId: "trap_weave" },
-      { round: 12, seed: 24716, themeId: "rush_detour" },
-      { round: 12, seed: 29659, themeId: "residue_fakeout" },
-      { round: 12, seed: 34602, themeId: "split_crucible" },
-      { round: 12, seed: 39545, themeId: "residue_storm" },
-      { round: 12, seed: 44488, themeId: "residue_denial" },
+      { round: 12, seed: 10267, themeId: "corridor_switch" },
+      { round: 12, seed: 20533, themeId: "trap_weave" },
+      { round: 12, seed: 29089, themeId: "mirror_pursuit" },
+      { round: 12, seed: 34222, themeId: "residue_fakeout" },
+      { round: 12, seed: 37644, themeId: "split_crucible" },
+      { round: 12, seed: 41066, themeId: "residue_storm" },
+      { round: 12, seed: 42777, themeId: "residue_denial" },
     ] as const;
     const failures: string[] = [];
 
