@@ -49,6 +49,35 @@ export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, on
     return score === null ? copy.records.none : `${score.toLocaleString()} pts`;
   }, [bestScores, selectedMode, singleOpen]);
   const isNightmareSelected = selectedMode === "nightmare";
+  const modeOptions: Array<{
+    key: GameMode;
+    label: string;
+    badge: string;
+    summary: string;
+    best: number | null;
+  }> = [
+    {
+      key: "normal",
+      label: copy.menu.modeBanner.normal,
+      badge: copy.menu.modeShort.normal,
+      summary: copy.menu.normalSummary,
+      best: bestScores.normal,
+    },
+    {
+      key: "hard",
+      label: copy.menu.modeBanner.hard,
+      badge: copy.menu.modeShort.hard,
+      summary: copy.menu.hardSummary,
+      best: bestScores.hard,
+    },
+    {
+      key: "nightmare",
+      label: copy.menu.modeBanner.nightmare,
+      badge: copy.menu.modeShort.nightmare,
+      summary: copy.menu.nightmareSummary,
+      best: bestScores.nightmare,
+    },
+  ];
 
   return (
     <section className="menu-screen simple-menu-screen">
@@ -104,20 +133,30 @@ export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, on
                 ) : (
                   <>
                     <p className="panel-kicker">{copy.menu.modeLabel}</p>
-                    <div className="segmented-switch home-mode-switch" role="tablist" aria-label={copy.menu.modeLabel}>
-                      <button type="button" className={selectedMode === "normal" ? "segmented-switch__item is-active" : "segmented-switch__item"} onClick={() => setSelectedMode("normal")}>{copy.menu.modeShort.normal}</button>
-                      <button type="button" className={selectedMode === "hard" ? "segmented-switch__item is-active" : "segmented-switch__item"} onClick={() => setSelectedMode("hard")}>{copy.menu.modeShort.hard}</button>
-                      <button type="button" className={selectedMode === "nightmare" ? "segmented-switch__item is-active" : "segmented-switch__item"} onClick={() => setSelectedMode("nightmare")}>{copy.menu.modeShort.nightmare}</button>
-                    </div>
-                    <div className={`home-mode-summary ${isNightmareSelected ? "is-nightmare" : ""}`}>
-                      {selectedMode === "normal"
-                        ? copy.menu.normalSummary
-                        : selectedMode === "hard"
-                          ? copy.menu.hardSummary
-                          : copy.menu.nightmareSummary}
-                      {isNightmareSelected ? (
-                        <small className="home-mode-summary__accent">NIGHTMARE · 매 라운드 보스 · 궤적형 패턴 강화</small>
-                      ) : null}
+                    <div className="mode-choice-list" role="list" aria-label={copy.menu.modeLabel}>
+                      {modeOptions.map((modeOption) => {
+                        const selected = selectedMode === modeOption.key;
+                        const nightmare = modeOption.key === "nightmare";
+                        return (
+                          <button
+                            key={modeOption.key}
+                            type="button"
+                            className={`mode-choice-card ${selected ? "is-selected" : ""} ${nightmare ? "is-nightmare" : ""}`}
+                            aria-pressed={selected}
+                            aria-label={modeOption.label}
+                            onClick={() => setSelectedMode(modeOption.key)}
+                          >
+                            <div className="mode-choice-card__head">
+                              <span className={`mode-choice-card__badge ${nightmare ? "is-nightmare" : ""}`}>{modeOption.badge}</span>
+                              <strong>{modeOption.label}</strong>
+                            </div>
+                            <span className="mode-choice-card__summary">{modeOption.summary}</span>
+                            <span className="mode-choice-card__meta">
+                              최고 기록 {modeOption.best === null ? copy.records.none : `${modeOption.best.toLocaleString()} pts`}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                     <button className={`home-start-button home-start-button--hero ${isNightmareSelected ? "is-nightmare" : ""}`} onClick={() => onPlay(selectedMode)}>{copy.menu.start}</button>
                     <button className="ghost-button subtle-button menu-close-button" onClick={() => setSingleOpen(false)}>{copy.records.back}</button>

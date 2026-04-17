@@ -427,11 +427,6 @@ button:disabled {
   right: 20px;
 }
 
-.home-mode-switch {
-  width: 100%;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 .home-start-button {
   width: 100%;
   min-height: 4.6rem;
@@ -439,30 +434,78 @@ button:disabled {
   border-radius: 18px;
 }
 
-.home-mode-summary {
-  padding: 0.75rem 0.9rem;
-  border: 2px solid rgba(70, 63, 26, 0.12);
-  border-radius: 16px;
-  color: var(--tone-2);
-  font-size: 0.9rem;
-  background: rgba(96, 73, 44, 0.06);
+.mode-choice-list {
+  display: grid;
+  gap: 0.55rem;
 }
 
-.home-mode-summary__accent {
-  display: block;
-  margin-top: 0.38rem;
-  color: #8a49b7;
-  font-size: 0.74rem;
-  letter-spacing: 0.06em;
+.mode-choice-card {
+  display: grid;
+  gap: 0.34rem;
+  text-align: left;
+  padding: 0.82rem 0.9rem;
+  border-radius: 18px;
+  border: 2px solid rgba(70, 63, 26, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 252, 247, 0.98) 0%, rgba(245, 234, 223, 0.98) 100%);
+  color: var(--tone-4);
+  box-shadow: 0 10px 20px rgba(43, 30, 18, 0.08);
 }
 
-.home-mode-summary.is-nightmare {
-  border-color: rgba(98, 55, 138, 0.28);
-  color: #4e2a6f;
+.mode-choice-card.is-selected {
+  border-color: rgba(70, 63, 26, 0.34);
+  box-shadow: 0 14px 24px rgba(43, 30, 18, 0.12);
+  transform: translateY(-1px);
+}
+
+.mode-choice-card.is-nightmare {
   background:
     radial-gradient(circle at top right, rgba(179, 94, 255, 0.16), transparent 42%),
-    linear-gradient(180deg, rgba(255, 245, 255, 0.96) 0%, rgba(244, 231, 255, 0.94) 100%);
-  box-shadow: inset 0 0 0 1px rgba(98, 55, 138, 0.08);
+    linear-gradient(180deg, rgba(255, 250, 255, 0.98) 0%, rgba(244, 231, 255, 0.96) 100%);
+}
+
+.mode-choice-card.is-nightmare.is-selected {
+  border-color: rgba(98, 55, 138, 0.34);
+  box-shadow: 0 14px 28px rgba(98, 55, 138, 0.16);
+}
+
+.mode-choice-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.mode-choice-card__head strong {
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.mode-choice-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.48rem;
+  border-radius: 999px;
+  background: rgba(96, 73, 44, 0.12);
+  color: var(--tone-2);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+}
+
+.mode-choice-card__badge.is-nightmare {
+  background: rgba(138, 73, 183, 0.16);
+  color: #7b3aa9;
+}
+
+.mode-choice-card__summary {
+  color: var(--tone-2);
+  font-size: 0.88rem;
+}
+
+.mode-choice-card__meta {
+  color: rgba(74, 52, 31, 0.72);
+  font-size: 0.78rem;
 }
 
 .home-start-button--hero.is-nightmare {
@@ -935,7 +978,6 @@ input {
     width: calc(100% - 1rem);
   }
 
-  .home-mode-switch .segmented-switch__item,
   .records-tabs .segmented-switch__item {
     padding: 0.62rem 0.32rem;
     font-size: 0.78rem;

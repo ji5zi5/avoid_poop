@@ -54,7 +54,7 @@ describe('MenuPage', () => {
     expect(screen.getByText('싱글').textContent).toBe('싱글');
     expect(screen.getByText('멀티').textContent).toBe('멀티');
     fireEvent.click(screen.getByRole('button', {name: '싱글'}));
-    expect(screen.getByRole('button', {name: '나이트메어'})).toBeTruthy();
+    expect(screen.getByRole('button', {name: /나이트메어 모드/ })).toBeTruthy();
   });
 
   it('shows the fetched best score for the selected single-player mode', async () => {
@@ -74,12 +74,12 @@ describe('MenuPage', () => {
 
     fireEvent.click(screen.getAllByText('게임 시작')[0]);
     fireEvent.click(screen.getByRole('button', {name: '싱글'}));
-    fireEvent.click(screen.getByRole('button', {name: '일반'}));
+    fireEvent.click(screen.getByRole('button', {name: /일반 모드/ }));
     await waitFor(() => expect(screen.getAllByText('58,200 pts').length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole('button', {name: '하드'}));
+    fireEvent.click(screen.getByRole('button', {name: /하드 모드/ }));
 
     await waitFor(() => expect(screen.getAllByText('82,400 pts').length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole('button', {name: '나이트메어'}));
+    fireEvent.click(screen.getByRole('button', {name: /나이트메어 모드/ }));
     await waitFor(() => expect(screen.getAllByText('91,300 pts').length).toBeGreaterThan(0));
   });
 });
