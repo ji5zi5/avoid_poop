@@ -6,7 +6,7 @@ import { buildBossEncounterPlan, buildBossPatternQueue, getAvailableBossPatternI
 
 describe("boss patterns", () => {
   it("exposes a larger hard-mode boss pattern pool", () => {
-    expect(getAvailableBossPatternIds("hard")).toHaveLength(40);
+    expect(getAvailableBossPatternIds("hard")).toHaveLength(45);
   });
 
   it("keeps normal queues inside the normal-safe pattern pool", () => {
@@ -95,13 +95,13 @@ describe("boss patterns", () => {
     ]));
   });
 
-  it("unlocks at least fourteen hard boss themes by round 12", () => {
-    expect(getUnlockedBossThemeIds("hard", 12)).toHaveLength(15);
+  it("unlocks at least eighteen hard boss themes by round 12", () => {
+    expect(getUnlockedBossThemeIds("hard", 12)).toHaveLength(18);
   });
 
   it("unlocks nightmare-only boss themes in nightmare mode", () => {
     expect(getUnlockedBossThemeIds("nightmare", 12)).toEqual(
-      expect.arrayContaining(["arc_storm", "rebound_labyrinth"]),
+      expect.arrayContaining(["arc_storm", "rebound_labyrinth", "arc_pressure", "recoil_pivot"]),
     );
   });
 
@@ -126,7 +126,12 @@ describe("boss patterns", () => {
       queueSeed = plan.nextQueueSeed;
     }
 
-    expect(seenThemes.has("arc_storm") || seenThemes.has("rebound_labyrinth")).toBe(true);
+    expect(
+      seenThemes.has("arc_storm")
+      || seenThemes.has("rebound_labyrinth")
+      || seenThemes.has("arc_pressure")
+      || seenThemes.has("recoil_pivot"),
+    ).toBe(true);
   });
 
   it("derives encounter duration from themed composition instead of queue length alone", () => {
@@ -369,19 +374,46 @@ describe("boss patterns", () => {
       "pillar_slide",
       "lane_flipback",
       "center_lane_weave",
+      "mirror_dive",
+      "glider_cross",
+      "glider_stack",
       "safe_third_flip",
       "residue_pivot",
+      "shatter_lane",
+      "split_rebound",
     ] as const;
 
     expect(newlyAddedPatterns.filter((id) => seenPatterns.has(id)).length).toBeGreaterThanOrEqual(4);
   });
 
+  it("replaces lane_intro's old three-big-hit finisher with non-swing finishers", () => {
+    const seeds = [3708, 3709, 3710, 3711, 3712, 3713];
+
+    for (const queueSeed of seeds) {
+      const plan = buildBossEncounterPlan({
+        mode: "hard",
+        round: 7,
+        previousFamilyStreak: null,
+        previousFamilyStreakCount: 0,
+        recentPatterns: [],
+        recentThemes: [],
+        queueSeed,
+      });
+
+      expect(plan.themeId).toBe("lane_intro");
+      expect(plan.queue).not.toContain("center_swing");
+      expect(plan.queue.some((id) => id === "mirror_dive" || id === "door_jam")).toBe(true);
+    }
+  });
+
   it("surfaces the new trajectory-based patterns in representative hard fixtures", () => {
     const cases = [
-      { round: 8, queueSeed: 14833, patternId: "diagonal_rain" },
-      { round: 8, queueSeed: 11864, patternId: "cross_arc" },
-      { round: 8, queueSeed: 11865, patternId: "fan_arc" },
-      { round: 8, queueSeed: 26696, patternId: "bounce_drive" },
+      { round: 8, queueSeed: 15889, patternId: "diagonal_rain" },
+      { round: 8, queueSeed: 12713, patternId: "cross_arc" },
+      { round: 8, queueSeed: 12711, patternId: "fan_arc" },
+      { round: 8, queueSeed: 28603, patternId: "bounce_drive" },
+      { round: 8, queueSeed: 19067, patternId: "glider_cross" },
+      { round: 8, queueSeed: 28601, patternId: "split_rebound" },
     ] as const;
 
     for (const { round, queueSeed, patternId } of cases) {
@@ -397,5 +429,19 @@ describe("boss patterns", () => {
 
       expect(plan.queue).toContain(patternId);
     }
+  });
+
+  it("surfaces glider_stack in a representative nightmare fixture", () => {
+    const plan = buildBossEncounterPlan({
+      mode: "nightmare",
+      round: 8,
+      previousFamilyStreak: null,
+      previousFamilyStreakCount: 0,
+      recentPatterns: [],
+      recentThemes: [],
+      queueSeed: 15393,
+    });
+
+    expect(plan.queue).toContain("glider_stack");
   });
 });

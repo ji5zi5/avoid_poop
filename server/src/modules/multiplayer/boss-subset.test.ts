@@ -8,22 +8,22 @@ const fixtures = [
     mode: 'hard' as const,
     round: 2,
     queueSeed: 4004,
-    expectedThemeId: 'corridor_intro',
-    expectedQueue: ['edge_tunnel', 'switch_press', 'zigzag_corridor', 'door_jam'],
+    expectedThemeId: 'lane_intro',
+    expectedQueue: ['zigzag_corridor', 'switch_press', 'crossfall_mix', 'door_jam'],
   },
   {
     mode: 'hard' as const,
     round: 4,
     queueSeed: 5005,
-    expectedThemeId: 'corridor_intro',
-    expectedQueue: ['shifting_corridor', 'zigzag_corridor', 'switch_press', 'door_jam'],
+    expectedThemeId: 'lane_intro',
+    expectedQueue: ['edge_tunnel', 'switch_press', 'crossfall_mix', 'door_jam'],
   },
   {
     mode: 'hard' as const,
     round: 7,
     queueSeed: 6006,
-    expectedThemeId: 'lane_intro',
-    expectedQueue: ['zigzag_corridor', 'edge_tunnel', 'crossfall_mix', 'center_swing'],
+    expectedThemeId: 'corridor_intro',
+    expectedQueue: ['shifting_corridor', 'center_break', 'switch_press', 'door_jam'],
   },
 ];
 

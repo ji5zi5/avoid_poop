@@ -626,6 +626,25 @@ describe("game engine", () => {
     expect(state.hazards.some((hazard) => (hazard.gravity ?? 0) > 0)).toBe(true);
   });
 
+  it("spawns mirrored angled hazards in mirror_dive without relying on giant center swings", () => {
+    const state = createGameEngine("hard");
+    state.round = 10;
+    state.currentPhase = "boss";
+    state.bossPatternQueue = ["mirror_dive"];
+    state.bossPatternActiveId = null;
+    state.bossPatternIndex = 0;
+    state.bossEncounterDuration = 30;
+
+    for (let step = 0; step < 6 && state.hazards.length < 2; step += 1) {
+      updateGame(state, 0.25, 0);
+    }
+
+    expect(state.hazards.length).toBeGreaterThanOrEqual(2);
+    expect(state.hazards.some((hazard) => (hazard.velocityX ?? 0) < 0)).toBe(true);
+    expect(state.hazards.some((hazard) => (hazard.velocityX ?? 0) > 0)).toBe(true);
+    expect(state.hazards.some((hazard) => hazard.variant === "giant")).toBe(false);
+  });
+
   it("spawns a fan spread in fan_arc", () => {
     const state = createGameEngine("hard");
     state.round = 12;
@@ -661,6 +680,79 @@ describe("game engine", () => {
     expect(state.hazards.some((hazard) => (hazard.bouncesRemaining ?? 0) >= 1)).toBe(true);
   });
 
+  it("spawns split boss hazards in shatter_lane", () => {
+    const state = createGameEngine("hard");
+    state.round = 12;
+    state.currentPhase = "boss";
+    state.bossPatternQueue = ["shatter_lane"];
+    state.bossPatternActiveId = null;
+    state.bossPatternIndex = 0;
+    state.bossEncounterDuration = 30;
+
+    for (let step = 0; step < 6 && state.hazards.length === 0; step += 1) {
+      updateGame(state, 0.25, 0);
+    }
+
+    expect(state.hazards.some((hazard) => hazard.behavior === "split")).toBe(true);
+    expect(state.hazards.some((hazard) => (hazard.splitChildCount ?? 0) >= 3)).toBe(true);
+  });
+
+  it("spawns side-entry gliders in glider_cross", () => {
+    const state = createGameEngine("hard");
+    state.round = 12;
+    state.currentPhase = "boss";
+    state.bossPatternQueue = ["glider_cross"];
+    state.bossPatternActiveId = null;
+    state.bossPatternIndex = 0;
+    state.bossEncounterDuration = 30;
+
+    for (let step = 0; step < 6 && state.hazards.length < 2; step += 1) {
+      updateGame(state, 0.25, 0);
+    }
+
+    expect(state.hazards.length).toBeGreaterThanOrEqual(2);
+    expect(state.hazards.some((hazard) => hazard.x < 40)).toBe(true);
+    expect(state.hazards.some((hazard) => hazard.x > state.width - 40)).toBe(true);
+    expect(state.hazards.some((hazard) => (hazard.velocityX ?? 0) < 0)).toBe(true);
+    expect(state.hazards.some((hazard) => (hazard.velocityX ?? 0) > 0)).toBe(true);
+  });
+
+  it("spawns layered side-entry gliders in glider_stack", () => {
+    const state = createGameEngine("hard");
+    state.round = 12;
+    state.currentPhase = "boss";
+    state.bossPatternQueue = ["glider_stack"];
+    state.bossPatternActiveId = null;
+    state.bossPatternIndex = 0;
+    state.bossEncounterDuration = 30;
+
+    for (let step = 0; step < 8 && state.hazards.length < 3; step += 1) {
+      updateGame(state, 0.25, 0);
+    }
+
+    const variedHeights = new Set(state.hazards.map((hazard) => Math.round(hazard.y / 10)));
+    expect(state.hazards.length).toBeGreaterThanOrEqual(3);
+    expect(variedHeights.size).toBeGreaterThanOrEqual(2);
+    expect(state.hazards.every((hazard) => (hazard.velocityX ?? 0) !== 0)).toBe(true);
+  });
+
+  it("mixes splitters and bouncers in split_rebound", () => {
+    const state = createGameEngine("hard");
+    state.round = 12;
+    state.currentPhase = "boss";
+    state.bossPatternQueue = ["split_rebound"];
+    state.bossPatternActiveId = null;
+    state.bossPatternIndex = 0;
+    state.bossEncounterDuration = 30;
+
+    for (let step = 0; step < 8 && state.hazards.length < 2; step += 1) {
+      updateGame(state, 0.25, 0);
+    }
+
+    expect(state.hazards.some((hazard) => hazard.behavior === "split")).toBe(true);
+    expect(state.hazards.some((hazard) => hazard.behavior === "bounce")).toBe(true);
+  });
+
   it("keeps sampled hard boss encounters dodgeable from the real starting position", () => {
     const sampledRounds = [2, 4, 6, 8, 10, 12, 14];
     const sampledSeeds = [1, 17, 19773, 24716, 29659, 34602, 39545];
@@ -686,16 +778,18 @@ describe("game engine", () => {
 
   it("keeps representative late hard-only themes dodgeable across their theme seeds", () => {
     const cases = [
-      { round: 12, seed: 19773, themeId: "corridor_switch" },
-      { round: 12, seed: 24716, themeId: "trap_weave" },
+      { round: 12, seed: 14830, themeId: "corridor_switch" },
+      { round: 12, seed: 19773, themeId: "trap_weave" },
+      { round: 12, seed: 24716, themeId: "rush_detour" },
       { round: 12, seed: 29659, themeId: "residue_fakeout" },
-      { round: 12, seed: 34602, themeId: "forced_cross" },
+      { round: 12, seed: 34602, themeId: "split_crucible" },
       { round: 12, seed: 39545, themeId: "residue_storm" },
       { round: 12, seed: 44488, themeId: "residue_denial" },
-      { round: 14, seed: 19773, themeId: "corridor_switch" },
-      { round: 14, seed: 24716, themeId: "trap_weave" },
+      { round: 14, seed: 14830, themeId: "corridor_switch" },
+      { round: 14, seed: 19773, themeId: "trap_weave" },
+      { round: 14, seed: 24716, themeId: "rush_detour" },
       { round: 14, seed: 29659, themeId: "residue_fakeout" },
-      { round: 14, seed: 34602, themeId: "forced_cross" },
+      { round: 14, seed: 34602, themeId: "split_crucible" },
       { round: 14, seed: 39545, themeId: "residue_storm" },
       { round: 14, seed: 44488, themeId: "residue_denial" },
     ] as const;
@@ -748,12 +842,13 @@ describe("game engine", () => {
 
   it("keeps movement-heavy boss themes from allowing passive center play", () => {
     const cases = [
-      { round: 8, seed: 14830, themeId: "edge_rotation" },
+      { round: 8, seed: 15889, themeId: "edge_rotation" },
       { round: 8, seed: 19773, themeId: "corridor_switch" },
-      { round: 12, seed: 19773, themeId: "corridor_switch" },
-      { round: 12, seed: 24716, themeId: "trap_weave" },
+      { round: 12, seed: 14830, themeId: "corridor_switch" },
+      { round: 12, seed: 19773, themeId: "trap_weave" },
+      { round: 12, seed: 24716, themeId: "rush_detour" },
       { round: 12, seed: 29659, themeId: "residue_fakeout" },
-      { round: 12, seed: 34602, themeId: "forced_cross" },
+      { round: 12, seed: 34602, themeId: "split_crucible" },
       { round: 12, seed: 39545, themeId: "residue_storm" },
       { round: 12, seed: 44488, themeId: "residue_denial" },
     ] as const;

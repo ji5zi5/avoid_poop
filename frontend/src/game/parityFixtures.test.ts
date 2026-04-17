@@ -111,9 +111,9 @@ const parityFixtureMatrix = [
     },
     expectedBoss: {
       themeId: "lane_intro",
-      queue: ["edge_tunnel", "lane_flipback", "switch_press", "center_swing"],
+      queue: ["mirror_dive", "center_lane_weave", "crossfall_mix", "door_jam"],
       nextQueueSeed: 1_327_764_137,
-      minEncounterDuration: 7.1,
+      minEncounterDuration: 7.7,
     },
   },
   {
@@ -133,9 +133,9 @@ const parityFixtureMatrix = [
     },
     expectedBoss: {
       themeId: "lane_intro",
-      queue: ["edge_tunnel", "lane_flipback", "staircase_corridor", "center_swing"],
+      queue: ["edge_tunnel", "center_lane_weave", "switch_press", "door_jam"],
       nextQueueSeed: 1_163_820_235,
-      minEncounterDuration: 7.2,
+      minEncounterDuration: 7.24,
     },
   },
 ];
