@@ -2482,22 +2482,22 @@ function buildRecentArchetypes(recentPatterns: readonly BossPatternId[], queue: 
 function getNightmareThemeWeight(theme: BossThemeDefinition, round: number) {
   let weight = 1;
   if (theme.mode === "nightmare") {
-    weight += 2.6;
+    weight += 0.9;
   }
   if (theme.roundStart >= 8) {
-    weight += 1.2;
-  } else if (theme.roundStart >= 6) {
-    weight += 0.8;
-  } else if (theme.roundStart >= 4) {
     weight += 0.35;
+  } else if (theme.roundStart >= 6) {
+    weight += 0.2;
+  } else if (theme.roundStart >= 4) {
+    weight += 0.1;
   }
   if (theme.id === "pressure_intro" || theme.id === "lane_intro" || theme.id === "corridor_intro" || theme.id === "trap_intro") {
-    weight *= round >= 10 ? 0.25 : 0.45;
+    weight *= round >= 10 ? 0.6 : 0.8;
   }
   if (theme.themeFamilies.includes("trap") && round >= 8) {
-    weight += 0.25;
+    weight += 0.08;
   }
-  return Math.max(0.18, weight);
+  return Math.max(0.45, weight);
 }
 
 function pickTheme(seed: number, availableThemes: BossThemeDefinition[], recentThemes: readonly BossThemeId[], mode: GameState["mode"], round: number) {

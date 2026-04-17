@@ -469,9 +469,9 @@ describe("boss patterns", () => {
 
   it("surfaces nightmare-only advanced patterns in representative nightmare fixtures", () => {
     const cases = [
-      { round: 8, queueSeed: 15393, patternId: "glider_stack" },
-      { round: 10, queueSeed: 29671, patternId: "wall_bounce_glider" },
-      { round: 10, queueSeed: 37080, patternId: "layered_barrage" },
+      { round: 12, queueSeed: 24747, patternId: "glider_stack" },
+      { round: 12, queueSeed: 36068, patternId: "wall_bounce_glider" },
+      { round: 12, queueSeed: 40278, patternId: "layered_barrage" },
     ] as const;
 
     for (const { round, queueSeed, patternId } of cases) {

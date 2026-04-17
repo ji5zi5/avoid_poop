@@ -854,14 +854,14 @@ describe("game engine", () => {
 
   it("keeps representative nightmare-only themes dodgeable across their theme seeds", () => {
     const cases = [
-      { round: 12, seed: 21207, themeId: "arc_storm" },
-      { round: 12, seed: 23650, themeId: "arc_pressure" },
-      { round: 12, seed: 28564, themeId: "rebound_labyrinth" },
-      { round: 12, seed: 31218, themeId: "recoil_pivot" },
-      { round: 12, seed: 33872, themeId: "ricochet_chamber" },
-      { round: 12, seed: 36526, themeId: "rotobounce_core" },
-      { round: 12, seed: 39180, themeId: "layered_cataclysm" },
-      { round: 12, seed: 41835, themeId: "bait_lockdown" },
+      { round: 12, seed: 24747, themeId: "arc_storm" },
+      { round: 12, seed: 26717, themeId: "arc_pressure" },
+      { round: 12, seed: 31858, themeId: "rebound_labyrinth" },
+      { round: 12, seed: 33963, themeId: "recoil_pivot" },
+      { round: 12, seed: 36068, themeId: "ricochet_chamber" },
+      { round: 12, seed: 38173, themeId: "rotobounce_core" },
+      { round: 12, seed: 40278, themeId: "layered_cataclysm" },
+      { round: 12, seed: 42383, themeId: "bait_lockdown" },
     ] as const;
     const failures: string[] = [];
 
