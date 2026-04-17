@@ -57,6 +57,32 @@ function drawGiantHazard(ctx: CanvasRenderingContext2D, hazard: MultiplayerGameS
   ctx.fillRect(centerX - block * 2, y + block * 6, block * 2, block);
 }
 
+function drawBounceMarker(ctx: CanvasRenderingContext2D, hazard: MultiplayerGameSnapshot['hazards'][number]) {
+  const markerX = hazard.x + hazard.width / 2;
+  const markerY = hazard.y + hazard.height + 4;
+  const markerRadius = Math.max(8, hazard.width * 0.36);
+
+  ctx.strokeStyle = 'rgba(70, 63, 26, 0.5)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(markerX, markerY, markerRadius, 0, Math.PI);
+  ctx.stroke();
+
+  if ((hazard.bouncesRemaining ?? 0) < 2) {
+    return;
+  }
+
+  ctx.strokeStyle = 'rgba(255, 248, 241, 0.92)';
+  ctx.beginPath();
+  ctx.arc(markerX, markerY - 6, Math.max(5, markerRadius - 4), 0, Math.PI);
+  ctx.stroke();
+
+  if ((hazard.bouncesRemaining ?? 0) >= 3) {
+    ctx.fillStyle = 'rgba(255, 248, 241, 0.92)';
+    ctx.fillRect(markerX - 5, markerY - 12, 10, 2);
+  }
+}
+
 function drawHazard(ctx: CanvasRenderingContext2D, hazard: MultiplayerGameSnapshot['hazards'][number]) {
   if (hazard.variant === 'giant') {
     drawGiantHazard(ctx, hazard);
@@ -72,11 +98,7 @@ function drawHazard(ctx: CanvasRenderingContext2D, hazard: MultiplayerGameSnapsh
     ctx.fillRect(hazard.x + hazard.width / 2 - 2, hazard.y + 2, 4, 6);
     ctx.fillRect(hazard.x + hazard.width / 2 - 6, hazard.y + 6, 12, 2);
   } else if (hazard.behavior === 'bounce') {
-    ctx.strokeStyle = 'rgba(70, 63, 26, 0.5)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(hazard.x + hazard.width / 2, hazard.y + hazard.height + 4, Math.max(8, hazard.width * 0.36), 0, Math.PI);
-    ctx.stroke();
+    drawBounceMarker(ctx, hazard);
   }
 }
 

@@ -20,7 +20,11 @@ export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, on
   const [selectionOpen, setSelectionOpen] = useState(false);
   const [singleOpen, setSingleOpen] = useState(false);
   const [selectedMode, setSelectedMode] = useState<GameMode>("normal");
-  const [bestScores, setBestScores] = useState<{ normal: number | null; hard: number | null }>({ normal: null, hard: null });
+  const [bestScores, setBestScores] = useState<{ normal: number | null; hard: number | null; nightmare: number | null }>({
+    normal: null,
+    hard: null,
+    nightmare: null,
+  });
 
   useEffect(() => {
     api.records()
@@ -28,6 +32,7 @@ export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, on
         setBestScores({
           normal: response.best.normal?.score ?? null,
           hard: response.best.hard?.score ?? null,
+          nightmare: response.best.nightmare?.score ?? null,
         });
       })
       .catch((caught) => {
@@ -39,10 +44,11 @@ export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, on
 
   const bestScoreLabel = useMemo(() => {
     const score = singleOpen
-      ? selectedMode === "hard" ? bestScores.hard : bestScores.normal
-      : Math.max(bestScores.normal ?? 0, bestScores.hard ?? 0) || null;
+      ? bestScores[selectedMode]
+      : Math.max(bestScores.normal ?? 0, bestScores.hard ?? 0, bestScores.nightmare ?? 0) || null;
     return score === null ? copy.records.none : `${score.toLocaleString()} pts`;
-  }, [bestScores.hard, bestScores.normal, selectedMode, singleOpen]);
+  }, [bestScores, selectedMode, singleOpen]);
+  const isNightmareSelected = selectedMode === "nightmare";
 
   return (
     <section className="menu-screen simple-menu-screen">
@@ -101,9 +107,22 @@ export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, on
                     <div className="segmented-switch home-mode-switch" role="tablist" aria-label={copy.menu.modeLabel}>
                       <button type="button" className={selectedMode === "normal" ? "segmented-switch__item is-active" : "segmented-switch__item"} onClick={() => setSelectedMode("normal")}>{copy.menu.modeShort.normal}</button>
                       <button type="button" className={selectedMode === "hard" ? "segmented-switch__item is-active" : "segmented-switch__item"} onClick={() => setSelectedMode("hard")}>{copy.menu.modeShort.hard}</button>
+                      <button type="button" className={selectedMode === "nightmare" ? "segmented-switch__item is-active" : "segmented-switch__item"} onClick={() => setSelectedMode("nightmare")}>{copy.menu.modeShort.nightmare}</button>
                     </div>
-                    <div className="home-mode-summary">{selectedMode === "normal" ? copy.menu.normalSummary : copy.menu.hardSummary}</div>
-                    <button className="home-start-button home-start-button--hero" onClick={() => onPlay(selectedMode)}>{copy.menu.start}</button>
+                    <div className={`home-mode-summary ${isNightmareSelected ? "is-nightmare" : ""}`}>
+                      {selectedMode === "normal"
+                        ? copy.menu.normalSummary
+                        : selectedMode === "hard"
+                          ? copy.menu.hardSummary
+                          : copy.menu.nightmareSummary}
+                    </div>
+                    {isNightmareSelected ? (
+                      <div className="home-mode-alert" role="status" aria-live="polite">
+                        <span>NIGHTMARE</span>
+                        <strong>매 라운드 보스 · 궤적형 패턴 강화</strong>
+                      </div>
+                    ) : null}
+                    <button className={`home-start-button home-start-button--hero ${isNightmareSelected ? "is-nightmare" : ""}`} onClick={() => onPlay(selectedMode)}>{copy.menu.start}</button>
                     <button className="ghost-button subtle-button menu-close-button" onClick={() => setSingleOpen(false)}>{copy.records.back}</button>
                   </>
                 )}

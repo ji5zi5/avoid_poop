@@ -15,6 +15,10 @@ function formatPercent(value: number) {
   return `${Math.round(value)}%`;
 }
 
+function getModeLabel(mode: RecordsResponse["recent"][number]["mode"]) {
+  return mode === "normal" ? copy.records.normal : mode === "hard" ? copy.records.hard : copy.records.nightmare;
+}
+
 export function CareerPage({ onBack, onSessionExpired }: Props) {
   const [records, setRecords] = useState<RecordsResponse | null>(null);
   const [error, setError] = useState("");
@@ -80,6 +84,13 @@ export function CareerPage({ onBack, onSessionExpired }: Props) {
           : copy.records.none,
       },
       {
+        label: copy.records.nightmareBest,
+        value: records.best.nightmare ? records.best.nightmare.score.toString() : "--",
+        meta: records.best.nightmare
+          ? `${copy.records.roundEntry(records.best.nightmare.score, records.best.nightmare.reachedRound)} · ${formatSecondsLabel(records.best.nightmare.survivalTime)}`
+          : copy.records.none,
+      },
+      {
         label: copy.records.multiplayerBest,
         value: records.multiplayer.stats.bestPlacement ? `${records.multiplayer.stats.bestPlacement}등` : "--",
         meta: `${copy.records.multiplayerMatches} ${records.multiplayer.stats.matchesPlayed}`,
@@ -126,7 +137,7 @@ export function CareerPage({ onBack, onSessionExpired }: Props) {
                     {recentSingleEntries.map((entry) => (
                       <article key={entry.id} className="records-feed-card career-feed-card">
                         <div className="records-feed-card__header">
-                          <strong>{entry.mode === "normal" ? copy.records.normal : copy.records.hard}</strong>
+                          <strong>{getModeLabel(entry.mode)}</strong>
                           <span>{entry.clear ? copy.results.outcomeClear : copy.results.outcomeFail}</span>
                         </div>
                         <span>{copy.records.roundEntry(entry.score, entry.reachedRound)}</span>

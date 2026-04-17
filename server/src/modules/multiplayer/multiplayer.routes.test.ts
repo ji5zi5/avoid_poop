@@ -89,6 +89,32 @@ test('creating a room returns the room code and host assignment', async () => {
   await app.close();
 });
 
+test('creating a nightmare room preserves the higher difficulty option', async () => {
+  const app = await createApp();
+  const host = await signupAndGetCookie(app, 'nightmare_host');
+
+  const response = await app.inject({
+    method: 'POST',
+    url: '/api/multiplayer/rooms',
+    cookies: {
+      avoid_poop_session: host.cookie,
+    },
+    payload: {
+      options: {
+        difficulty: 'nightmare',
+        visibility: 'public',
+        bodyBlock: true,
+        debuffTier: 3,
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 201);
+  assert.equal(response.json().options.difficulty, 'nightmare');
+
+  await app.close();
+});
+
 test('room-specific max players caps joins before the global ceiling', async () => {
   const app = await createApp();
   const host = await signupAndGetCookie(app, 'cap_host');

@@ -18,6 +18,14 @@ function buildSplitVelocityProfile(count: number) {
   return Array.from({ length: count }, (_, index) => (index - midpoint) / maxOffset);
 }
 
+function isNightmareMode(state: GameState) {
+  return state.mode === "nightmare";
+}
+
+function isHardOrAbove(state: GameState) {
+  return state.mode !== "normal";
+}
+
 export function updateGame(state: GameState, delta: number, direction: number) {
   if (state.gameOver) {
     return state;
@@ -129,8 +137,8 @@ export function updateGame(state: GameState, delta: number, direction: number) {
         hazard.speed = -Math.max(230, Math.abs(hazard.speed) * 0.94);
         hazard.gravity = 390;
         hazard.velocityX = hazard.x + hazard.width / 2 < state.width / 2
-          ? state.mode === "hard" ? 110 : 74
-          : state.mode === "hard" ? -110 : -74;
+          ? isNightmareMode(state) ? 132 : isHardOrAbove(state) ? 110 : 74
+          : isNightmareMode(state) ? -132 : isHardOrAbove(state) ? -110 : -74;
         return;
       }
 
@@ -148,7 +156,11 @@ export function updateGame(state: GameState, delta: number, direction: number) {
   resolveCollisions(state);
   updateRounds(state);
   if (allowRunEconomy) {
-    state.score += delta * (state.currentPhase === "boss" ? (state.mode === "hard" ? 30 : 24) : state.mode === "hard" ? 17 : 14);
+    state.score += delta * (
+      state.currentPhase === "boss"
+        ? isNightmareMode(state) ? 38 : isHardOrAbove(state) ? 30 : 24
+        : isNightmareMode(state) ? 22 : isHardOrAbove(state) ? 17 : 14
+    );
   }
   return state;
 }

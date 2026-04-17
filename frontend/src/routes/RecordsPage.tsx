@@ -14,7 +14,7 @@ type Props = {
   onSessionExpired: () => void;
 };
 
-type RankingTab = "normal" | "hard" | "multiplayer";
+type RankingTab = "normal" | "hard" | "nightmare" | "multiplayer";
 type BoardEntry = SingleLeaderboardEntry | MultiplayerLeaderboardEntry;
 
 function isMultiplayerEntry(entry: BoardEntry): entry is MultiplayerLeaderboardEntry {
@@ -64,6 +64,8 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
     const remainingEntries = selectedEntries.slice(3);
     const boardLabel = rankingTab === "multiplayer"
       ? "멀티"
+      : rankingTab === "nightmare"
+        ? copy.records.nightmare
       : rankingTab === "hard"
         ? copy.records.hard
         : copy.records.normal;
@@ -79,7 +81,7 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
 
   return (
     <section className="records-screen">
-      <div className="console-panel console-panel--primary console-panel--compact records-hub">
+      <div className={`console-panel console-panel--primary console-panel--compact records-hub ${rankingTab === "nightmare" ? "is-nightmare" : ""}`}>
         <div className="panel-heading records-heading">
           <span className="records-badge">{copy.records.badge}</span>
           <h2>{copy.records.title}</h2>
@@ -96,13 +98,14 @@ export function RecordsPage({ onBack, onOpenCareer, onSessionExpired }: Props) {
                 <div className="segmented-switch records-tabs" role="tablist" aria-label={copy.records.playerRanking}>
                   <button type="button" className={rankingTab === "normal" ? "segmented-switch__item is-active" : "segmented-switch__item"} onClick={() => setRankingTab("normal")}>{copy.records.normal}</button>
                   <button type="button" className={rankingTab === "hard" ? "segmented-switch__item is-active" : "segmented-switch__item"} onClick={() => setRankingTab("hard")}>{copy.records.hard}</button>
+                  <button type="button" className={rankingTab === "nightmare" ? "segmented-switch__item is-active" : "segmented-switch__item"} onClick={() => setRankingTab("nightmare")}>{copy.records.nightmare}</button>
                   <button type="button" className={rankingTab === "multiplayer" ? "segmented-switch__item is-active" : "segmented-switch__item"} onClick={() => setRankingTab("multiplayer")}>멀티</button>
                 </div>
                 <button className="ghost-button subtle-button" type="button" onClick={onOpenCareer}>{copy.records.viewCareer}</button>
               </div>
             </div>
 
-            <section className="records-hero-band">
+            <section className={`records-hero-band ${rankingTab === "nightmare" ? "is-nightmare" : ""}`}>
               <div className="records-hero-copy records-hero-copy--full">
                 <div>
                   <span className="panel-kicker">{copy.records.spotlight}</span>

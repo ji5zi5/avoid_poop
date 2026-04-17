@@ -1,11 +1,12 @@
 import { getDb } from '../../db/client.js';
 import { toIsoTimestamp } from '../../utils/timestamps.js';
+import type { GameMode } from '../../../../shared/src/contracts/index.js';
 
 export type DbRecord = {
   id: number;
   userId: number;
   runSessionId: string | null;
-  mode: 'normal' | 'hard';
+  mode: GameMode;
   score: number;
   reachedRound: number;
   survivalTime: number;
@@ -27,7 +28,7 @@ export type DbSingleLeaderboardEntry = {
 export type DbSinglePlayerRunSession = {
   id: string;
   userId: number;
-  mode: 'normal' | 'hard';
+  mode: GameMode;
   waveSeed: number;
   bossSeed: number;
   startedAt: string;
@@ -179,7 +180,7 @@ export async function listRecentRecords(userId: number) {
   return rows.map(normalizeRecordRow);
 }
 
-export async function findBestRecordByMode(userId: number, mode: 'normal' | 'hard') {
+export async function findBestRecordByMode(userId: number, mode: GameMode) {
   const db = await getDb();
   if (db.provider === 'sqlite') {
     const stmt = db.db.prepare(
@@ -390,7 +391,7 @@ export async function getSinglePlayerProfile(userId: number) {
   return row;
 }
 
-export async function listSingleLeaderboard(mode: 'normal' | 'hard', limit = 20) {
+export async function listSingleLeaderboard(mode: GameMode, limit = 20) {
   const db = await getDb();
   if (db.provider === 'sqlite') {
     const rows = db.db.prepare(

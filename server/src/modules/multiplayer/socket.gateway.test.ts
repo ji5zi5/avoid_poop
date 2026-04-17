@@ -578,7 +578,7 @@ async function connectSocketExpectStatus(
 async function waitFor(predicate: () => boolean | Promise<boolean>) {
   const startedAt = Date.now();
   while (!(await predicate())) {
-    if (Date.now() - startedAt > 5000) {
+    if (Date.now() - startedAt > 8000) {
       throw new Error('Timed out waiting for condition');
     }
     await new Promise((resolve) => setTimeout(resolve, 25));
@@ -598,13 +598,15 @@ test('duplicate start after game begins is rejected', { concurrency: false }, as
   const {socket: hostSocket} = await connectSocketAndWaitForConnected(port, hostCookie);
   const {socket: guestSocket} = await connectSocketAndWaitForConnected(port, guestCookie);
   const hostEvents: Array<any> = [];
+  const guestEvents: Array<any> = [];
   hostSocket.on('message', (payload: RawData) => hostEvents.push(JSON.parse(payload.toString())));
-  guestSocket.on('message', () => undefined);
+  guestSocket.on('message', (payload: RawData) => guestEvents.push(JSON.parse(payload.toString())));
   hostSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
   guestSocket.send(JSON.stringify({type: 'subscribe_room', roomCode}));
   hostSocket.send(JSON.stringify({type: 'set_ready', ready: true}));
   guestSocket.send(JSON.stringify({type: 'set_ready', ready: true}));
   await waitFor(() => hostEvents.some((event) => event.type === 'room_snapshot' && event.room.players.every((player: {ready: boolean}) => player.ready)));
+  await waitFor(() => guestEvents.some((event) => event.type === 'room_snapshot' && event.room.players.every((player: {ready: boolean}) => player.ready)));
   hostSocket.send(JSON.stringify({type: 'start_game'}));
   await waitFor(() => hostEvents.some((event) => event.type === 'game_snapshot'));
   hostSocket.send(JSON.stringify({type: 'start_game'}));

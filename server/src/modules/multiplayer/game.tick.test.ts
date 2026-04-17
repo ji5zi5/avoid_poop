@@ -5,7 +5,7 @@ import {MultiplayerGameService} from './game.service.js';
 
 const service = new MultiplayerGameService();
 
-function createRoomSummary(difficulty: 'normal' | 'hard' = 'normal', bodyBlock = false, debuffTier: 2 | 3 = 2) {
+function createRoomSummary(difficulty: 'normal' | 'hard' | 'nightmare' = 'normal', bodyBlock = false, debuffTier: 2 | 3 = 2) {
   return {
     roomCode: 'ROOM42',
     hostUserId: 1,
@@ -149,6 +149,28 @@ test('hard rooms spawn hazards sooner than normal rooms', () => {
   assert.ok(hardGame.hazards.length >= 1);
   assert.equal(typeof hardGame.hazards[0]?.variant, 'string');
   assert.equal(hardGame.hazards[0]?.owner, 'wave');
+});
+
+test('nightmare rooms spawn hazards sooner than hard rooms', () => {
+  const hardGame = service.createGame(createRoomSummary('hard'));
+  const nightmareGame = service.createGame(createRoomSummary('nightmare'));
+
+  service.tick(hardGame, 0.78, 1_000);
+  service.tick(nightmareGame, 0.78, 1_000);
+
+  assert.equal(hardGame.hazards.length, 0);
+  assert.ok(nightmareGame.hazards.length >= 1);
+});
+
+test('nightmare rooms enter a boss on every round after the first', () => {
+  const game = service.createGame(createRoomSummary('nightmare'));
+  game.elapsedInPhase = 7.4;
+
+  service.tick(game, 0.2, 2_000);
+
+  assert.equal(game.round, 2);
+  assert.equal(game.phase, 'boss');
+  assert.ok(game.bossPatternQueue.length > 0);
 });
 
 test('debuff item spawn and collect targets a random alive opponent', () => {

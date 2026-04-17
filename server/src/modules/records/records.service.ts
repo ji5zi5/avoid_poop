@@ -139,14 +139,16 @@ function rankMultiplayer(entries: DbMultiplayerLeaderboardEntry[]) {
 }
 
 export async function getRecordsForUser(userId: number): Promise<RecordsResponse> {
-  const [profile, normalBest, hardBest, recent, multiplayer, normalLeaderboard, hardLeaderboard, multiplayerLeaderboard] = await Promise.all([
+  const [profile, normalBest, hardBest, nightmareBest, recent, multiplayer, normalLeaderboard, hardLeaderboard, nightmareLeaderboard, multiplayerLeaderboard] = await Promise.all([
     getSinglePlayerProfile(userId),
     findBestRecordByMode(userId, 'normal'),
     findBestRecordByMode(userId, 'hard'),
+    findBestRecordByMode(userId, 'nightmare'),
     listRecentRecords(userId),
     getMultiplayerRecordsForUser(userId),
     listSingleLeaderboard('normal'),
     listSingleLeaderboard('hard'),
+    listSingleLeaderboard('nightmare'),
     listMultiplayerLeaderboard(),
   ]);
 
@@ -154,13 +156,15 @@ export async function getRecordsForUser(userId: number): Promise<RecordsResponse
     profile,
     best: {
       normal: normalBest ?? undefined,
-      hard: hardBest ?? undefined
+      hard: hardBest ?? undefined,
+      nightmare: nightmareBest ?? undefined,
     },
     recent,
     multiplayer,
     leaderboard: {
       normal: rankSingle(normalLeaderboard),
       hard: rankSingle(hardLeaderboard),
+      nightmare: rankSingle(nightmareLeaderboard),
       multiplayer: rankMultiplayer(multiplayerLeaderboard)
     }
   };

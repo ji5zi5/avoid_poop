@@ -55,6 +55,17 @@ const sampleRecords: RecordsResponse = {
       verified: true,
       createdAt: '2026-04-13T09:05:00.000Z',
     },
+    nightmare: {
+      id: 13,
+      userId: 7,
+      mode: 'nightmare',
+      score: 444,
+      reachedRound: 7,
+      survivalTime: 41.2,
+      clear: false,
+      verified: true,
+      createdAt: '2026-04-13T09:07:00.000Z',
+    },
   },
   recent: [
     {
@@ -132,6 +143,18 @@ const sampleRecords: RecordsResponse = {
         createdAt: '2026-04-13T09:15:00.000Z',
       },
     ],
+    nightmare: [
+      {
+        rank: 1,
+        userId: 10,
+        username: 'delta',
+        score: 444,
+        reachedRound: 7,
+        survivalTime: 41.2,
+        clear: false,
+        createdAt: '2026-04-13T09:07:00.000Z',
+      },
+    ],
     multiplayer: [
       {
         rank: 1,
@@ -184,6 +207,10 @@ describe('RecordsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '하드' }));
     await waitFor(() => expect(screen.getAllByText('charlie').length).toBeGreaterThan(0));
     expect(screen.getAllByText('점수 410 / 8라운드').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: '나이트메어' }));
+    await waitFor(() => expect(screen.getAllByText('delta').length).toBeGreaterThan(0));
+    expect(screen.getAllByText('점수 444 / 7라운드').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: '멀티' }));
     await waitFor(() => expect(screen.getAllByText((_, node) => (node?.textContent ?? '').includes('멀티 승리 수')).length).toBeGreaterThan(0));

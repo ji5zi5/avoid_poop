@@ -8,6 +8,9 @@ import { syncWaveDirectorForRound } from "./spawn.js";
 const PHASE_ANNOUNCEMENT_DURATION = 1.4;
 
 function currentRoundDuration(state: GameState) {
+  if (state.mode === "nightmare") {
+    return ROUND_DURATION - 1.5;
+  }
   return state.mode === "hard" ? ROUND_DURATION : ROUND_DURATION + 2;
 }
 
@@ -16,6 +19,9 @@ function currentBossDuration(state: GameState) {
 }
 
 function shouldEnterBoss(state: GameState, nextRound: number) {
+  if (state.mode === "nightmare") {
+    return nextRound >= 2;
+  }
   return state.mode === "hard" ? nextRound >= 2 && nextRound % 2 === 0 : nextRound >= 3 && nextRound % 3 === 0;
 }
 
@@ -63,7 +69,9 @@ export function updateRounds(state: GameState) {
     const previousLives = state.player.lives;
     state.round = nextRound;
     state.reachedRound = Math.max(state.reachedRound, state.round);
-    state.player.lives = Math.min(3, state.player.lives + 1);
+    if (state.mode !== "nightmare") {
+      state.player.lives = Math.min(3, state.player.lives + 1);
+    }
     state.elapsedInPhase = 0;
     state.spawnTimer = 0;
     state.pendingBossClearAnnouncement = false;

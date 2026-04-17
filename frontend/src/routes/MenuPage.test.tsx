@@ -30,6 +30,7 @@ describe('MenuPage', () => {
       best: {
         normal: {score: 58200},
         hard: {score: 82400},
+        nightmare: {score: 91300},
       },
     });
   });
@@ -47,11 +48,13 @@ describe('MenuPage', () => {
       />,
     );
 
-    await waitFor(() => expect(screen.getAllByText('82,400 pts').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText('91,300 pts').length).toBeGreaterThan(0));
 
     fireEvent.click(screen.getAllByText('게임 시작')[0]);
     expect(screen.getByText('싱글').textContent).toBe('싱글');
     expect(screen.getByText('멀티').textContent).toBe('멀티');
+    fireEvent.click(screen.getByRole('button', {name: '싱글'}));
+    expect(screen.getByRole('button', {name: '나이트메어'})).toBeTruthy();
   });
 
   it('shows the fetched best score for the selected single-player mode', async () => {
@@ -67,7 +70,7 @@ describe('MenuPage', () => {
       />,
     );
 
-    await waitFor(() => expect(screen.getAllByText('82,400 pts').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText('91,300 pts').length).toBeGreaterThan(0));
 
     fireEvent.click(screen.getAllByText('게임 시작')[0]);
     fireEvent.click(screen.getByRole('button', {name: '싱글'}));
@@ -76,5 +79,7 @@ describe('MenuPage', () => {
     fireEvent.click(screen.getByRole('button', {name: '하드'}));
 
     await waitFor(() => expect(screen.getAllByText('82,400 pts').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole('button', {name: '나이트메어'}));
+    await waitFor(() => expect(screen.getAllByText('91,300 pts').length).toBeGreaterThan(0));
   });
 });

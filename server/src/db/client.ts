@@ -27,7 +27,7 @@ function migrateRecordsModeSchema(db: DatabaseSync) {
     .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'records'")
     .get() as { sql?: string } | undefined;
 
-  if (!createSql?.sql || createSql.sql.includes("'normal', 'hard'")) {
+  if (!createSql?.sql || createSql.sql.includes("'normal', 'hard', 'nightmare'") || createSql.sql.includes("'normal', 'hard'")) {
     return;
   }
 
@@ -37,7 +37,7 @@ function migrateRecordsModeSchema(db: DatabaseSync) {
     CREATE TABLE records (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
-      mode TEXT NOT NULL CHECK(mode IN ('normal', 'hard')),
+      mode TEXT NOT NULL CHECK(mode IN ('normal', 'hard', 'nightmare')),
       score INTEGER NOT NULL,
       reached_round INTEGER NOT NULL,
       survival_time REAL NOT NULL,
@@ -66,6 +66,75 @@ function migrateRecordsModeSchema(db: DatabaseSync) {
 
     CREATE INDEX IF NOT EXISTS idx_records_user_mode_created_at
     ON records(user_id, mode, created_at DESC);
+  `);
+}
+
+function migrateNightmareModeSchema(db: DatabaseSync) {
+  const recordsCreateSql = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'records'")
+    .get() as { sql?: string } | undefined;
+  const sessionsCreateSql = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'single_player_run_sessions'")
+    .get() as { sql?: string } | undefined;
+
+  const recordsReady = recordsCreateSql?.sql?.includes("'normal', 'hard', 'nightmare'") ?? false;
+  const sessionsReady = sessionsCreateSql?.sql?.includes("'normal', 'hard', 'nightmare'") ?? false;
+  if (recordsReady && sessionsReady) {
+    return;
+  }
+
+  db.exec(`
+    PRAGMA foreign_keys = OFF;
+
+    ALTER TABLE single_player_run_sessions RENAME TO single_player_run_sessions_legacy;
+    ALTER TABLE records RENAME TO records_legacy;
+
+    CREATE TABLE single_player_run_sessions (
+      id TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      mode TEXT NOT NULL CHECK(mode IN ('normal', 'hard', 'nightmare')),
+      wave_seed INTEGER NOT NULL,
+      boss_seed INTEGER NOT NULL,
+      started_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      heartbeat_count INTEGER NOT NULL DEFAULT 0,
+      consumed_at TEXT,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      run_session_id TEXT UNIQUE,
+      mode TEXT NOT NULL CHECK(mode IN ('normal', 'hard', 'nightmare')),
+      score INTEGER NOT NULL,
+      reached_round INTEGER NOT NULL,
+      survival_time REAL NOT NULL,
+      clear INTEGER NOT NULL,
+      verified INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY(run_session_id) REFERENCES single_player_run_sessions(id) ON DELETE SET NULL
+    );
+
+    INSERT INTO single_player_run_sessions (id, user_id, mode, wave_seed, boss_seed, started_at, expires_at, heartbeat_count, consumed_at)
+    SELECT id, user_id, mode, wave_seed, boss_seed, started_at, expires_at, heartbeat_count, consumed_at
+    FROM single_player_run_sessions_legacy;
+
+    INSERT INTO records (id, user_id, run_session_id, mode, score, reached_round, survival_time, clear, verified, created_at)
+    SELECT id, user_id, run_session_id, mode, score, reached_round, survival_time, clear, verified, created_at
+    FROM records_legacy;
+
+    DROP TABLE records_legacy;
+    DROP TABLE single_player_run_sessions_legacy;
+
+    CREATE INDEX IF NOT EXISTS idx_records_user_mode_created_at
+    ON records(user_id, mode, created_at DESC);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_records_run_session_id ON records(run_session_id) WHERE run_session_id IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_single_player_run_sessions_user_started_at
+    ON single_player_run_sessions(user_id, started_at DESC);
+
+    PRAGMA foreign_keys = ON;
   `);
 }
 
@@ -102,6 +171,7 @@ function createSqliteDb() {
   migrateRecordsModeSchema(db);
   migrateRecordsVerificationSchema(db);
   migrateRecordsRunSessionSchema(db);
+  migrateNightmareModeSchema(db);
 
   return db;
 }
@@ -128,6 +198,12 @@ async function createPostgresDb(databaseUrl: string) {
     await sql.unsafe(postgresSchemaSql);
     await sql.unsafe('ALTER TABLE records ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT FALSE;');
     await sql.unsafe('ALTER TABLE records ADD COLUMN IF NOT EXISTS run_session_id TEXT UNIQUE REFERENCES single_player_run_sessions(id) ON DELETE SET NULL;');
+    await sql.unsafe(`
+      ALTER TABLE records DROP CONSTRAINT IF EXISTS records_mode_check;
+      ALTER TABLE records ADD CONSTRAINT records_mode_check CHECK (mode IN ('normal', 'hard', 'nightmare'));
+      ALTER TABLE single_player_run_sessions DROP CONSTRAINT IF EXISTS single_player_run_sessions_mode_check;
+      ALTER TABLE single_player_run_sessions ADD CONSTRAINT single_player_run_sessions_mode_check CHECK (mode IN ('normal', 'hard', 'nightmare'));
+    `);
   } catch (error) {
     await sql.end({ timeout: 0 }).catch(() => undefined);
     throw error;

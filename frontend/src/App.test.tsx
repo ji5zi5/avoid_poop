@@ -69,10 +69,10 @@ describe('App multiplayer entry flow', () => {
     listRooms.mockResolvedValue([]);
     records.mockResolvedValue({
       profile: {totalRuns: 0, totalClears: 0, totalScore: 0},
-      best: {},
+      best: { nightmare: undefined, normal: undefined, hard: undefined },
       recent: [],
       multiplayer: {stats: {matchesPlayed: 0, wins: 0, bestPlacement: null}, recent: []},
-      leaderboard: {normal: [], hard: [], multiplayer: []},
+      leaderboard: {normal: [], hard: [], nightmare: [], multiplayer: []},
     });
     createRunSession.mockResolvedValue({
       id: '11111111-1111-4111-8111-111111111111',

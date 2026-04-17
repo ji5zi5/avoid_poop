@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import type { BossThemeId } from "../state";
 import { createGameEngine } from "../engine";
-import { buildBossEncounterPlan, buildBossPatternQueue, getAvailableBossPatternIds, getBossThemeLabel, isHardOnlyPattern } from "./bossPatterns";
+import { buildBossEncounterPlan, buildBossPatternQueue, getAvailableBossPatternIds, getBossThemeLabel, getUnlockedBossThemeIds, isHardOnlyPattern } from "./bossPatterns";
 
 describe("boss patterns", () => {
   it("exposes a larger hard-mode boss pattern pool", () => {
-    expect(getAvailableBossPatternIds("hard")).toHaveLength(30);
+    expect(getAvailableBossPatternIds("hard")).toHaveLength(40);
   });
 
   it("keeps normal queues inside the normal-safe pattern pool", () => {
@@ -95,6 +95,40 @@ describe("boss patterns", () => {
     ]));
   });
 
+  it("unlocks at least fourteen hard boss themes by round 12", () => {
+    expect(getUnlockedBossThemeIds("hard", 12)).toHaveLength(15);
+  });
+
+  it("unlocks nightmare-only boss themes in nightmare mode", () => {
+    expect(getUnlockedBossThemeIds("nightmare", 12)).toEqual(
+      expect.arrayContaining(["arc_storm", "rebound_labyrinth"]),
+    );
+  });
+
+  it("surfaces nightmare-only themes over a representative nightmare progression", () => {
+    const rounds = [4, 6, 8, 10, 12, 14];
+    let queueSeed = 17;
+    let recentThemes: BossThemeId[] = [];
+    const seenThemes = new Set<string>();
+
+    for (const round of rounds) {
+      const plan = buildBossEncounterPlan({
+        mode: "nightmare",
+        round,
+        previousFamilyStreak: null,
+        previousFamilyStreakCount: 0,
+        recentPatterns: [],
+        recentThemes,
+        queueSeed,
+      });
+      seenThemes.add(plan.themeId);
+      recentThemes = [...recentThemes, plan.themeId].slice(-3);
+      queueSeed = plan.nextQueueSeed;
+    }
+
+    expect(seenThemes.has("arc_storm") || seenThemes.has("rebound_labyrinth")).toBe(true);
+  });
+
   it("derives encounter duration from themed composition instead of queue length alone", () => {
     const pressurePlan = buildBossEncounterPlan({
       mode: "hard",
@@ -159,8 +193,8 @@ describe("boss patterns", () => {
     expect(plan.themeId).not.toBe("lane_intro");
   });
 
-  it("surfaces more than three boss themes over a representative hard progression", () => {
-    const rounds = [2, 4, 6, 8, 10, 12, 14];
+  it("surfaces at least six boss themes over a representative hard progression", () => {
+    const rounds = [2, 4, 6, 8, 10, 12, 14, 16];
     let queueSeed = 17;
     let recentThemes: BossThemeId[] = [];
     const seenThemes = new Set<string>();
@@ -180,7 +214,26 @@ describe("boss patterns", () => {
       queueSeed = plan.nextQueueSeed;
     }
 
-    expect(seenThemes.size).toBeGreaterThan(3);
+    expect(seenThemes.size).toBeGreaterThanOrEqual(6);
+  });
+
+  it("surfaces at least ten unique hard themes across representative round-12 seeds", () => {
+    const seeds = [1, 4944, 9887, 14830, 19773, 24716, 29659, 34602, 39545, 44488, 49431, 54374];
+    const seenThemes = new Set(
+      seeds.map((queueSeed) =>
+        buildBossEncounterPlan({
+          mode: "hard",
+          round: 12,
+          previousFamilyStreak: null,
+          previousFamilyStreakCount: 0,
+          recentPatterns: [],
+          recentThemes: [],
+          queueSeed,
+        }).themeId,
+      ),
+    );
+
+    expect(seenThemes.size).toBeGreaterThanOrEqual(10);
   });
 
   it("keeps residue_fakeout queues varied across seeds", () => {
@@ -245,5 +298,104 @@ describe("boss patterns", () => {
     expect(laneQueues.size).toBeGreaterThanOrEqual(3);
     expect(corridorQueues.size).toBeGreaterThanOrEqual(3);
     expect(trapIntroQueues.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it("keeps lane and trap queues diverse across representative round-12 seeds", () => {
+    const seeds = [1, 4944, 9887, 14830, 19773, 24716, 29659, 34602, 39545, 44488, 49431, 54374];
+    const laneThemeIds = new Set([
+      "lane_intro",
+      "corridor_intro",
+      "pressure_bridge",
+      "edge_rotation",
+      "corridor_switch",
+      "snapback_lite",
+      "forced_cross",
+      "lane_gauntlet",
+    ]);
+    const trapThemeIds = new Set([
+      "trap_intro",
+      "trap_weave",
+      "fakeout_chain",
+      "residue_fakeout",
+      "residue_storm",
+      "residue_denial",
+      "forced_cross",
+    ]);
+    const laneQueues = new Set<string>();
+    const trapQueues = new Set<string>();
+
+    for (const queueSeed of seeds) {
+      const plan = buildBossEncounterPlan({
+        mode: "hard",
+        round: 12,
+        previousFamilyStreak: null,
+        previousFamilyStreakCount: 0,
+        recentPatterns: [],
+        recentThemes: [],
+        queueSeed,
+      });
+
+      const queueSignature = `${plan.themeId}:${plan.queue.join("|")}`;
+      if (laneThemeIds.has(plan.themeId)) {
+        laneQueues.add(queueSignature);
+      }
+      if (trapThemeIds.has(plan.themeId)) {
+        trapQueues.add(queueSignature);
+      }
+    }
+
+    expect(laneQueues.size).toBeGreaterThanOrEqual(4);
+    expect(trapQueues.size).toBeGreaterThanOrEqual(4);
+  });
+
+  it("surfaces newly added atomic patterns across representative hard queues", () => {
+    const seeds = [4944, 9887, 14830, 19773, 24716, 29659, 34602, 39545, 44488, 49431, 54374, 59317, 64260, 69203];
+    const seenPatterns = new Set(
+      seeds.flatMap((queueSeed) =>
+        buildBossEncounterPlan({
+          mode: "hard",
+          round: 12,
+          previousFamilyStreak: null,
+          previousFamilyStreakCount: 0,
+          recentPatterns: [],
+          recentThemes: [],
+          queueSeed,
+        }).queue,
+      ),
+    );
+
+    const newlyAddedPatterns = [
+      "wing_press",
+      "pillar_slide",
+      "lane_flipback",
+      "center_lane_weave",
+      "safe_third_flip",
+      "residue_pivot",
+    ] as const;
+
+    expect(newlyAddedPatterns.filter((id) => seenPatterns.has(id)).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("surfaces the new trajectory-based patterns in representative hard fixtures", () => {
+    const cases = [
+      { round: 8, queueSeed: 14833, patternId: "diagonal_rain" },
+      { round: 8, queueSeed: 11864, patternId: "cross_arc" },
+      { round: 8, queueSeed: 11865, patternId: "fan_arc" },
+      { round: 8, queueSeed: 26696, patternId: "bounce_drive" },
+    ] as const;
+
+    for (const { round, queueSeed, patternId } of cases) {
+      const plan = buildBossEncounterPlan({
+        mode: "hard",
+        round,
+        previousFamilyStreak: null,
+        previousFamilyStreakCount: 0,
+        recentPatterns: [],
+        recentThemes: [],
+        queueSeed,
+      });
+
+      expect(plan.queue).toContain(patternId);
+    }
   });
 });

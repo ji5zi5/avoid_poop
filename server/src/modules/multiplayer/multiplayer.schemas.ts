@@ -20,7 +20,7 @@ export const privatePasswordValueSchema = z
   .max(32, 'Private room password must be at most 32 characters.');
 
 export const roomStatusSchema = z.enum(['waiting', 'starting', 'in_progress']);
-export const roomDifficultySchema = z.enum(['normal', 'hard']);
+export const roomDifficultySchema = z.enum(['normal', 'hard', 'nightmare']);
 export const roomVisibilitySchema = z.enum(['public', 'private']);
 export const lobbyNoticeToneSchema = z.enum(['success', 'accent', 'danger']);
 

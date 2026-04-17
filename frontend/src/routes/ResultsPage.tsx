@@ -35,6 +35,11 @@ export function ResultsPage({
   onSaved,
   embedded = false,
 }: Props) {
+  const modeLabel = result.mode === "normal"
+    ? copy.results.modeNormal
+    : result.mode === "hard"
+      ? copy.results.modeHard
+      : copy.results.modeNightmare;
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -93,14 +98,14 @@ export function ResultsPage({
   }, [saved]);
 
   const saveStateLabel = saved ? copy.results.savedYes : saving ? copy.results.savedSaving : error ? copy.results.savedPending : copy.results.savedSaving;
-  const heroClass = `console-panel console-panel--primary console-panel--compact results-hero ${result.clear ? "is-clear" : "is-fail"}${embedded ? " results-hero--embedded" : ""}`;
+  const heroClass = `console-panel console-panel--primary console-panel--compact results-hero ${result.clear ? "is-clear" : "is-fail"}${result.mode === "nightmare" ? " is-nightmare" : ""}${embedded ? " results-hero--embedded" : ""}`;
   const content = (
     <div className={heroClass}>
       <div className="panel-heading results-heading">
         <span className="results-badge">{result.clear ? copy.results.outcomeClear : copy.results.outcomeFail}</span>
         <h2>{result.clear ? copy.results.cleared : copy.results.failed}</h2>
         <span className="results-meta">
-          {result.mode === "normal" ? copy.results.modeNormal : copy.results.modeHard} · {copy.results.roundLabel(result.reachedRound)}
+          {modeLabel} · {copy.results.roundLabel(result.reachedRound)}
         </span>
       </div>
 
@@ -108,7 +113,7 @@ export function ResultsPage({
         <div className="score-board">
           <span className="score-board__label">{copy.results.score}</span>
           <strong>{result.score}</strong>
-          <span>{result.mode === "normal" ? copy.results.modeNormal : copy.results.modeHard}</span>
+          <span>{modeLabel}</span>
         </div>
         <div className="score-board">
           <span className="score-board__label">{copy.results.time}</span>

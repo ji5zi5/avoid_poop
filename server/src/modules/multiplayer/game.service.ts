@@ -1,5 +1,6 @@
 import {config} from '../../config.js';
 import { buildWaveDirectorForRound, buildWaveSpawnSpecs, createSharedWaveDirector, evolveSupportedHazards, getSharedWaveSpawnThreshold, type SharedWaveHazardSpec } from '../../../../shared/src/index.js';
+import type { GameMode } from '../../../../shared/src/contracts/index.js';
 import { runBossPattern } from '../../../../frontend/src/game/systems/bossPatterns.js';
 
 import type {RoomSummary} from './multiplayer.schemas.js';
@@ -265,7 +266,7 @@ export class MultiplayerGameService {
       game.round = nextRound;
       game.waveDirector = buildWaveDirectorForRound(game.options.difficulty, nextRound, game.waveDirector);
       game.elapsedInPhase = 0;
-      game.phase = shouldEnterBoss(nextRound) ? 'boss' : 'wave';
+      game.phase = shouldEnterBoss(nextRound, game.options.difficulty) ? 'boss' : 'wave';
       if (game.phase === 'boss') {
         initializeMultiplayerBossEncounter(game);
       }
@@ -420,7 +421,7 @@ function createHazardFromSharedSpec(spec: SharedWaveHazardSpec, id: number): Mul
   };
 }
 
-function evolveMultiplayerHazards(hazards: MultiplayerHazardState[], delta: number, nextId: () => number, mode: 'normal' | 'hard') {
+function evolveMultiplayerHazards(hazards: MultiplayerHazardState[], delta: number, nextId: () => number, mode: GameMode) {
   const waveHazards = hazards.filter((hazard) => hazard.owner === 'wave');
   const bossHazards = hazards.filter((hazard) => hazard.owner === 'boss').map((hazard) => ({
     ...hazard,
@@ -484,8 +485,11 @@ function recordPlacement(game: MultiplayerGameState, userId: number) {
   }
 }
 
-function shouldEnterBoss(round: number) {
-  return round >= 3 && round % 3 === 0;
+function shouldEnterBoss(round: number, difficulty: GameMode) {
+  if (difficulty === 'nightmare') {
+    return round >= 2;
+  }
+  return difficulty === 'hard' ? round >= 3 && round % 3 === 0 : round >= 3 && round % 3 === 0;
 }
 
 function getEffectiveDirection(player: MultiplayerPlayerState) {
@@ -497,15 +501,15 @@ function getEffectiveSpeed(player: MultiplayerPlayerState) {
 }
 
 function getRoundDuration(game: MultiplayerGameState) {
-  return game.options.difficulty === 'hard' ? 8 : 9;
+  return game.options.difficulty === 'nightmare' ? 7 : game.options.difficulty === 'hard' ? 8 : 9;
 }
 
 function getBossDuration(game: MultiplayerGameState) {
   return game.bossEncounterDuration;
 }
 
-function getDefaultBossDuration(difficulty: 'normal' | 'hard') {
-  return difficulty === 'hard' ? 13 : 11;
+function getDefaultBossDuration(difficulty: GameMode) {
+  return difficulty === 'nightmare' ? 15 : difficulty === 'hard' ? 13 : 11;
 }
 
 function initializeMultiplayerBossEncounter(game: MultiplayerGameState) {

@@ -2,7 +2,7 @@ import { api } from "./api";
 import { getWebSocketUrl } from "./runtimeConfig";
 
 export type RoomStatus = "waiting" | "starting" | "in_progress";
-export type RoomDifficulty = "normal" | "hard";
+export type RoomDifficulty = "normal" | "hard" | "nightmare";
 export type RoomVisibility = "public" | "private";
 export type MultiplayerPhase = "wave" | "boss" | "complete";
 export type MultiplayerPlayerStatus = "alive" | "spectator" | "disconnected";

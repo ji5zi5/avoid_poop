@@ -54,6 +54,17 @@ const sampleRecords: RecordsResponse = {
       verified: true,
       createdAt: '2026-04-13T09:05:00.000Z',
     },
+    nightmare: {
+      id: 13,
+      userId: 7,
+      mode: 'nightmare',
+      score: 444,
+      reachedRound: 7,
+      survivalTime: 41.2,
+      clear: false,
+      verified: true,
+      createdAt: '2026-04-13T09:07:00.000Z',
+    },
   },
   recent: [
     {
@@ -88,6 +99,7 @@ const sampleRecords: RecordsResponse = {
   leaderboard: {
     normal: [],
     hard: [],
+    nightmare: [],
     multiplayer: [],
   },
 };

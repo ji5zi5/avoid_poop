@@ -71,6 +71,7 @@ test('records response schema accepts nullable best entries', () => {
     leaderboard: {
       normal: [],
       hard: [],
+      nightmare: [],
       multiplayer: []
     }
   });
@@ -81,13 +82,13 @@ test('records response schema accepts nullable best entries', () => {
 test('single-player run session schema accepts issued seeds', () => {
   const parsed = singlePlayerRunSessionSchema.parse({
     id: '11111111-1111-4111-8111-111111111111',
-    mode: 'hard',
+    mode: 'nightmare',
     waveSeed: 123,
     bossSeed: 456,
     startedAt: '2026-04-15T05:00:00.000Z',
   });
 
-  assert.equal(parsed.mode, 'hard');
+  assert.equal(parsed.mode, 'nightmare');
 });
 
 test('ranked run submission schema accepts replay frames', () => {

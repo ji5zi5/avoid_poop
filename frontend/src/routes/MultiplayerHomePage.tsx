@@ -25,10 +25,16 @@ function debuffTierLabel(debuffTier: RoomOptions["debuffTier"]) {
   return debuffTier === 3 ? copy.multiplayer.debuffTierStrong : copy.multiplayer.debuffTierWeak;
 }
 
+function difficultyLabel(difficulty: RoomOptions["difficulty"]) {
+  return difficulty === "nightmare"
+    ? copy.multiplayer.difficultyNightmare
+    : difficulty === "hard"
+      ? copy.multiplayer.difficultyHard
+      : copy.multiplayer.difficultyNormal;
+}
+
 function formatRoomSubtitle(room: RoomListEntry) {
-  return `${copy.multiplayer.players} ${room.playerCount}/${room.maxPlayers} · ${
-    room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal
-  }`;
+  return `${copy.multiplayer.players} ${room.playerCount}/${room.maxPlayers} · ${difficultyLabel(room.options.difficulty)}`;
 }
 
 export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loadRooms, onBack, notice = null }: Props) {
@@ -148,7 +154,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
                     </div>
 
                     <div className="matchmaking-card__chips">
-                      <span className="home-status-chip">{room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
+                      <span className="home-status-chip">{difficultyLabel(room.options.difficulty)}</span>
                       <span className="home-status-chip">{copy.multiplayer.bodyBlock} {room.options.bodyBlock ? "ON" : "OFF"}</span>
                       <span className="home-status-chip">{copy.multiplayer.debuffTier} {debuffTierLabel(room.options.debuffTier)}</span>
                     </div>
@@ -181,7 +187,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
                       </div>
 
                       <div className="matchmaking-card__chips">
-                        <span className="home-status-chip">{room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
+                        <span className="home-status-chip">{difficultyLabel(room.options.difficulty)}</span>
                         <span className="home-status-chip">{copy.multiplayer.bodyBlock} {room.options.bodyBlock ? "ON" : "OFF"}</span>
                         <span className="home-status-chip">{copy.multiplayer.debuffTier} {debuffTierLabel(room.options.debuffTier)}</span>
                       </div>
@@ -225,6 +231,7 @@ export function MultiplayerHomePage({ onCreateRoom, onJoinRoom, onQuickJoin, loa
                   <select value={options.difficulty} onChange={(event) => setOptions((current) => ({ ...current, difficulty: event.target.value as RoomOptions["difficulty"] }))}>
                     <option value="normal">{copy.multiplayer.difficultyNormal}</option>
                     <option value="hard">{copy.multiplayer.difficultyHard}</option>
+                    <option value="nightmare">{copy.multiplayer.difficultyNightmare}</option>
                   </select>
                 </label>
                 <label>

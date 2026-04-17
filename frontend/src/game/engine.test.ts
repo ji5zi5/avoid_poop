@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { buildWaveSpawnSpecs } from "../../../shared/src/index.js";
 import { copy } from "../content/copy";
 import { createWaveDirector } from "./state";
 import { createGameEngine, updateGame } from "./engine";
@@ -123,6 +124,11 @@ function runPassiveBossEncounter(state: ReturnType<typeof createGameEngine>, max
   };
 }
 
+function runPassiveBossEncounterAtX(state: ReturnType<typeof createGameEngine>, x: number, maxSteps = 500) {
+  state.player.x = Math.max(0, Math.min(state.width - state.player.width, x));
+  return runPassiveBossEncounter(state, maxSteps);
+}
+
 describe("game engine", () => {
   it("moves the player only within bounds", () => {
     const state = createGameEngine("normal");
@@ -150,6 +156,29 @@ describe("game engine", () => {
     updateGame(hard, 1.2, 0);
 
     expect(hard.hazards.length).toBeGreaterThanOrEqual(normal.hazards.length);
+  });
+
+  it("uses nightmare rules above hard mode", () => {
+    const hard = createGameEngine("hard", { waveSeed: 101, bossSeed: 202 });
+    const nightmare = createGameEngine("nightmare", { waveSeed: 101, bossSeed: 202 });
+
+    updateGame(hard, 1.2, 0);
+    updateGame(nightmare, 1.2, 0);
+
+    expect(nightmare.hazards.length).toBeGreaterThanOrEqual(hard.hazards.length);
+    expect(nightmare.waveDirector.roundBudget).toBeGreaterThanOrEqual(hard.waveDirector.roundBudget);
+  });
+
+  it("does not refund a heart on nightmare round transitions", () => {
+    const state = createGameEngine("nightmare");
+    state.player.lives = 1;
+    state.elapsedInPhase = 8;
+
+    updateGame(state, 0.016, 0);
+
+    expect(state.round).toBe(2);
+    expect(state.player.lives).toBe(1);
+    expect(state.currentPhase).toBe("boss");
   });
 
   it("draws fresh initial seeds for new runs", () => {
@@ -457,6 +486,17 @@ describe("game engine", () => {
     expect(state.itemToastText).toBe("보스 경고");
   });
 
+  it("sends nightmare mode into boss phase on every round after round one", () => {
+    const state = createGameEngine("nightmare");
+    state.elapsedInPhase = 10;
+
+    updateGame(state, 0.016, 0);
+
+    expect(state.round).toBe(2);
+    expect(state.currentPhase).toBe("boss");
+    expect(state.bossPatternQueue.length).toBeGreaterThan(0);
+  });
+
   it("waits to announce boss clear until boss-owned hazards are gone", () => {
     const state = createGameEngine("hard");
     state.currentPhase = "boss";
@@ -568,8 +608,61 @@ describe("game engine", () => {
     expect(state.hazards.some((hazard) => hazard.speed >= 260)).toBe(true);
   });
 
+  it("spawns diagonal boss hazards with drift and gravity in diagonal_rain", () => {
+    const state = createGameEngine("hard");
+    state.round = 12;
+    state.currentPhase = "boss";
+    state.bossPatternQueue = ["diagonal_rain"];
+    state.bossPatternActiveId = null;
+    state.bossPatternIndex = 0;
+    state.bossEncounterDuration = 30;
+
+    for (let step = 0; step < 6 && state.hazards.length === 0; step += 1) {
+      updateGame(state, 0.25, 0);
+    }
+
+    expect(state.hazards.length).toBeGreaterThan(0);
+    expect(state.hazards.some((hazard) => (hazard.velocityX ?? 0) !== 0)).toBe(true);
+    expect(state.hazards.some((hazard) => (hazard.gravity ?? 0) > 0)).toBe(true);
+  });
+
+  it("spawns a fan spread in fan_arc", () => {
+    const state = createGameEngine("hard");
+    state.round = 12;
+    state.currentPhase = "boss";
+    state.bossPatternQueue = ["fan_arc"];
+    state.bossPatternActiveId = null;
+    state.bossPatternIndex = 0;
+    state.bossEncounterDuration = 30;
+
+    for (let step = 0; step < 6 && state.hazards.length < 3; step += 1) {
+      updateGame(state, 0.25, 0);
+    }
+
+    expect(state.hazards.length).toBeGreaterThanOrEqual(3);
+    expect(state.hazards.some((hazard) => (hazard.velocityX ?? 0) < 0)).toBe(true);
+    expect(state.hazards.some((hazard) => (hazard.velocityX ?? 0) > 0)).toBe(true);
+  });
+
+  it("spawns bouncing boss hazards in bounce_drive", () => {
+    const state = createGameEngine("hard");
+    state.round = 12;
+    state.currentPhase = "boss";
+    state.bossPatternQueue = ["bounce_drive"];
+    state.bossPatternActiveId = null;
+    state.bossPatternIndex = 0;
+    state.bossEncounterDuration = 30;
+
+    for (let step = 0; step < 6 && state.hazards.length === 0; step += 1) {
+      updateGame(state, 0.25, 0);
+    }
+
+    expect(state.hazards.some((hazard) => hazard.behavior === "bounce")).toBe(true);
+    expect(state.hazards.some((hazard) => (hazard.bouncesRemaining ?? 0) >= 1)).toBe(true);
+  });
+
   it("keeps sampled hard boss encounters dodgeable from the real starting position", () => {
-    const sampledRounds = [2, 4, 6, 8, 10, 12];
+    const sampledRounds = [2, 4, 6, 8, 10, 12, 14];
     const sampledSeeds = [1, 17, 19773, 24716, 29659, 34602, 39545];
     const failures: string[] = [];
 
@@ -596,13 +689,15 @@ describe("game engine", () => {
       { round: 12, seed: 19773, themeId: "corridor_switch" },
       { round: 12, seed: 24716, themeId: "trap_weave" },
       { round: 12, seed: 29659, themeId: "residue_fakeout" },
-      { round: 12, seed: 34602, themeId: "lane_gauntlet" },
+      { round: 12, seed: 34602, themeId: "forced_cross" },
       { round: 12, seed: 39545, themeId: "residue_storm" },
+      { round: 12, seed: 44488, themeId: "residue_denial" },
       { round: 14, seed: 19773, themeId: "corridor_switch" },
       { round: 14, seed: 24716, themeId: "trap_weave" },
       { round: 14, seed: 29659, themeId: "residue_fakeout" },
-      { round: 14, seed: 34602, themeId: "lane_gauntlet" },
+      { round: 14, seed: 34602, themeId: "forced_cross" },
       { round: 14, seed: 39545, themeId: "residue_storm" },
+      { round: 14, seed: 44488, themeId: "residue_denial" },
     ] as const;
     const failures: string[] = [];
 
@@ -628,14 +723,39 @@ describe("game engine", () => {
     expect(runPassiveBossEncounter(state, 400).lostLife).toBe(true);
   });
 
+  it("removes stationary solves from representative corridor-family seeds", () => {
+    const cases = [
+      { round: 2, seed: 6356, themeId: "lane_intro", x: 160 },
+      { round: 2, seed: 9887, themeId: "corridor_intro", x: 160 },
+      { round: 2, seed: 19773, themeId: "corridor_switch", x: 160 },
+      { round: 2, seed: 34602, themeId: "lane_gauntlet", x: 160 },
+    ] as const;
+
+    const failures: string[] = [];
+    for (const { round, seed, themeId, x } of cases) {
+      const result = runPassiveBossEncounterAtX(createBossEncounterState(round, seed), x, 500);
+      if (result.initialTheme !== themeId) {
+        failures.push(`round ${round} seed ${seed} expected ${themeId} got ${result.initialTheme ?? "unknown"}`);
+        continue;
+      }
+      if (!result.lostLife) {
+        failures.push(`round ${round} seed ${seed} theme ${themeId} still allows stationary solve at x=${x}`);
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
   it("keeps movement-heavy boss themes from allowing passive center play", () => {
     const cases = [
-      { round: 8, seed: 9887, themeId: "corridor_intro" },
+      { round: 8, seed: 14830, themeId: "edge_rotation" },
+      { round: 8, seed: 19773, themeId: "corridor_switch" },
       { round: 12, seed: 19773, themeId: "corridor_switch" },
       { round: 12, seed: 24716, themeId: "trap_weave" },
       { round: 12, seed: 29659, themeId: "residue_fakeout" },
-      { round: 12, seed: 34602, themeId: "lane_gauntlet" },
+      { round: 12, seed: 34602, themeId: "forced_cross" },
       { round: 12, seed: 39545, themeId: "residue_storm" },
+      { round: 12, seed: 44488, themeId: "residue_denial" },
     ] as const;
     const failures: string[] = [];
 
@@ -651,6 +771,105 @@ describe("game engine", () => {
     }
 
     expect(failures).toEqual([]);
+  });
+
+  it("keeps triple clusters, multi-splits, and multi-bounces rare in the deterministic late sample window", () => {
+    let director = createWaveDirector("hard", 8, 17);
+    let cluster3Count = 0;
+    let multiSplitCount = 0;
+    let multiBounceCount = 0;
+    let combinedCount = 0;
+    let specialStreak = 0;
+    let lastSpecial: "cluster_3" | "splitter" | "bouncer" | null = null;
+
+    for (const round of [8, 10, 12, 14]) {
+      director = {
+        ...createWaveDirector("hard", round, director.seed),
+        seed: director.seed,
+        patternCursor: director.patternCursor,
+        recentPatterns: director.recentPatterns,
+        specialCooldown: director.specialCooldown,
+      };
+
+      for (let step = 0; step < 50; step += 1) {
+        const selection = buildWaveSpawnSpecs({
+          director,
+          mode: "hard",
+          round,
+          width: 360,
+          height: 520,
+          nextHazardId: step + 1,
+        });
+        director = selection.nextDirector;
+
+        const primaryHazard = selection.hazards[0];
+        const isMultiSplit = selection.pattern === "splitter" && (primaryHazard?.splitChildCount ?? 0) >= 3;
+        const isMultiBounce = selection.pattern === "bouncer" && (primaryHazard?.bouncesRemaining ?? 0) >= 2;
+
+        if (selection.pattern === "cluster_3") {
+          cluster3Count += 1;
+        }
+        if (isMultiSplit) {
+          multiSplitCount += 1;
+        }
+        if (isMultiBounce) {
+          multiBounceCount += 1;
+        }
+        if (isMultiSplit || isMultiBounce) {
+          combinedCount += 1;
+        }
+
+        const specialPattern = selection.pattern === "cluster_3" || selection.pattern === "splitter" || selection.pattern === "bouncer"
+          ? selection.pattern
+          : null;
+
+        if (specialPattern && specialPattern === lastSpecial) {
+          specialStreak += 1;
+        } else if (specialPattern) {
+          lastSpecial = specialPattern;
+          specialStreak = 1;
+        } else {
+          lastSpecial = null;
+          specialStreak = 0;
+        }
+
+        expect(specialStreak).toBeLessThanOrEqual(2);
+      }
+    }
+
+    expect(cluster3Count).toBeLessThanOrEqual(10);
+    expect(multiSplitCount).toBeLessThanOrEqual(12);
+    expect(multiBounceCount).toBeLessThanOrEqual(16);
+    expect(combinedCount).toBeLessThanOrEqual(28);
+  });
+
+  it("surfaces more special wave patterns in nightmare than in hard over the same sample window", () => {
+    const countSpecials = (mode: "hard" | "nightmare") => {
+      let director = createWaveDirector(mode, 8, 17);
+      let specialCount = 0;
+
+      for (const round of [8, 10, 12, 14]) {
+        director = {
+          ...createWaveDirector(mode, round, director.seed),
+          seed: director.seed,
+          patternCursor: director.patternCursor,
+          recentPatterns: director.recentPatterns,
+          specialCooldown: director.specialCooldown,
+        };
+
+        for (let step = 0; step < 40; step += 1) {
+          const selection = selectWavePattern(director, mode, round);
+          director = selection.nextDirector;
+          if (selection.pattern !== "single") {
+            specialCount += 1;
+          }
+        }
+      }
+
+      return specialCount;
+    };
+
+    expect(countSpecials("nightmare")).toBeGreaterThan(countSpecials("hard"));
   });
 
   it("remembers recently finished boss patterns to avoid repetition next time", () => {

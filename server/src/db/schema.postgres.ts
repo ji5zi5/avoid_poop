@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS records (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   run_session_id TEXT UNIQUE REFERENCES single_player_run_sessions(id) ON DELETE SET NULL,
-  mode TEXT NOT NULL CHECK(mode IN ('normal', 'hard')),
+  mode TEXT NOT NULL CHECK(mode IN ('normal', 'hard', 'nightmare')),
   score INTEGER NOT NULL,
   reached_round INTEGER NOT NULL,
   survival_time DOUBLE PRECISION NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS records (
 CREATE TABLE IF NOT EXISTS single_player_run_sessions (
   id TEXT PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  mode TEXT NOT NULL CHECK(mode IN ('normal', 'hard')),
+  mode TEXT NOT NULL CHECK(mode IN ('normal', 'hard', 'nightmare')),
   wave_seed INTEGER NOT NULL,
   boss_seed INTEGER NOT NULL,
   started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

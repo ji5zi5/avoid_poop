@@ -23,7 +23,7 @@ const parityFixtureMatrix = [
     },
     expectedBoss: {
       themeId: "pressure_intro",
-      queue: ["half_stomp_alternating", "door_jam", "center_crush"],
+      queue: ["half_stomp_alternating", "wing_press", "door_jam"],
       nextQueueSeed: 1_079_944_513,
       minEncounterDuration: 5.6,
     },
@@ -45,7 +45,7 @@ const parityFixtureMatrix = [
     },
     expectedBoss: {
       themeId: "pressure_intro",
-      queue: ["half_stomp_alternating", "door_jam", "center_crush"],
+      queue: ["half_stomp_alternating", "wing_press", "center_crush"],
       nextQueueSeed: 12_405_379,
       minEncounterDuration: 5.6,
     },
@@ -67,7 +67,7 @@ const parityFixtureMatrix = [
     },
     expectedBoss: {
       themeId: "pressure_intro",
-      queue: ["half_stomp_alternating", "door_jam", "center_crush"],
+      queue: ["half_stomp_alternating", "wing_press", "door_jam"],
       nextQueueSeed: 1_092_349_892,
       minEncounterDuration: 5.6,
     },
@@ -89,9 +89,9 @@ const parityFixtureMatrix = [
     },
     expectedBoss: {
       themeId: "pressure_intro",
-      queue: ["half_stomp_alternating", "door_jam", "center_crush", "door_jam", "center_crush"],
+      queue: ["half_stomp_alternating", "wing_press", "center_crush", "door_jam", "center_crush"],
       nextQueueSeed: 1_112_066_659,
-      minEncounterDuration: 9.09,
+      minEncounterDuration: 9.05,
     },
   },
   {
@@ -111,9 +111,9 @@ const parityFixtureMatrix = [
     },
     expectedBoss: {
       themeId: "lane_intro",
-      queue: ["edge_tunnel", "crossfall_mix", "zigzag_corridor", "center_swing"],
+      queue: ["edge_tunnel", "lane_flipback", "switch_press", "center_swing"],
       nextQueueSeed: 1_327_764_137,
-      minEncounterDuration: 7.24,
+      minEncounterDuration: 7.1,
     },
   },
   {
@@ -133,9 +133,9 @@ const parityFixtureMatrix = [
     },
     expectedBoss: {
       themeId: "lane_intro",
-      queue: ["edge_tunnel", "switch_press", "staircase_corridor", "center_swing"],
+      queue: ["edge_tunnel", "lane_flipback", "staircase_corridor", "center_swing"],
       nextQueueSeed: 1_163_820_235,
-      minEncounterDuration: 7.04,
+      minEncounterDuration: 7.2,
     },
   },
 ];

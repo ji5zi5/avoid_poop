@@ -61,11 +61,35 @@ type BuildWaveSpawnOutput = {
 const NORMAL_HAZARD_SIZES = [16, 20, 24] as const;
 const MAX_RUN_SEED = 2147483646;
 
+function isNightmareMode(mode: GameMode) {
+  return mode === "nightmare";
+}
+
+function isHardOrAbove(mode: GameMode) {
+  return mode !== "normal";
+}
+
 function createRunSeed() {
   return Math.floor(Math.random() * MAX_RUN_SEED) + 1;
 }
 
 export function getWaveRoundBand(mode: GameMode, round: number) {
+  if (isNightmareMode(mode)) {
+    if (round >= 9) {
+      return 4;
+    }
+    if (round >= 6) {
+      return 3;
+    }
+    if (round >= 4) {
+      return 2;
+    }
+    if (round >= 2) {
+      return 1;
+    }
+    return 0;
+  }
+
   if (mode === "hard") {
     if (round >= 10) {
       return 3;
@@ -98,20 +122,30 @@ export function createSharedWaveDirector(mode: GameMode, round: number, seed = c
     patternCursor: 0,
     recentPatterns: [],
     specialCooldown: 0,
-    roundBudget: mode === "hard"
-      ? roundBand >= 3 ? 4 : roundBand >= 2 ? 3 : roundBand >= 1 ? 2 : 1
+    roundBudget: isNightmareMode(mode)
+      ? roundBand >= 4 ? 5 : roundBand >= 3 ? 4 : roundBand >= 2 ? 3 : roundBand >= 1 ? 2 : 1
+      : mode === "hard"
+        ? roundBand >= 3 ? 4 : roundBand >= 2 ? 3 : roundBand >= 1 ? 2 : 1
       : roundBand >= 3 ? 3 : roundBand >= 2 ? 2 : 1,
-    clusterQuota: mode === "hard"
-      ? roundBand >= 3 ? 3 : roundBand >= 1 ? 2 : 1
+    clusterQuota: isNightmareMode(mode)
+      ? roundBand >= 4 ? 4 : roundBand >= 2 ? 3 : 2
+      : mode === "hard"
+        ? roundBand >= 3 ? 3 : roundBand >= 1 ? 2 : 1
       : roundBand >= 2 ? 2 : 1,
-    tripleQuota: mode === "hard"
-      ? roundBand >= 2 ? 1 : 0
+    tripleQuota: isNightmareMode(mode)
+      ? roundBand >= 4 ? 2 : roundBand >= 1 ? 1 : 0
+      : mode === "hard"
+        ? roundBand >= 2 ? 1 : 0
       : roundBand >= 3 ? 1 : 0,
-    splitterQuota: mode === "hard"
-      ? roundBand >= 2 ? 2 : roundBand >= 1 ? 1 : 0
+    splitterQuota: isNightmareMode(mode)
+      ? roundBand >= 3 ? 3 : roundBand >= 1 ? 2 : 1
+      : mode === "hard"
+        ? roundBand >= 2 ? 2 : roundBand >= 1 ? 1 : 0
       : roundBand >= 2 ? 1 : 0,
-    bounceQuota: mode === "hard"
-      ? roundBand >= 2 ? 2 : roundBand >= 1 ? 1 : 0
+    bounceQuota: isNightmareMode(mode)
+      ? roundBand >= 3 ? 3 : roundBand >= 1 ? 2 : 1
+      : mode === "hard"
+        ? roundBand >= 2 ? 2 : roundBand >= 1 ? 1 : 0
       : roundBand >= 2 ? 1 : 0,
     roundBand,
     round,
@@ -130,14 +164,14 @@ export function buildWaveDirectorForRound(mode: GameMode, round: number, current
 }
 
 function roundPressure(mode: GameMode, round: number) {
-  return Math.min(mode === "hard" ? 18 : 16, Math.max(0, round - 1));
+  return Math.min(isNightmareMode(mode) ? 20 : isHardOrAbove(mode) ? 18 : 16, Math.max(0, round - 1));
 }
 
 export function getSharedWaveSpawnThreshold(mode: GameMode, round: number) {
-  const pressure = Math.min(mode === "hard" ? 14 : 13, Math.max(0, round - 1));
-  const waveSpawnBase = mode === "hard" ? 0.82 : 0.93;
-  const waveSpawnFloor = mode === "hard" ? 0.12 : 0.17;
-  const waveDecay = mode === "hard" ? 0.076 : 0.07;
+  const pressure = Math.min(isNightmareMode(mode) ? 15 : isHardOrAbove(mode) ? 14 : 13, Math.max(0, round - 1));
+  const waveSpawnBase = isNightmareMode(mode) ? 0.76 : isHardOrAbove(mode) ? 0.82 : 0.93;
+  const waveSpawnFloor = isNightmareMode(mode) ? 0.09 : isHardOrAbove(mode) ? 0.12 : 0.17;
+  const waveDecay = isNightmareMode(mode) ? 0.082 : isHardOrAbove(mode) ? 0.076 : 0.07;
   return Math.max(waveSpawnFloor, waveSpawnBase - pressure * waveDecay);
 }
 
@@ -150,7 +184,7 @@ function advanceWaveSeed(seed: number) {
 }
 
 function getNormalHazardSize(mode: GameMode, round: number, nextHazardId: number) {
-  const offset = mode === "hard" ? 1 : 0;
+  const offset = isNightmareMode(mode) ? 2 : isHardOrAbove(mode) ? 1 : 0;
   return NORMAL_HAZARD_SIZES[(nextHazardId + round + offset) % NORMAL_HAZARD_SIZES.length];
 }
 
@@ -183,21 +217,21 @@ function pickWeightedPattern(seed: number, choices: PickPatternChoice[]) {
 
 export function selectSharedWavePattern(director: SharedWaveDirector, mode: GameMode, round: number) {
   const current = director.round === round ? director : buildWaveDirectorForRound(mode, round, director);
-  const choices: PickPatternChoice[] = [{ pattern: "single", weight: mode === "hard" ? 5.2 : 6.1 }];
+  const choices: PickPatternChoice[] = [{ pattern: "single", weight: isNightmareMode(mode) ? 4.5 : isHardOrAbove(mode) ? 5.2 : 6.1 }];
   const recentLast = current.recentPatterns[current.recentPatterns.length - 1] ?? null;
 
   if (current.roundBudget > 0 && current.specialCooldown === 0) {
     if (current.clusterQuota > 0 && recentLast !== "cluster_2") {
-      choices.push({ pattern: "cluster_2", weight: mode === "hard" ? 3.8 : 3 });
+      choices.push({ pattern: "cluster_2", weight: isNightmareMode(mode) ? 4.4 : isHardOrAbove(mode) ? 3.8 : 3 });
     }
-    if (current.tripleQuota > 0 && round >= (mode === "hard" ? 10 : 12) && recentLast !== "cluster_3") {
-      choices.push({ pattern: "cluster_3", weight: mode === "hard" ? 0.7 : 0.45 });
+    if (current.tripleQuota > 0 && round >= (isNightmareMode(mode) ? 8 : isHardOrAbove(mode) ? 10 : 12) && recentLast !== "cluster_3") {
+      choices.push({ pattern: "cluster_3", weight: isNightmareMode(mode) ? 1.15 : isHardOrAbove(mode) ? 0.7 : 0.45 });
     }
     if (current.splitterQuota > 0 && recentLast !== "splitter") {
-      choices.push({ pattern: "splitter", weight: mode === "hard" ? 2.6 : 2 });
+      choices.push({ pattern: "splitter", weight: isNightmareMode(mode) ? 3.3 : isHardOrAbove(mode) ? 2.6 : 2 });
     }
     if (current.bounceQuota > 0 && recentLast !== "bouncer") {
-      choices.push({ pattern: "bouncer", weight: mode === "hard" ? 3.6 : 2.4 });
+      choices.push({ pattern: "bouncer", weight: isNightmareMode(mode) ? 4.1 : isHardOrAbove(mode) ? 3.6 : 2.4 });
     }
   }
 
@@ -210,12 +244,14 @@ export function selectSharedWavePattern(director: SharedWaveDirector, mode: Game
   };
 
   if (picked.pattern === "single") {
-    nextDirector.specialCooldown = Math.max(0, current.specialCooldown - 1);
+    nextDirector.specialCooldown = Math.max(0, current.specialCooldown - (isNightmareMode(mode) ? 2 : 1));
     return { pattern: picked.pattern, nextDirector };
   }
 
   nextDirector.roundBudget = Math.max(0, current.roundBudget - (picked.pattern === "cluster_3" ? 2 : 1));
-  nextDirector.specialCooldown = picked.pattern === "cluster_3" ? 2 : 1;
+  nextDirector.specialCooldown = picked.pattern === "cluster_3"
+    ? (isNightmareMode(mode) ? 1 : 2)
+    : isNightmareMode(mode) ? 0 : 1;
 
   if (picked.pattern === "cluster_2") {
     nextDirector.clusterQuota = Math.max(0, current.clusterQuota - 1);
@@ -234,9 +270,9 @@ export function selectSharedWavePattern(director: SharedWaveDirector, mode: Game
 function buildSingleHazard(mode: GameMode, round: number, width: number, nextHazardId: number, seed: number) {
   const size = getNormalHazardSize(mode, round, nextHazardId);
   const pressure = roundPressure(mode, round);
-  const speedBase = (mode === "hard" ? 146 : 126) + pressure * (mode === "hard" ? 20 : 15);
+  const speedBase = (isNightmareMode(mode) ? 162 : isHardOrAbove(mode) ? 146 : 126) + pressure * (isNightmareMode(mode) ? 22 : isHardOrAbove(mode) ? 20 : 15);
   const sizeWeight = Math.max(0, size - 16) * 2.5;
-  const speed = speedBase + sizeWeight + Math.min(mode === "hard" ? 72 : 54, pressure * (mode === "hard" ? 6 : 5));
+  const speed = speedBase + sizeWeight + Math.min(isNightmareMode(mode) ? 86 : isHardOrAbove(mode) ? 72 : 54, pressure * (isNightmareMode(mode) ? 7 : isHardOrAbove(mode) ? 6 : 5));
   const xRoll = randomX(seed, width, size);
   return {
     hazard: {
@@ -256,7 +292,7 @@ function buildClusterHazards(mode: GameMode, round: number, width: number, nextH
   const totalWidth = size + gap * (count - 1);
   const anchorRoll = randomX(seed, width, totalWidth);
   const pressure = roundPressure(mode, round);
-  const speed = (mode === "hard" ? 176 : 152) + pressure * (mode === "hard" ? 15 : 11);
+  const speed = (isNightmareMode(mode) ? 188 : isHardOrAbove(mode) ? 176 : 152) + pressure * (isNightmareMode(mode) ? 16 : isHardOrAbove(mode) ? 15 : 11);
   return {
     hazards: Array.from({ length: count }, (_, index) => ({
       x: anchorRoll.x + index * gap,
@@ -271,13 +307,19 @@ function buildClusterHazards(mode: GameMode, round: number, width: number, nextH
 
 function buildSplitHazard(mode: GameMode, round: number, width: number, seed: number) {
   const pressure = roundPressure(mode, round);
-  const size = mode === "hard" ? 24 : 20;
-  const speed = (mode === "hard" ? 194 : 172) + pressure * (mode === "hard" ? 14 : 11);
-  const splitChildCount = mode === "hard"
-    ? round >= 10
-      ? 4
-      : 3
-    : 2;
+  const size = isNightmareMode(mode) ? 26 : isHardOrAbove(mode) ? 24 : 20;
+  const speed = (isNightmareMode(mode) ? 208 : isHardOrAbove(mode) ? 194 : 172) + pressure * (isNightmareMode(mode) ? 16 : isHardOrAbove(mode) ? 14 : 11);
+  const splitChildCount = isNightmareMode(mode)
+    ? round >= 12
+      ? 5
+      : round >= 7
+        ? 4
+        : 3
+    : isHardOrAbove(mode)
+      ? round >= 14
+        ? 4
+        : 3
+      : 2;
   const xRoll = randomX(seed, width, size);
   return {
     hazard: {
@@ -290,7 +332,7 @@ function buildSplitHazard(mode: GameMode, round: number, width: number, seed: nu
       splitChildCount,
       splitChildSize: 14,
       splitChildSpeed: speed * 0.9,
-      splitChildSpread: mode === "hard" ? 76 : 62,
+      splitChildSpread: isNightmareMode(mode) ? 88 : isHardOrAbove(mode) ? 76 : 62,
       variant: (size >= 24 ? "large" : "medium") as SharedHazardVariant,
     },
     nextSeed: xRoll.nextSeed,
@@ -299,8 +341,8 @@ function buildSplitHazard(mode: GameMode, round: number, width: number, seed: nu
 
 function buildBounceHazard(mode: GameMode, round: number, width: number, seed: number) {
   const pressure = roundPressure(mode, round);
-  const size = mode === "hard" ? 20 : 18;
-  const speed = (mode === "hard" ? 204 : 180) + pressure * (mode === "hard" ? 15 : 10);
+  const size = isNightmareMode(mode) ? 22 : isHardOrAbove(mode) ? 20 : 18;
+  const speed = (isNightmareMode(mode) ? 218 : isHardOrAbove(mode) ? 204 : 180) + pressure * (isNightmareMode(mode) ? 16 : isHardOrAbove(mode) ? 15 : 10);
   const xRoll = randomX(seed, width, size);
   return {
     hazard: {
@@ -309,8 +351,8 @@ function buildBounceHazard(mode: GameMode, round: number, width: number, seed: n
       speed,
       owner: "wave" as const,
       behavior: "bounce" as const,
-      bouncesRemaining: mode === "hard" ? 3 : 1,
-      variant: (size >= 20 ? "medium" : "small") as SharedHazardVariant,
+      bouncesRemaining: isNightmareMode(mode) ? 4 : isHardOrAbove(mode) ? 3 : 1,
+      variant: (size >= 22 ? "large" : size >= 20 ? "medium" : "small") as SharedHazardVariant,
     },
     nextSeed: xRoll.nextSeed,
   };
@@ -336,7 +378,7 @@ export function buildWaveSpawnSpecs(input: BuildWaveSpawnInput): BuildWaveSpawnO
   if (pattern === "splitter") {
     const split = buildSplitHazard(input.mode, input.round, input.width, workingSeed);
     selection.nextDirector.seed = split.nextSeed;
-    const splitAtY = Math.floor(input.height * (input.mode === "hard" ? 0.34 : 0.4));
+    const splitAtY = Math.floor(input.height * (isNightmareMode(input.mode) ? 0.28 : isHardOrAbove(input.mode) ? 0.34 : 0.4));
     return {
       pattern,
       nextDirector: selection.nextDirector,
@@ -429,7 +471,7 @@ export function evolveSupportedHazards(
         current.triggered = true;
         current.speed = -Math.max(230, Math.abs(current.speed) * 0.94);
         current.gravity = 390;
-        const lateralBounce = mode === "hard" ? 110 : 74;
+        const lateralBounce = isNightmareMode(mode) ? 132 : isHardOrAbove(mode) ? 110 : 74;
         current.velocityX = current.x + (current.width ?? current.size) / 2 < width / 2 ? lateralBounce : -lateralBounce;
         nextHazards.push(current);
         continue;

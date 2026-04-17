@@ -169,7 +169,10 @@ export function spawnLaneBarrage(state: GameState, safeLane: number, laneCount: 
 }
 
 export function maybeSpawnItem(state: GameState) {
-  const itemInterval = Math.max(state.mode === "hard" ? 8.5 : 7.5, 9.5 - Math.min(2, state.round * 0.08));
+  const itemInterval = Math.max(
+    state.mode === "nightmare" ? 9 : state.mode === "hard" ? 8.5 : 7.5,
+    9.5 - Math.min(state.mode === "nightmare" ? 3 : 2, state.round * 0.08),
+  );
   if (state.itemTimer < itemInterval) {
     return;
   }

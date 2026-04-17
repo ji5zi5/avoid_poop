@@ -501,11 +501,13 @@ test('records endpoints require auth and return best plus recent runs', { concur
   assert.equal(body.profile.totalClears, 0);
   assert.equal(body.best.normal.score, 120);
   assert.equal(body.best.hard.score, 180);
+  assert.equal(body.best.nightmare, undefined);
   assert.equal(body.recent.length, 2);
   assert.equal(body.multiplayer.stats.matchesPlayed, 0);
   assert.equal(body.multiplayer.recent.length, 0);
   assert.equal(body.leaderboard.normal[0].username, 'record_user');
   assert.equal(body.leaderboard.hard[0].username, 'record_user');
+  assert.equal(body.leaderboard.nightmare.length, 0);
   await app.close();
 });
 

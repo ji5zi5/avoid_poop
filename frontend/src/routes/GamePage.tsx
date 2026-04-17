@@ -177,6 +177,7 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
 
   const state = stateRef.current;
   const isBossPresentation = state.currentPhase === "boss" || state.pendingBossClearAnnouncement;
+  const isNightmareMode = mode === "nightmare";
   const activeEffects: ActiveEffect[] = [];
 
   if (state.invincibilityTimer > 0) {
@@ -190,8 +191,8 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
   }
 
   return (
-    <section className="game-screen">
-      <div className="console-panel console-panel--game">
+    <section className={`game-screen ${isNightmareMode ? "game-screen--nightmare" : ""}`}>
+      <div className={`console-panel console-panel--game ${isNightmareMode ? "is-nightmare" : ""}`}>
         <div className="game-hud-stack">
           <div className="game-hud-grid">
             <div className="readout-panel readout-panel--lives">
@@ -212,15 +213,21 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
               <span>{copy.game.score}</span>
               <strong>{Math.round(state.score)}</strong>
             </div>
-            <div className={`readout-panel readout-panel--phase ${isBossPresentation ? "is-boss" : ""}`}>
+            <div className={`readout-panel readout-panel--phase ${isBossPresentation ? "is-boss" : ""} ${isNightmareMode ? "is-nightmare" : ""}`}>
               <span>{copy.game.mode}</span>
               <strong>{copy.game.modeLabel[mode]}</strong>
             </div>
           </div>
+          {isNightmareMode ? (
+            <div className="nightmare-banner" role="status" aria-live="polite">
+              <span>NIGHTMARE</span>
+              <strong>보스 상시 경계 · 포물선/바운스 패턴 활성</strong>
+            </div>
+          ) : null}
         </div>
 
         <div className="game-stage-panel">
-          <div className="game-frame">
+          <div className={`game-frame ${isNightmareMode ? "game-frame--nightmare" : ""}`}>
             <div className="game-playfield">
               <canvas ref={canvasRef} width={state.width} height={state.height} className="game-canvas" />
               {!runReady && !result ? (
@@ -253,7 +260,7 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
               </div>
             ) : null}
             {state.phaseAnnouncementTimer > 0 && !result ? (
-              <div className={`phase-banner ${isBossPresentation ? "is-boss" : ""}`}>
+              <div className={`phase-banner ${isBossPresentation ? "is-boss" : ""} ${isNightmareMode ? "is-nightmare" : ""}`}>
                 <strong>{copy.game.transitionPrefix}</strong>
                 <span>{state.phaseAnnouncementText}</span>
               </div>

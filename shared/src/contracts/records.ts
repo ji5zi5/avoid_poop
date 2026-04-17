@@ -1,6 +1,6 @@
 import {z} from 'zod';
 
-export const gameModeSchema = z.enum(['normal', 'hard']);
+export const gameModeSchema = z.enum(['normal', 'hard', 'nightmare']);
 
 export const runResultPayloadSchema = z.object({
   mode: gameModeSchema,
@@ -81,7 +81,8 @@ export const recordsResponseSchema = z.object({
   profile: singlePlayerProfileSchema,
   best: z.object({
     normal: recordEntrySchema.optional(),
-    hard: recordEntrySchema.optional()
+    hard: recordEntrySchema.optional(),
+    nightmare: recordEntrySchema.optional()
   }),
   recent: z.array(recordEntrySchema),
   multiplayer: z.object({
@@ -91,6 +92,7 @@ export const recordsResponseSchema = z.object({
   leaderboard: z.object({
     normal: z.array(singleLeaderboardEntrySchema),
     hard: z.array(singleLeaderboardEntrySchema),
+    nightmare: z.array(singleLeaderboardEntrySchema),
     multiplayer: z.array(multiplayerLeaderboardEntrySchema)
   })
 });

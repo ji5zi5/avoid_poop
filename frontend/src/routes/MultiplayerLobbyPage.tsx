@@ -26,6 +26,14 @@ function debuffTierLabel(debuffTier: RoomSummary["options"]["debuffTier"]) {
   return debuffTier === 3 ? copy.multiplayer.debuffTierStrong : copy.multiplayer.debuffTierWeak;
 }
 
+function difficultyLabel(difficulty: RoomSummary["options"]["difficulty"]) {
+  return difficulty === "nightmare"
+    ? copy.multiplayer.difficultyNightmare
+    : difficulty === "hard"
+      ? copy.multiplayer.difficultyHard
+      : copy.multiplayer.difficultyNormal;
+}
+
 type PendingModerationAction = {
   playerId: number;
   playerName: string;
@@ -266,7 +274,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
         <div className="lobby-summary-strip">
           <span className="home-status-chip">{copy.multiplayer.players} {room.playerCount}/8</span>
           <span className="home-status-chip">{room.options.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
-          <span className="home-status-chip">{room.options.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
+          <span className="home-status-chip">{difficultyLabel(room.options.difficulty)}</span>
           <span className="home-status-chip">{debuffTierLabel(room.options.debuffTier)}</span>
           <span className="home-status-chip">{room.options.bodyBlock ? "부딪힘 ON" : "부딪힘 OFF"}</span>
         </div>
@@ -461,7 +469,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
               </div>
               <div className="matchmaking-card__chips">
                 <span className="home-status-chip">{settingsOptions.visibility === "public" ? copy.multiplayer.publicRoom : copy.multiplayer.privateRoom}</span>
-                <span className="home-status-chip">{settingsOptions.difficulty === "hard" ? copy.multiplayer.difficultyHard : copy.multiplayer.difficultyNormal}</span>
+                <span className="home-status-chip">{difficultyLabel(settingsOptions.difficulty)}</span>
                 <span className="home-status-chip">{copy.multiplayer.maxPlayersChip(settingsMaxPlayers)}</span>
                 <span className="home-status-chip">{settingsOptions.bodyBlock ? "부딪힘 ON" : "부딪힘 OFF"}</span>
               </div>
@@ -479,6 +487,7 @@ export function MultiplayerLobbyPage({ canStart, connected, onLeave, onSendChat,
                 <select value={settingsOptions.difficulty} onChange={(event) => setSettingsOptions((current) => ({ ...current, difficulty: event.target.value as RoomOptions["difficulty"] }))}>
                   <option value="normal">{copy.multiplayer.difficultyNormal}</option>
                   <option value="hard">{copy.multiplayer.difficultyHard}</option>
+                  <option value="nightmare">{copy.multiplayer.difficultyNightmare}</option>
                 </select>
               </label>
               <label>
