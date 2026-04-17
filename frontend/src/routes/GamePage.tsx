@@ -218,12 +218,6 @@ export function GamePage({ mode, onBackToMenu, onViewRecords, onSessionExpired, 
               <strong>{copy.game.modeLabel[mode]}</strong>
             </div>
           </div>
-          {isNightmareMode ? (
-            <div className="nightmare-banner" role="status" aria-live="polite">
-              <span>NIGHTMARE</span>
-              <strong>보스 상시 경계 · 포물선/바운스 패턴 활성</strong>
-            </div>
-          ) : null}
         </div>
 
         <div className="game-stage-panel">

@@ -448,6 +448,14 @@ button:disabled {
   background: rgba(96, 73, 44, 0.06);
 }
 
+.home-mode-summary__accent {
+  display: block;
+  margin-top: 0.38rem;
+  color: #8a49b7;
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+}
+
 .home-mode-summary.is-nightmare {
   border-color: rgba(98, 55, 138, 0.28);
   color: #4e2a6f;
@@ -455,25 +463,6 @@ button:disabled {
     radial-gradient(circle at top right, rgba(179, 94, 255, 0.16), transparent 42%),
     linear-gradient(180deg, rgba(255, 245, 255, 0.96) 0%, rgba(244, 231, 255, 0.94) 100%);
   box-shadow: inset 0 0 0 1px rgba(98, 55, 138, 0.08);
-}
-
-.home-mode-alert {
-  display: grid;
-  gap: 0.18rem;
-  padding: 0.7rem 0.85rem;
-  border-radius: 16px;
-  border: 2px solid rgba(98, 55, 138, 0.22);
-  background:
-    radial-gradient(circle at top left, rgba(255, 119, 198, 0.18), transparent 34%),
-    linear-gradient(180deg, rgba(60, 31, 85, 0.96) 0%, rgba(40, 21, 61, 0.98) 100%);
-  color: #fff3ff;
-  box-shadow: 0 12px 24px rgba(98, 55, 138, 0.18);
-}
-
-.home-mode-alert span {
-  font-size: 0.76rem;
-  letter-spacing: 0.12em;
-  color: rgba(255, 213, 244, 0.82);
 }
 
 .home-start-button--hero.is-nightmare {
@@ -822,27 +811,6 @@ input {
   color: #ffb9ef;
 }
 
-.nightmare-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  padding: 0.55rem 0.75rem;
-  border-radius: 14px;
-  border: 2px solid rgba(98, 55, 138, 0.2);
-  background:
-    radial-gradient(circle at left, rgba(255, 107, 186, 0.14), transparent 26%),
-    linear-gradient(180deg, rgba(255, 246, 255, 0.95) 0%, rgba(244, 232, 255, 0.94) 100%);
-  color: #4e2a6f;
-  box-shadow: 0 10px 18px rgba(98, 55, 138, 0.12);
-}
-
-.nightmare-banner span {
-  font-size: 0.76rem;
-  letter-spacing: 0.12em;
-  color: #8a49b7;
-}
-
 .results-hero.is-clear {
   background:
     radial-gradient(circle at top, rgba(255, 255, 255, 0.72), transparent 28%),
@@ -965,6 +933,13 @@ input {
   .phase-banner {
     min-width: auto;
     width: calc(100% - 1rem);
+  }
+
+  .home-mode-switch .segmented-switch__item,
+  .records-tabs .segmented-switch__item {
+    padding: 0.62rem 0.32rem;
+    font-size: 0.78rem;
+    line-height: 1.1;
   }
 }
 
@@ -3725,6 +3700,11 @@ input {
 
   .records-section-heading {
     display: grid;
+  }
+
+  .records-tabs {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

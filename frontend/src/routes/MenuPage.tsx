@@ -115,13 +115,10 @@ export function MenuPage({ user, sessionSaveCount, onOpenMultiplayer, onPlay, on
                         : selectedMode === "hard"
                           ? copy.menu.hardSummary
                           : copy.menu.nightmareSummary}
+                      {isNightmareSelected ? (
+                        <small className="home-mode-summary__accent">NIGHTMARE · 매 라운드 보스 · 궤적형 패턴 강화</small>
+                      ) : null}
                     </div>
-                    {isNightmareSelected ? (
-                      <div className="home-mode-alert" role="status" aria-live="polite">
-                        <span>NIGHTMARE</span>
-                        <strong>매 라운드 보스 · 궤적형 패턴 강화</strong>
-                      </div>
-                    ) : null}
                     <button className={`home-start-button home-start-button--hero ${isNightmareSelected ? "is-nightmare" : ""}`} onClick={() => onPlay(selectedMode)}>{copy.menu.start}</button>
                     <button className="ghost-button subtle-button menu-close-button" onClick={() => setSingleOpen(false)}>{copy.records.back}</button>
                   </>
